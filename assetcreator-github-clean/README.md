@@ -239,15 +239,86 @@ None that block local development. The following are production-only requirement
 
 ---
 
+## Staging Deployment (Coolify / Docker)
+
+### Architecture
+
+Three Docker containers are orchestrated by `docker-compose.yml`:
+
+| Service | Image | Internal port | Role |
+|---------|-------|--------------|------|
+| `frontend` | nginx (built from `webapp/`) | 80 | Serves the React SPA; proxies `/api/*` to the backend |
+| `backend` | oven/bun (built from `backend/`) | 3000 | Bun + Hono REST API + Prisma |
+| `vectorizer` | python:3.12-slim (built from `backend/vendor/raster-dxf-centerline/`) | 8000 | FastAPI centerline vectorization sidecar |
+
+**SQLite is kept for staging.** All image and vector data is stored as base64 strings, so the database never grows extremely large for typical usage. The file is persisted in a named Docker volume (`sqlite_data`). Migrate to PostgreSQL only when you need multiple backend replicas or horizontal scaling.
+
+The nginx container is the **only public-facing service** on port 80. Coolify's Traefik reverse proxy terminates TLS in front of it. The backend and vectorizer containers are on an internal Docker network only.
+
+Because nginx proxies `/api/` requests from the frontend to the backend (same public origin), there is no cross-origin cookie issue and `VITE_BACKEND_URL` is left empty at build time.
+
+### Required env vars for staging
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `PUBLIC_URL` | ✅ | Public HTTPS URL, e.g. `https://gravu.example.com` — used for Better Auth callbacks and CORS |
+| `BETTER_AUTH_SECRET` | ✅ | Any long random string (`openssl rand -hex 32`) |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | Recommended | Without these, OTP codes are printed to the backend logs only |
+| `GEMINI_API_KEY` | Optional | Required only for the full AI pipeline (subject detection + linework). Vectorize-only flow works without it |
+| `STRIPE_SECRET` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRO_PRICE_ID` | Optional | Billing endpoints return HTTP 503 when not set |
+
+### Deploy on Coolify
+
+1. **Add a new Resource → Docker Compose** and point it at this repository.
+2. Set the compose file path to `assetcreator-github-clean/docker-compose.yml`.
+3. In the Coolify environment variables panel, set at minimum:
+   ```
+   PUBLIC_URL=https://your-app.example.com
+   BETTER_AUTH_SECRET=<generate with: openssl rand -hex 32>
+   ```
+   Add SMTP and Gemini variables as needed.
+4. Coolify will build all three images and start the services in dependency order.
+5. Expose the `frontend` service (port 80) through Coolify's built-in Traefik proxy for HTTPS.
+
+### Deploy manually with Docker Compose
+
+```bash
+cd assetcreator-github-clean
+cp .env.staging.example .env.staging
+# Edit .env.staging and fill in the required values
+docker compose --env-file .env.staging up -d --build
+```
+
+### Staging deployment checklist
+
+- [ ] `PUBLIC_URL` set to the HTTPS URL the app will be served on
+- [ ] `BETTER_AUTH_SECRET` rotated to a fresh random value
+- [ ] SMTP credentials set (or accept that OTP codes only appear in logs)
+- [ ] `GEMINI_API_KEY` set if the AI pipeline is needed
+- [ ] `STRIPE_*` set if billing is required; otherwise leave blank
+- [ ] `sqlite_data` Docker volume confirmed on persistent host storage (not tmpfs)
+- [ ] Coolify/Traefik TLS certificate issued for the public domain
+
+### Remaining blockers before first deployment
+
+| Blocker | Severity | Notes |
+|---------|----------|-------|
+| `BETTER_AUTH_SECRET` not set | 🔴 Blocks start | Backend exits on startup without it |
+| No HTTPS / TLS | 🔴 Blocks auth | Better Auth sets `secure` cookies in `NODE_ENV=production`; must be served over HTTPS |
+| `PUBLIC_URL` not set | 🔴 Blocks auth | CORS and Better Auth callbacks will fail |
+| No SMTP config | 🟡 Degrades UX | OTP codes logged to console only — fine for private staging, broken for real users |
+| No `GEMINI_API_KEY` | 🟡 Partial feature | "Photo → Vector" AI flow disabled; "Vectorize Linework" still works |
+| No Stripe config | 🟢 Optional | Billing endpoints return 503; rest of app is unaffected |
+
+---
+
 ## Before Self-Hosting in Production
 
-- [ ] Set `ALLOWED_ORIGIN` to your production frontend URL
-- [ ] Set `BETTER_AUTH_URL` to your production backend URL (e.g. `https://api.example.com`)
+- [ ] Set `PUBLIC_URL` (or `ALLOWED_ORIGIN` + `BETTER_AUTH_URL`) to your production URL
 - [ ] Set `SMTP_*` variables for real email delivery (OTP emails)
 - [ ] Set `STRIPE_*` variables if you want billing enabled
 - [ ] Rotate `BETTER_AUTH_SECRET` and any other secrets
 - [ ] Decide: keep SQLite or migrate to PostgreSQL (update `DATABASE_URL` and `prisma/schema.prisma` provider)
-- [ ] Serve behind a TLS-terminating reverse proxy (nginx, Caddy) — auth cookies require HTTPS in production
-- [ ] Verify the Python sidecar starts correctly on your server (`python3`, `pip`, `bash` must be available)
+- [ ] Serve behind a TLS-terminating reverse proxy (nginx, Caddy, or Coolify's Traefik) — auth cookies require HTTPS in production
 - [ ] Confirm `DATABASE_URL` points to a persistent path (not a container tmpfs)
 
