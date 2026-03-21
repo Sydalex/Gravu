@@ -1,11 +1,13 @@
 # Environment / secrets
 **/.env
+**/.env.staging
 **/.env.production
 **/.env.local
 **/.env.development.local
 **/.env.test.local
 **/.env.production.local
 !**/.env.example
+!**/.env.staging.example
 !**/.env.production.example
 
 # Dependency directories
