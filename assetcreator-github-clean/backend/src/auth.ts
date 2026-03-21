@@ -50,6 +50,9 @@ if (env.ALLOWED_ORIGIN) {
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "sqlite" }),
   secret: env.BETTER_AUTH_SECRET,
+  // baseURL tells Better Auth where the backend lives so it can construct
+  // correct callback/redirect URLs.  Falls back to localhost in development.
+  baseURL: env.BETTER_AUTH_URL ?? `http://localhost:${env.PORT ?? "3000"}`,
   trustedOrigins,
   emailAndPassword: {
     enabled: true,

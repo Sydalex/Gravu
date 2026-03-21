@@ -29,6 +29,16 @@ const envSchema = z.object({
 
   // Better Auth
   BETTER_AUTH_SECRET: z.string().min(1, "BETTER_AUTH_SECRET is required"),
+  // Base URL of the backend (used by Better Auth for callbacks/redirects)
+  // Defaults to http://localhost:3000 in development
+  BETTER_AUTH_URL: z.string().optional(),
+
+  // SMTP – optional; if not set, OTP codes are printed to the server console
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.string().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().optional(),
 
   // Stripe (optional – only required when billing features are enabled)
   STRIPE_SECRET: z.string().optional(),

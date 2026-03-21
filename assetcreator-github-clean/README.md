@@ -45,6 +45,7 @@ Edit `backend/.env` and set at minimum:
 | Variable | Required | Notes |
 |----------|----------|-------|
 | `BETTER_AUTH_SECRET` | ✅ | Any long random string |
+| `BETTER_AUTH_URL` | For production | Base URL of the backend (e.g. `https://api.example.com`); defaults to `http://localhost:3000` in dev |
 | `GEMINI_API_KEY` | For AI routes | Google AI Studio key |
 | `SMTP_HOST` | For email OTP | If blank, OTP is printed to server console |
 | `STRIPE_SECRET` | For billing | If blank, billing endpoints return 503 |
@@ -101,6 +102,10 @@ NODE_ENV=development
 
 # Your production frontend URL (leave blank for localhost-only dev)
 ALLOWED_ORIGIN=
+
+# Base URL of the backend – used by Better Auth for callback/redirect URLs
+# Leave blank for localhost-only dev (defaults to http://localhost:3000)
+BETTER_AUTH_URL=
 
 GEMINI_API_KEY=
 CENTERLINE_VECTORIZER_URL=http://127.0.0.1:8001
@@ -202,9 +207,42 @@ assetcreator-github-clean/
 
 ---
 
+## Local Verification
+
+The following checks were confirmed to work with a fresh clone and default `.env.example` values:
+
+| Check | Result |
+|-------|--------|
+| `bun install` (backend) | ✅ 159 packages |
+| `bun install` (webapp) | ✅ 382 packages |
+| `bunx prisma db push` | ✅ SQLite DB created |
+| Backend starts (`bun run src/index.ts`) | ✅ No Vibecode services required |
+| Vite dev server (`bun run dev` in webapp) | ✅ No Vibecode Vite plugin — uses `@vitejs/plugin-react-swc` |
+| Auth — sign-up, sign-in, session | ✅ All work with Better Auth + SQLite |
+| Python sidecar starts, `/health` responds | ✅ FastAPI + uvicorn on port 8001 |
+| `POST /api/trace/upload` (image upload) | ✅ PNG resized and returned as base64 |
+| `POST /api/trace/vectorize` (image → SVG) | ✅ potrace traces to SVG |
+| `POST /api/trace/export-dxf` (SVG → DXF) | ✅ dxf-writer produces valid DXF |
+| `POST /api/convert/vectorise-ai` (centerline sidecar) | ✅ Python pipeline produces DXF |
+
+### Remaining blockers for self-hosting
+
+None that block local development. The following are production-only requirements:
+
+- **Email OTP in production** — set `SMTP_HOST` and friends; without it OTP codes are only logged to the server console (fine for dev, unusable for end users).
+- **HTTPS + reverse proxy** — `better-auth` sets `secure: true` cookies when `NODE_ENV=production`. You must serve the app over HTTPS (nginx, Caddy, etc.) or cookies will be silently rejected by browsers.
+- **`BETTER_AUTH_URL`** — set to the public backend URL (e.g. `https://api.example.com`) so Better Auth can construct correct callback/redirect URLs. In development the default of `http://localhost:3000` is used automatically.
+- **`ALLOWED_ORIGIN`** — set to the public frontend URL so CORS allows cross-origin cookie delivery.
+- **Persistent `DATABASE_URL`** — make sure `dev.db` (or the configured SQLite path) is on persistent storage in a container/VM deployment.
+- **Gemini API key** — `GEMINI_API_KEY` is required only for the AI pipeline (subject detection, linework generation). All local vectorization works without it.
+- **Stripe** — `STRIPE_SECRET` / `STRIPE_WEBHOOK_SECRET` are required only for billing. Endpoints return HTTP 503 when not configured.
+
+---
+
 ## Before Self-Hosting in Production
 
 - [ ] Set `ALLOWED_ORIGIN` to your production frontend URL
+- [ ] Set `BETTER_AUTH_URL` to your production backend URL (e.g. `https://api.example.com`)
 - [ ] Set `SMTP_*` variables for real email delivery (OTP emails)
 - [ ] Set `STRIPE_*` variables if you want billing enabled
 - [ ] Rotate `BETTER_AUTH_SECRET` and any other secrets
