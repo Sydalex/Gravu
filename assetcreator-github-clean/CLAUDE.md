@@ -1,55 +1,50 @@
-# Vibecode Workspace
+# Developer Guide
 
-This workspace contains a mobile app and backend server.
+This file captures architecture decisions and conventions that apply across the whole project.
 
-<projects>
-  webapp/    — React app (port 8000)
-  backend/   — Hono API server (port 3000)
+## Project layout
 
-  In production, the webapp uses relative URLs (/api/...) so it works on any domain.
-  VITE_BACKEND_URL is only needed in development for cross-origin requests to the backend on a different port.
-  Better Auth derives its base URL per-request from reverse proxy headers (X-Forwarded-Host/Proto) via trustedProxyHeaders: true.
-  Do NOT set baseURL in the betterAuth() config.
-  The webapp auth client should use: baseURL: import.meta.env.VITE_BACKEND_URL || undefined
-  The webapp API helper should use: import.meta.env.VITE_BACKEND_URL || "" (empty string = relative URLs)
-</projects>
+```
+assetcreator-github-clean/
+├── backend/        Bun + Hono API server (port 3000)
+├── webapp/         React 18 + Vite frontend (port 8000)
+└── README.md       Setup and local development instructions
+```
 
-<agents>
-  Use subagents for project-specific work:
-  - backend-developer: Changes to the backend API
-  - webapp-developer: Changes to the webapp frontend
+## Key conventions
 
-  Each agent reads its project's CLAUDE.md for detailed instructions.
-</agents>
+- **Shared API contracts** – All request/response Zod schemas live in `backend/src/types.ts`.
+  Both the backend routes and the frontend import from that file; it is the single source of truth.
 
-<coordination>
-  When a feature needs both frontend and backend:
-  1. Define Zod schemas for request/response in backend/src/types.ts (shared contracts)
-  2. Implement backend route using the schemas
-  3. Test backend with cURL (use $BACKEND_URL, never localhost)
-  4. Implement frontend, importing schemas from backend/src/types.ts to parse responses
-  5. Test the integration
+- **Relative vs absolute URLs** – In production the webapp is served from the same origin as the
+  backend (e.g. `/api/…`), so `VITE_BACKEND_URL` should be left empty or omitted.
+  Set it only for local cross-origin development (`http://localhost:3000`).
 
-  <shared_types>
-    All API contracts live in backend/src/types.ts as Zod schemas.
-    Both backend and frontend can import from this file — single source of truth.
-  </shared_types>
-</coordination>
+- **Auth base URL** – Better Auth derives its base URL per-request from reverse-proxy headers
+  (`X-Forwarded-Host` / `X-Forwarded-Proto`) via `trustedProxyHeaders: true`.
+  Do **not** hard-code `baseURL` in the `betterAuth()` config.
 
-<skills>
-  Shared skills in .claude/skills/:
-  - database-auth: Set up Prisma + Better Auth for user accounts and data persistence
-  - ai-apis-like-chatgpt: Use this skill when the user asks you to make an app that requires an AI API.
+- **Auth client** – The webapp auth client should use:
+  ```ts
+  baseURL: import.meta.env.VITE_BACKEND_URL || undefined
+  ```
+  The API helper should use:
+  ```ts
+  import.meta.env.VITE_BACKEND_URL || ""  // empty string → relative URLs in production
+  ```
 
-  Frontend only skills:
-  - frontend-app-design: Create distinctive, production-grade web interfaces using React, Tailwind, and shadcn/ui. Use when building pages, components, or styling any web UI.
-</skills>
+## Adding a new endpoint
 
-<environment>
-  System manages git and dev servers. DO NOT manage these.
-  The user views the app through Vibecode Mobile App with a webview preview or Vibecode Web App with an iframe preview.
-  The user cannot see code or terminal. Do everything for them.
-  Write one-off scripts to achieve tasks the user asks for.
-  Communicate in an easy to understand manner for non-technical users.
-  Be concise and don't talk too much.
-</environment>
+1. Define Zod schemas in `backend/src/types.ts`
+2. Implement the route in the appropriate `backend/src/routes/*.ts` file
+3. Import and use those schemas in the React page/component
+
+## Python vectorizer sidecar
+
+The centerline vectorizer lives in `backend/vendor/raster-dxf-centerline/`.
+`bun run dev` (and `bun run start`) automatically creates a virtualenv, installs
+`requirements.txt`, and starts the FastAPI server on `http://127.0.0.1:8001` before
+booting the Bun backend.
+
+See `backend/scripts/dev-with-centerline.sh` for the full startup logic.
+

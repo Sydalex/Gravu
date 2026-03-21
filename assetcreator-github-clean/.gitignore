@@ -40,3 +40,6 @@ backend/prisma/*.db-*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Vibecode AI workspace files (not needed for standalone development)
+.claude/

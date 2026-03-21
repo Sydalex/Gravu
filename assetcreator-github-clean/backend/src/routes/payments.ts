@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { Context, Next } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { stripe } from "../stripe";
 import { prisma } from "../prisma";
@@ -28,6 +29,22 @@ paymentsRouter.use("*", async (c, next) => {
   if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
   await next();
 });
+
+// Billing guard – returns 503 when STRIPE_SECRET is not configured
+async function requireStripe(c: Context, next: Next) {
+  if (!stripe) {
+    return c.json(
+      { error: { message: "Billing features are disabled. Configure STRIPE_SECRET in your environment to enable subscription and credit purchases.", code: "BILLING_NOT_CONFIGURED" } },
+      503
+    );
+  }
+  return next();
+}
+
+paymentsRouter.use("/checkout", requireStripe);
+paymentsRouter.use("/buy-credits", requireStripe);
+paymentsRouter.use("/portal", requireStripe);
+paymentsRouter.use("/webhook", requireStripe);
 
 // GET /api/payments/subscription — get current user's subscription status
 paymentsRouter.get("/subscription", async (c) => {
@@ -72,7 +89,7 @@ paymentsRouter.post(
     let customerId = dbUser?.stripeCustomerId;
 
     if (!customerId) {
-      const customer = await stripe.customers.create({
+      const customer = await stripe!.customers.create({
         email: dbUser?.email ?? user.email,
         name: dbUser?.name ?? user.name ?? undefined,
         metadata: { userId: user.id },
@@ -84,7 +101,7 @@ paymentsRouter.post(
       });
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await stripe!.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
@@ -121,7 +138,7 @@ paymentsRouter.post(
     let customerId = dbUser?.stripeCustomerId;
 
     if (!customerId) {
-      const customer = await stripe.customers.create({
+      const customer = await stripe!.customers.create({
         email: dbUser?.email ?? user.email,
         name: dbUser?.name ?? user.name ?? undefined,
         metadata: { userId: user.id },
@@ -133,7 +150,7 @@ paymentsRouter.post(
       });
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await stripe!.checkout.sessions.create({
       customer: customerId,
       mode: "payment",
       line_items: [{ price: priceId, quantity: 1 }],
@@ -168,7 +185,7 @@ paymentsRouter.post("/portal", async (c) => {
 
   const body = await c.req.json().catch(() => ({})) as { returnUrl?: string };
 
-  const portalSession = await stripe.billingPortal.sessions.create({
+  const portalSession = await stripe!.billingPortal.sessions.create({
     customer: dbUser.stripeCustomerId,
     return_url: body.returnUrl ?? `${c.req.url.split("/api")[0]}/account`,
   });
@@ -185,7 +202,7 @@ paymentsRouter.post("/webhook", async (c) => {
 
   if (env.STRIPE_WEBHOOK_SECRET && sig) {
     try {
-      event = stripe.webhooks.constructEvent(body, sig, env.STRIPE_WEBHOOK_SECRET);
+      event = stripe!.webhooks.constructEvent(body, sig, env.STRIPE_WEBHOOK_SECRET);
     } catch {
       return c.json({ error: { message: "Webhook signature verification failed" } }, 400);
     }
@@ -288,7 +305,7 @@ paymentsRouter.post("/webhook", async (c) => {
           where: { stripeCustomerId: customerId },
         });
         if (dbUser) {
-          const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+          const stripeSub = await stripe!.subscriptions.retrieve(subscriptionId);
           const firstItem = stripeSub.items.data[0];
           const priceId = firstItem?.price?.id ?? "";
           const periodStart = firstItem?.current_period_start ?? stripeSub.billing_cycle_anchor;

@@ -1,7 +1,7 @@
-import "@vibecodeapp/proxy"; // DO NOT REMOVE OTHERWISE VIBECODE PROXY WILL NOT WORK
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import "./env";
+import { env } from "./env";
 import { startCenterlineSidecar } from "./services/centerlineSidecar";
 import { auth } from "./auth";
 import { sampleRouter } from "./routes/sample";
@@ -20,15 +20,17 @@ const app = new Hono<{
 }>();
 
 // CORS middleware - validates origin against allowlist
-const allowed = [
+// Add your production domain to ALLOWED_ORIGIN in .env (e.g. https://your-app.example.com)
+const allowed: RegExp[] = [
   /^http:\/\/localhost(:\d+)?$/,
   /^http:\/\/127\.0\.0\.1(:\d+)?$/,
-  /^https:\/\/[a-z0-9-]+\.dev\.vibecode\.run$/,
-  /^https:\/\/[a-z0-9-]+\.vibecode\.run$/,
-  /^https:\/\/[a-z0-9-]+\.vibecodeapp\.com$/,
-  /^https:\/\/[a-z0-9-]+\.vibecode\.dev$/,
-  /^https:\/\/vibecode\.dev$/,
 ];
+
+if (env.ALLOWED_ORIGIN) {
+  // Escape for use in a regexp and add exact match
+  const escaped = env.ALLOWED_ORIGIN.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  allowed.push(new RegExp(`^${escaped}$`));
+}
 
 app.use(
   "*",
