@@ -18,8 +18,11 @@ services:
       context: ./webapp
       dockerfile: Dockerfile
     restart: unless-stopped
-    ports:
-      - "80:80"
+    # Expose port 80 to the internal Docker network only.
+    # Coolify's Traefik reverse proxy routes external HTTPS traffic here;
+    # do NOT bind a host port (would conflict with Traefik on port 80/443).
+    expose:
+      - "80"
     depends_on:
       backend:
         condition: service_healthy
