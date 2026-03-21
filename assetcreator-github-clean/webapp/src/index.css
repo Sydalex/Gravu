@@ -1,0 +1,250 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Geist+Mono:wght@100;200;300;400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* AssetCreator — Obsidian Precision Design System
+   Ultra-dark surfaces, razor-sharp geometry, emerald accents.
+   All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --card: 48 33% 97%;
+    --ring: 15 56% 52%;
+    --input: 51 8% 68%;
+    --muted: 44 29% 90%;
+    --accent: 46 23% 89%;
+    --border: 50 7% 84%;
+    --chart-1: 18 57% 44%;
+    --chart-2: 251 85% 75%;
+    --chart-3: 46 28% 82%;
+    --chart-4: 257 49% 88%;
+    --chart-5: 18 60% 44%;
+    --popover: 0 0% 100%;
+    --primary: 15 56% 52%;
+    --sidebar: 51 26% 95%;
+    --secondary: 46 23% 89%;
+    --background: 48 33% 97%;
+    --foreground: 48 20% 20%;
+    --destructive: 60 3% 8%;
+    --sidebar-ring: 0 0% 71%;
+    --sidebar-accent: 46 23% 89%;
+    --sidebar-border: 0 0% 92%;
+    --card-foreground: 60 3% 8%;
+    --sidebar-primary: 15 56% 52%;
+    --muted-foreground: 50 2% 50%;
+    --accent-foreground: 51 19% 13%;
+    --popover-foreground: 51 19% 13%;
+    --primary-foreground: 0 0% 100%;
+    --sidebar-foreground: 60 3% 23%;
+    --secondary-foreground: 51 8% 30%;
+    --destructive-foreground: 0 0% 100%;
+    --sidebar-accent-foreground: 0 0% 20%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --card: 60 3% 15%;
+    --ring: 15 63% 60%;
+    --input: 52 5% 31%;
+    --muted: 60 4% 10%;
+    --accent: 48 11% 9%;
+    --border: 60 5% 23%;
+    --chart-1: 18 57% 44%;
+    --chart-2: 251 85% 75%;
+    --chart-3: 48 11% 9%;
+    --chart-4: 248 25% 23%;
+    --chart-5: 18 60% 44%;
+    --popover: 60 2% 18%;
+    --primary: 15 63% 60%;
+    --sidebar: 30 3% 12%;
+    --secondary: 48 33% 97%;
+    --background: 60 3% 15%;
+    --foreground: 46 10% 74%;
+    --destructive: 0 84% 60%;
+    --sidebar-ring: 0 0% 71%;
+    --sidebar-accent: 60 3% 6%;
+    --sidebar-border: 0 0% 92%;
+    --card-foreground: 48 33% 97%;
+    --sidebar-primary: 0 0% 20%;
+    --muted-foreground: 51 9% 69%;
+    --accent-foreground: 51 26% 95%;
+    --popover-foreground: 60 5% 89%;
+    --primary-foreground: 0 0% 100%;
+    --sidebar-foreground: 46 10% 74%;
+    --secondary-foreground: 60 2% 18%;
+    --destructive-foreground: 0 0% 100%;
+    --sidebar-accent-foreground: 46 10% 74%;
+    --sidebar-primary-foreground: 0 0% 98%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Syne', system-ui, sans-serif;
+  }
+}
+
+/* Keyframe Animations */
+@keyframes float {
+  from {
+    transform: translateY(0px);
+  }
+  to {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.03;
+  }
+  90% {
+    opacity: 0.03;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 4px 0 hsl(160 84% 39% / 0.2); }
+  50% { box-shadow: 0 0 16px 4px hsl(160 84% 39% / 0.4); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes dash-animate {
+  to { stroke-dashoffset: -20; }
+}
+
+/* Utility classes */
+@layer utilities {
+  .text-display {
+    font-family: 'Syne', system-ui, sans-serif;
+    letter-spacing: -0.03em;
+    font-weight: 800;
+  }
+
+  .font-data {
+    font-family: 'Geist Mono', monospace;
+  }
+
+  .glass-surface {
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    background-color: hsl(var(--card) / 0.6);
+    border: 1px solid hsl(255 255% 100% / 0.05);
+  }
+
+  .accent-glow {
+    box-shadow: 0 0 30px hsl(160 84% 39% / 0.15);
+  }
+
+  .hover-lift {
+    transition: transform 0.2s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite alternate;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s linear infinite;
+    background-size: 200% auto;
+  }
+
+  .animate-glow-pulse {
+    animation: glow-pulse 2.5s ease-in-out infinite;
+  }
+
+  .animate-gradient-shift {
+    animation: gradient-shift 6s ease infinite;
+    background-size: 200% 200%;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+
+  .animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
+  }
+
+  .animate-slide-in-right {
+    animation: slideInRight 0.4s ease-out forwards;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 3s linear infinite;
+  }
+}

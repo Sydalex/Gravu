@@ -1,0 +1,42 @@
+# Environment / secrets
+**/.env
+**/.env.production
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+!**/.env.example
+!**/.env.production.example
+
+# Dependency directories
+**/node_modules/
+
+# Build / coverage output
+**/dist/
+**/dist-ssr/
+**/out/
+**/coverage/
+**/*.tsbuildinfo
+
+# Logs
+**/*.log
+**/logs/
+
+# Databases / local state
+backend/prisma/*.db
+backend/prisma/*.db-*
+
+# Python caches / virtualenvs
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.venv/
+**/venv/
+
+# OS / editor junk
+.DS_Store
+**/.DS_Store
+**/._*
+.idea/
+.vscode/*
+!.vscode/extensions.json

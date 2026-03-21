@@ -1,0 +1,51 @@
+# dependencies (bun install)
+node_modules
+
+# output
+out
+dist
+*.tgz
+
+# code coverage
+coverage
+*.lcov
+
+# logs
+logs
+_.log
+report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+server.log
+studio.log
+
+# dotenv environment variable files
+.env
+.env.production
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# caches
+.eslintcache
+.cache
+*.tsbuildinfo
+
+# IntelliJ based IDEs
+.idea
+
+# Finder (MacOS) folder config
+.DS_Store
+._*
+
+# Prisma generated files (bunx prisma generate)
+/generated/prisma
+
+# local databases
+/prisma/*.db
+/prisma/*.db-*
+
+# Python sidecar local artifacts
+/vendor/raster-dxf-centerline/.venv
+/vendor/raster-dxf-centerline/**/__pycache__
+/vendor/raster-dxf-centerline/**/*.pyc
+/vendor/raster-dxf-centerline/.pytest_cache
