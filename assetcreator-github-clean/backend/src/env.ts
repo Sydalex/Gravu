@@ -9,6 +9,10 @@ const envSchema = z.object({
   PORT: z.string().optional().default("3000"),
   NODE_ENV: z.string().optional(),
 
+  // Custom allowed CORS/auth origin for your production domain
+  // e.g. https://app.example.com  (leave blank for localhost-only dev)
+  ALLOWED_ORIGIN: z.string().optional(),
+
   // Gemini AI API
   GEMINI_API_KEY: z.string().optional(),
 
@@ -26,8 +30,8 @@ const envSchema = z.object({
   // Better Auth
   BETTER_AUTH_SECRET: z.string().min(1, "BETTER_AUTH_SECRET is required"),
 
-  // Stripe
-  STRIPE_SECRET: z.string().min(1, "STRIPE_SECRET is required"),
+  // Stripe (optional – only required when billing features are enabled)
+  STRIPE_SECRET: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_PRO_PRICE_ID: z.string().default("price_placeholder_pro"),
 });

@@ -1,60 +1,78 @@
-<stack>
-  Bun runtime, Hono web framework, Zod validation.
-</stack>
+# Backend Developer Guide
 
-<structure>
-  src/index.ts     — App entry, middleware, route mounting
-  src/routes/      — Route modules (create as needed)
-</structure>
+## Stack
 
-<routes>
-  Create routes in src/routes/ and mount them in src/index.ts.
+- Bun runtime, Hono web framework, Zod validation
+- Prisma v6 + SQLite for data persistence
+- Better Auth for authentication
+- All API routes under `/api/` prefix
 
-  Example route file (src/routes/todos.ts):
-  ```typescript
-  import { Hono } from "hono";
-  import { zValidator } from "@hono/zod-validator";
-  import { z } from "zod";
+## Structure
 
-  const todosRouter = new Hono();
+```
+src/index.ts     — App entry, CORS, middleware, route mounting
+src/routes/      — Route handlers (trace, ai, convert, conversions, payments)
+src/services/    — Sidecar launcher and vectorizer client
+src/types.ts     — Shared Zod schemas (API contracts) — single source of truth
+src/auth.ts      — Better Auth configuration
+src/env.ts       — Zod environment variable validation
+src/prisma.ts    — Prisma client
+src/stripe.ts    — Stripe client (optional)
+```
 
-  todosRouter.get("/", (c) => {
-    return c.json({ todos: [] });
-  });
+## Adding a Route
 
-  todosRouter.post(
-    "/",
-    zValidator("json", z.object({ title: z.string() })),
-    (c) => {
-      const { title } = c.req.valid("json");
-      return c.json({ todo: { id: "1", title } });
-    }
-  );
+Create a file in `src/routes/` and mount it in `src/index.ts`:
 
-  export { todosRouter };
-  ```
+```typescript
+// src/routes/todos.ts
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
 
-  Mount in src/index.ts:
-  ```typescript
-  import { todosRouter } from "./routes/todos";
-  app.route("/api/todos", todosRouter);
-  ```
+const todosRouter = new Hono();
 
-  IMPORTANT: Make sure all endpoints and routes are prefixed with `/api/`
-</routes>
+todosRouter.get("/", (c) => c.json({ todos: [] }));
 
-<shared_types>
-  Define all API contracts in src/types.ts as Zod schemas.
-  This file is the single source of truth — both backend and frontend import from here.
-</shared_types>
+todosRouter.post(
+  "/",
+  zValidator("json", z.object({ title: z.string() })),
+  (c) => {
+    const { title } = c.req.valid("json");
+    return c.json({ todo: { id: "1", title } });
+  }
+);
 
-<curl_testing>
-  ALWAYS test APIs with cURL after implementing.
-  Use $BACKEND_URL environment variable, never localhost.
-  Verify response matches the Zod schema before telling frontend it's ready.
-</curl_testing>
+export { todosRouter };
+```
 
-<database>
-  No database is configured by default.
-  If the user needs to persist data or have user accounts, use the database-auth skill and then update this file to reflect the changes.
-</database>
+Mount in `src/index.ts`:
+```typescript
+import { todosRouter } from "./routes/todos";
+app.route("/api/todos", todosRouter);
+```
+
+## Shared Types
+
+Define all API request/response contracts in `src/types.ts` as Zod schemas.
+Both the backend routes and the frontend import from this file.
+
+## Testing Endpoints
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# Authenticated request (include session cookie)
+curl -b cookies.txt http://localhost:3000/api/conversions
+```
+
+## Database
+
+SQLite with Prisma. Schema lives in `prisma/schema.prisma`.
+
+```bash
+bunx prisma db push       # sync schema to DB (dev)
+bunx prisma migrate dev   # create + apply a migration
+bunx prisma studio        # open Prisma Studio GUI
+```
