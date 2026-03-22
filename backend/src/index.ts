@@ -12,6 +12,7 @@ import { conversionsRouter } from "./routes/conversions";
 import { paymentsRouter } from "./routes/payments";
 import { adminRouter } from "./routes/admin";
 import { logger } from "hono/logger";
+import { prisma } from "./prisma";
 
 const app = new Hono<{
   Variables: {
@@ -75,12 +76,36 @@ app.route("/api/admin", adminRouter);
 
 const port = Number(process.env.PORT) || 3000;
 
-// Start the centerline vectorizer sidecar (no-op if not configured for localhost)
-startCenterlineSidecar().then(() => {
-  console.log(`Started development server: http://localhost:${port}`);
-}).catch((err) => {
-  console.error("[centerline-sidecar] Failed to start:", err);
-});
+async function bootstrapAdminUser() {
+  if (!env.ADMIN_BOOTSTRAP_EMAIL) return;
+
+  const result = await prisma.user.updateMany({
+    where: { email: env.ADMIN_BOOTSTRAP_EMAIL },
+    data: { isAdmin: true },
+  });
+
+  if (result.count > 0) {
+    console.log(`[admin-bootstrap] Promoted ${env.ADMIN_BOOTSTRAP_EMAIL} to admin`);
+  } else {
+    console.log(
+      `[admin-bootstrap] No user found for ${env.ADMIN_BOOTSTRAP_EMAIL}; skipping`
+    );
+  }
+}
+
+bootstrapAdminUser()
+  .catch((err) => {
+    console.error("[admin-bootstrap] Failed:", err);
+  })
+  .finally(() => {
+    startCenterlineSidecar()
+      .then(() => {
+        console.log(`Started development server: http://localhost:${port}`);
+      })
+      .catch((err) => {
+        console.error("[centerline-sidecar] Failed to start:", err);
+      });
+  });
 
 export default {
   port,

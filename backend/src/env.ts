@@ -32,6 +32,7 @@ const envSchema = z.object({
   // Base URL of the backend (used by Better Auth for callbacks/redirects)
   // Defaults to http://localhost:3000 in development
   BETTER_AUTH_URL: z.string().optional(),
+  ADMIN_BOOTSTRAP_EMAIL: z.string().email().optional(),
 
   // SMTP – optional; if not set, OTP codes are printed to the server console
   SMTP_HOST: z.string().optional(),
