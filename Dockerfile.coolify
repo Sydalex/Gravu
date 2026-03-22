@@ -2,6 +2,9 @@ FROM oven/bun:1 AS backend
 
 WORKDIR /app
 
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_NO_CACHE_DIR=1
+
 RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 python3-pip python3-venv \
   && rm -rf /var/lib/apt/lists/*
@@ -9,9 +12,11 @@ RUN apt-get update \
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
+COPY vendor/raster-dxf-centerline/requirements.txt /tmp/vectorizer-requirements.txt
+RUN python3 -m pip install --break-system-packages -r /tmp/vectorizer-requirements.txt
+
 COPY . .
 
-RUN python3 -m pip install --break-system-packages -r /app/vendor/raster-dxf-centerline/requirements.txt
 RUN bunx prisma generate
 
 EXPOSE 3000
