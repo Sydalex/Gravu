@@ -52,11 +52,12 @@ const Login = () => {
 
       {/* Header */}
       <header className="relative z-20 flex items-center justify-between px-6 py-6 md:px-12 md:py-8">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-1.5">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
           <Link to="/welcome" className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-foreground" />
             <span className="h-2 w-2 rounded-full bg-foreground" />
           </Link>
+          <span className="font-light uppercase tracking-[0.15em] text-sm text-foreground">Gravu</span>
         </motion.div>
         <nav className="flex items-center gap-6">
           <Link to="/welcome" className="text-sm uppercase tracking-widest text-foreground/50 hover:text-foreground transition-colors">
@@ -78,7 +79,7 @@ const Login = () => {
             transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <h1 className="text-[clamp(3rem,8vw,5.5rem)] font-light leading-[0.95] tracking-tight text-foreground uppercase">
-              <span data-bird-perch="welcome">Welcome</span>
+              <span>Welcome</span>
               <br />
               back.
             </h1>
