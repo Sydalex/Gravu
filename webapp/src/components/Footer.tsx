@@ -8,7 +8,7 @@ const footerLinks = [
 ];
 
 export const Footer = () => (
-  <footer className="w-full border-t border-border/40 bg-background/60 px-4 py-6 shrink-0 m-28">
+  <footer className="w-full border-t border-border/40 bg-background/60 px-4 py-6 shrink-0 mt-auto">
     <div className="mx-auto max-w-4xl space-y-5">
       {/* Links row */}
       <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">

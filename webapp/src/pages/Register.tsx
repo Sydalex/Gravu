@@ -106,7 +106,7 @@ const Register = () => {
           className="relative z-10 text-center"
         >
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent animate-glow-pulse" />
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-glow-pulse" />
             <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
               SVG &middot; DXF &middot; PNG
             </span>
@@ -114,7 +114,7 @@ const Register = () => {
           <h2 className="text-display text-3xl font-extrabold tracking-tight text-foreground">
             Start creating
             <br />
-            <span className="text-accent">precision assets.</span>
+            <span className="text-primary">precision assets.</span>
           </h2>
         </motion.div>
       </div>
@@ -129,7 +129,7 @@ const Register = () => {
           className="mb-10 text-center lg:hidden"
         >
           <h1 className="text-display text-3xl font-extrabold tracking-tight text-foreground">
-            Asset<span className="text-accent">Creator</span>
+            Asset<span className="text-primary">Creator</span>
           </h1>
           <p className="mt-2 font-mono text-xs text-muted-foreground uppercase tracking-widest">
             Photo to CAD-ready vector assets
@@ -260,7 +260,7 @@ const Register = () => {
                   !password ||
                   !confirmPassword
                 }
-                className="group relative h-12 w-full overflow-hidden rounded-xl bg-accent text-accent-foreground font-semibold transition-all hover:bg-accent/90 hover:shadow-[0_0_24px_hsl(160_84%_39%_/_0.3)] disabled:opacity-50"
+                className="group relative h-12 w-full overflow-hidden rounded-xl bg-primary text-primary-foreground font-semibold transition-all hover:bg-primary/90 hover:shadow-[0_0_24px_hsl(var(--primary)_/_0.25)] disabled:opacity-50"
               >
                 {/* Shimmer sweep on hover */}
                 <span className="pointer-events-none absolute inset-0 translate-x-[-200%] skew-x-12 bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover:translate-x-[200%]" />
@@ -279,7 +279,7 @@ const Register = () => {
             Already have an account?{' '}
             <Link
               to="/login"
-              className="font-medium text-accent transition-colors hover:text-accent/80"
+              className="font-medium text-primary transition-colors hover:text-primary/80"
             >
               Sign in
             </Link>

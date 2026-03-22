@@ -42,9 +42,9 @@ export function FlowCard({
       whileTap={{ scale: 0.99 }}
       onClick={onClick}
       className={cn(
-        'group relative flex w-full flex-col items-start gap-6 overflow-hidden rounded-2xl border border-border bg-card p-7 md:p-8 text-left',
+        'group relative flex w-full flex-col items-start gap-6 overflow-hidden rounded-2xl border border-white/8 bg-card p-7 md:p-8 text-left',
         'transition-all duration-200',
-        'hover:border-accent hover:shadow-[0_0_0_1px_hsl(160_84%_39%_/_0.6),_0_8px_40px_hsl(160_84%_39%_/_0.15)]',
+        'hover:border-primary/30 hover:shadow-[0_0_40px_hsl(var(--primary)_/_0.08)]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         'min-h-[240px]'
       )}
@@ -59,11 +59,11 @@ export function FlowCard({
 
       {/* Hover gradient sweep */}
       <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-accent/10 via-accent/[0.03] to-transparent" />
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/[0.03] to-transparent" />
       </div>
 
       {/* Icon */}
-      <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-accent transition-all duration-300 group-hover:border-accent/40 group-hover:bg-accent/15">
+      <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary transition-all duration-300 group-hover:border-primary/40 group-hover:bg-primary/15">
         <Icon className="h-5 w-5" />
       </div>
 
@@ -82,7 +82,7 @@ export function FlowCard({
         {steps.map((step, i) => (
           <div key={i} className="flex items-center">
             <div className="flex flex-col items-center gap-1">
-              <div className="h-1.5 w-1.5 rounded-full bg-accent/50 transition-colors group-hover:bg-accent" />
+              <div className="h-1.5 w-1.5 rounded-full bg-primary/50 transition-colors group-hover:bg-primary" />
               <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
                 {step.label}
               </span>
