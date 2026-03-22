@@ -123,8 +123,8 @@ const Login = () => {
           transition={{ duration: 0.5 }}
           className="mb-10 text-center lg:hidden"
         >
-          <h1 className="text-display text-3xl font-extrabold tracking-tight text-foreground">
-            Asset<span className="text-primary">Creator</span>
+          <h1 className="text-display text-3xl font-extrabold tracking-tight text-foreground" style={{ fontFamily: '"Work Sans", sans-serif' }}>
+            AssetCreator
           </h1>
           <p className="mt-2 font-mono text-xs text-muted-foreground uppercase tracking-widest">
             Photo to CAD-ready vector assets
