@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const SUPPORT_EMAIL = 'info@asset-creator.com';
+const SUPPORT_EMAIL = 'info@gravu.app';
 const LAST_UPDATED = 'November 15, 2025';
 
 const sections = [
@@ -13,8 +13,8 @@ const sections = [
     content: (
       <p>
         Under the Personal Data Protection Law No. 6698 (KVKK) and the General Data Protection Regulation
-        (GDPR), the data controller for personal data collected through <strong>asset-creator.com</strong> is{' '}
-        <strong>asset-creator.com</strong>. You may contact us at{' '}
+        (GDPR), the data controller for personal data collected through <strong>gravu.app</strong> is{' '}
+        <strong>gravu.app</strong>. You may contact us at{' '}
         <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent hover:underline">{SUPPORT_EMAIL}</a> for
         any privacy-related inquiries.
       </p>
@@ -142,7 +142,7 @@ const sections = [
     title: 'Cookies and Tracking',
     content: (
       <>
-        <p className="mb-3">asset-creator.com uses minimal cookies necessary for the service to function:</p>
+        <p className="mb-3">gravu.app uses minimal cookies necessary for the service to function:</p>
         <ul className="space-y-2">
           <li><strong>Session cookies</strong> — to keep you logged in during your browser session (essential)</li>
           <li><strong>Authentication tokens</strong> — stored in secure HTTP-only cookies to verify your identity (essential)</li>
@@ -172,7 +172,7 @@ const sections = [
     title: 'Children\'s Privacy',
     content: (
       <p>
-        asset-creator.com is not directed at children under the age of 18. We do not knowingly collect personal
+        gravu.app is not directed at children under the age of 18. We do not knowingly collect personal
         data from minors. If you believe a child has provided us with personal data, please contact us at{' '}
         <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent hover:underline">{SUPPORT_EMAIL}</a>{' '}
         and we will delete it promptly.
@@ -226,7 +226,7 @@ const PrivacyPolicy = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#f8f8f6]">
       {/* Minimal header */}
       <div className="sticky top-0 z-10 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
@@ -266,7 +266,7 @@ const PrivacyPolicy = () => {
             Last updated: {LAST_UPDATED}
           </p>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            This policy explains what personal data <strong className="text-foreground">asset-creator.com</strong>{' '}
+            This policy explains what personal data <strong className="text-foreground">gravu.app</strong>{' '}
             collects, why we collect it, how we use it, and what rights you have over it.
           </p>
         </motion.div>

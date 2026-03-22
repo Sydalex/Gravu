@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const SUPPORT_EMAIL = 'info@asset-creator.com';
+const SUPPORT_EMAIL = 'info@gravu.app';
 const LAST_UPDATED = 'November 15, 2025';
 
 const sections = [
@@ -13,7 +13,7 @@ const sections = [
     content: (
       <p>
         This Refund and Cancellation Policy regulates the refund and service cancellation conditions for
-        digital credits purchased through <strong>asset-creator.com</strong> ("Seller"). It has been prepared
+        digital credits purchased through <strong>gravu.app</strong> ("Seller"). It has been prepared
         within the framework of the Consumer Protection Law No. 6502 and the Distance Contracts Regulation.
       </p>
     ),
@@ -28,7 +28,7 @@ const sections = [
         </p>
         <ul className="space-y-2">
           <li>For goods provided as digital content or digital services, the right of withdrawal cannot be exercised if performance begins with the consumer's consent.</li>
-          <li>asset-creator.com credits are loaded to your account instantly upon completion of the purchase transaction and are ready for use.</li>
+          <li>gravu.app credits are loaded to your account instantly upon completion of the purchase transaction and are ready for use.</li>
           <li>Therefore, <strong>there is no right of withdrawal for credit purchase transactions.</strong></li>
         </ul>
       </>
@@ -171,7 +171,7 @@ const sections = [
     title: 'Changes to the Policy',
     content: (
       <p>
-        asset-creator.com reserves the right to update this policy. Changes will be announced on the website
+        gravu.app reserves the right to update this policy. Changes will be announced on the website
         and will become effective immediately.
       </p>
     ),
@@ -182,7 +182,7 @@ const Policy = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#f8f8f6]">
       {/* Minimal header */}
       <div className="sticky top-0 z-10 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">

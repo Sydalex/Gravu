@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
 const footerLinks = [
-  { label: 'Contact', href: 'mailto:info@asset-creator.com' },
+  { label: 'Contact', href: 'mailto:info@gravu.app' },
   { label: 'Distance Sales Agreement', href: '/policy/distance-sales' },
   { label: 'Refund & Cancellation', href: '/policy/refunds' },
   { label: 'Privacy Policy', href: '/policy/privacy' },
