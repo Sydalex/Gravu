@@ -15,7 +15,7 @@ const Landing = () => {
       {/* Navigation */}
       <header className="relative z-20 flex items-center justify-between px-6 py-5 md:px-12 md:py-6 border-b border-border/40">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2">
-          <span className="text-display text-lg font-extrabold tracking-tight text-foreground" style={{ fontFamily: '"Work Sans", sans-serif' }}>
+          <span className="text-display font-extrabold tracking-tight text-foreground" style={{ fontFamily: 'inherit', fontSize: '30px', fontWeight: 800, opacity: 0.7 }}>
             Gravu
           </span>
         </motion.div>
