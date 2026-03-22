@@ -24,10 +24,10 @@ export function ExportButton({
       onClick={onClick}
       disabled={loading}
       className={cn(
-        'min-h-[44px] rounded-xl font-mono text-xs uppercase tracking-wider',
+        'min-h-[44px] gap-2 rounded-xl font-mono text-xs uppercase tracking-wider transition-all',
         variant === 'accent'
-          ? 'bg-accent text-accent-foreground hover:bg-accent/90'
-          : 'bg-primary text-primary-foreground hover:bg-primary/90',
+          ? 'border border-accent/30 bg-accent/10 text-accent-foreground hover:bg-accent/20'
+          : 'border border-white/8 bg-card text-foreground hover:border-white/16 hover:bg-card/80',
         className
       )}
     >

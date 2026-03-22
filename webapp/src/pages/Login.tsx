@@ -89,7 +89,7 @@ const Login = () => {
             className="select-none font-sans font-extrabold text-foreground/[0.03] leading-none whitespace-nowrap"
             style={{ fontSize: '14vw', letterSpacing: '-0.02em' }}
           >
-            AssetCreator
+            Gravu
           </span>
         </div>
 
@@ -101,7 +101,7 @@ const Login = () => {
           className="relative z-10 text-center"
         >
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent animate-glow-pulse" />
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-glow-pulse" />
             <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
               Precision Vectorization
             </span>
@@ -109,7 +109,7 @@ const Login = () => {
           <h2 className="text-display text-3xl font-extrabold tracking-tight text-foreground">
             Photos become
             <br />
-            <span className="text-accent">CAD assets.</span>
+            <span className="text-primary">CAD assets.</span>
           </h2>
         </motion.div>
       </div>
@@ -123,11 +123,11 @@ const Login = () => {
           transition={{ duration: 0.5 }}
           className="mb-10 text-center lg:hidden"
         >
-          <h1 className="text-display text-3xl font-extrabold tracking-tight text-foreground">
-            Asset<span className="text-accent">Creator</span>
+          <h1 className="text-display text-3xl font-extrabold tracking-tight text-foreground" style={{ fontFamily: '"Work Sans", sans-serif' }}>
+            Gravu
           </h1>
           <p className="mt-2 font-mono text-xs text-muted-foreground uppercase tracking-widest">
-            Photo to CAD-ready vector assets
+            Photo to vector, instantly
           </p>
         </motion.div>
 
@@ -212,22 +212,20 @@ const Login = () => {
               </AnimatePresence>
 
               {/* CTA Button with shimmer */}
-              <div className="relative overflow-hidden rounded-xl shadow-xl opacity-100 border-solid border-ring border-destructive bg-ring">
-                <Button
-                  type="submit"
-                  disabled={loading || !email.trim() || !password}
-                  className="group relative h-12 w-full overflow-hidden rounded-xl bg-accent text-accent-foreground font-semibold transition-all hover:bg-accent/90 hover:shadow-[0_0_24px_hsl(160_84%_39%_/_0.3)] disabled:opacity-50"
-                >
-                  {/* Shimmer sweep on hover */}
-                  <span className="pointer-events-none absolute inset-0 translate-x-[-200%] skew-x-12 bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover:translate-x-[200%]" />
-                  {loading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <ArrowRight className="mr-2 h-4 w-4" />
-                  )}
-                  {loading ? 'Signing in...' : 'Sign In'}
-                </Button>
-              </div>
+              <Button
+                type="submit"
+                disabled={loading || !email.trim() || !password}
+                className="group relative h-12 w-full overflow-hidden rounded-xl bg-primary text-primary-foreground font-semibold transition-all hover:bg-primary/90 hover:shadow-[0_0_24px_hsl(var(--primary)_/_0.25)] disabled:opacity-50"
+              >
+                {/* Shimmer sweep on hover */}
+                <span className="pointer-events-none absolute inset-0 translate-x-[-200%] skew-x-12 bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover:translate-x-[200%]" />
+                {loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                )}
+                {loading ? 'Signing in...' : 'Sign In'}
+              </Button>
             </form>
 
             <div className="mt-4 text-center border-ring">
@@ -250,7 +248,7 @@ const Login = () => {
             Don&apos;t have an account?{' '}
             <Link
               to="/register"
-              className="font-medium text-accent transition-colors hover:text-accent/80"
+              className="font-medium text-primary transition-colors hover:text-primary/80"
             >
               Sign up
             </Link>

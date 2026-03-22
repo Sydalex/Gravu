@@ -38,7 +38,7 @@ const Index = () => {
             transition={{ duration: 0.5, ease: 'easeOut' }}
             className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-1.5"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-accent animate-glow-pulse" />
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-glow-pulse" />
             <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
               CAD Vectorization &middot; AI-Powered
             </span>
@@ -52,7 +52,7 @@ const Index = () => {
             className="text-display mb-4 text-5xl font-extrabold tracking-tight text-foreground md:text-6xl lg:text-7xl"
           >
             Photo to{' '}
-            <span className="text-accent">Vector.</span>
+            <span className="text-primary">Vector.</span>
           </motion.h1>
 
           {/* Subheadline */}
