@@ -78,7 +78,7 @@ const Login = () => {
             transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             <h1 className="text-[clamp(3rem,8vw,5.5rem)] font-light leading-[0.95] tracking-tight text-foreground uppercase">
-              Welcome
+              <span data-bird-perch="welcome">Welcome</span>
               <br />
               back.
             </h1>

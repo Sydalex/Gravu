@@ -230,7 +230,7 @@ const Result = () => {
               className="text-4xl md:text-5xl font-light uppercase tracking-[-0.02em] leading-[1.1] text-neutral-900"
               style={{ fontFamily: 'system-ui, sans-serif' }}
             >
-              Your asset.
+              <span data-bird-perch="result">Your</span> asset.
             </h1>
             <button
               onPointerDown={() => setShowOriginal(true)}

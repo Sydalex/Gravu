@@ -286,6 +286,7 @@ const Processing = () => {
                   exit={{ opacity: 0, y: -12 }}
                   transition={{ duration: 0.3, ease: 'easeOut' }}
                   className="font-mono text-xs uppercase tracking-[0.15em] text-neutral-500"
+                  data-bird-perch="processing"
                 >
                   {statusMessages[status] ?? 'Processing...'}
                 </motion.p>

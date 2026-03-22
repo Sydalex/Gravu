@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import Landing from "./pages/Landing";
 import { AdminRoute } from "@/components/AdminRoute";
+import { Bird } from "@/components/Bird";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <Bird />
         <Routes>
           <Route path="/welcome" element={<Landing />} />
           <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
