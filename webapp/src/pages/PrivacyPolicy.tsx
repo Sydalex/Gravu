@@ -23,42 +23,20 @@ const sections = [
   {
     number: '2',
     title: 'Data We Collect',
-import { LegalPage } from "@/components/legal/LegalPage";
-import { LEGAL_CONFIG, LEGAL_LAST_UPDATED } from "@/components/legal/legalConfig";
-
-const sections = [
-  {
-    title: "Who controls your data",
     content: (
-      <>
-        <p>
-          The controller for personal data collected through <strong>{LEGAL_CONFIG.websiteName}</strong> is{" "}
-          <strong>{LEGAL_CONFIG.legalEntityName}</strong>, {LEGAL_CONFIG.legalAddress}.
-        </p>
-        <p>
-          You can contact us for privacy matters at{" "}
-          <a href={`mailto:${LEGAL_CONFIG.supportEmail}`}>{LEGAL_CONFIG.supportEmail}</a>.
-        </p>
-      </>
+      <ul>
+        <li>account data such as your email address, password hash, and authentication records,</li>
+        <li>uploaded files and images you submit for processing,</li>
+        <li>generated results and export files such as SVG and DXF outputs,</li>
+        <li>billing and subscription data such as Stripe customer IDs and plan status,</li>
+        <li>support communications, and</li>
+        <li>technical logs such as IP address, browser metadata, and error records.</li>
+      </ul>
     ),
   },
   {
-    title: "What data we collect",
-    content: (
-      <>
-        <ul>
-          <li>account data such as your email address, password hash, and authentication records,</li>
-          <li>uploaded files and images you submit for processing,</li>
-          <li>generated results and export files such as SVG and DXF outputs,</li>
-          <li>billing and subscription data such as Stripe customer IDs and plan status,</li>
-          <li>support communications, and</li>
-          <li>technical logs such as IP address, browser metadata, and error records.</li>
-        </ul>
-      </>
-    ),
-  },
-  {
-    title: "Why we process data",
+    number: '3',
+    title: 'Why We Process Data',
     content: (
       <>
         <p>We process personal data to:</p>
@@ -74,7 +52,8 @@ const sections = [
     ),
   },
   {
-    title: "Legal bases",
+    number: '4',
+    title: 'Legal Bases',
     content: (
       <>
         <ul>
@@ -90,13 +69,10 @@ const sections = [
     ),
   },
   {
-    title: "Processors and recipients",
+    number: '5',
+    title: 'Processors and Recipients',
     content: (
       <>
-        <p className="mb-3">gravu.app uses minimal cookies necessary for the service to function:</p>
-        <ul className="space-y-2">
-          <li><strong>Session cookies</strong> — to keep you logged in during your browser session (essential)</li>
-          <li><strong>Authentication tokens</strong> — stored in secure HTTP-only cookies to verify your identity (essential)</li>
         <p>We use service providers that help us run the platform, such as:</p>
         <ul>
           <li>hosting and infrastructure providers, including Hetzner,</li>
@@ -115,7 +91,8 @@ const sections = [
     ),
   },
   {
-    title: "Uploads containing people or third-party material",
+    number: '6',
+    title: 'Uploads Containing People or Third-Party Material',
     content: (
       <>
         <p>
@@ -131,14 +108,9 @@ const sections = [
     ),
   },
   {
-    title: "Retention",
+    number: '7',
+    title: 'Retention',
     content: (
-      <p>
-        gravu.app is not directed at children under the age of 18. We do not knowingly collect personal
-        data from minors. If you believe a child has provided us with personal data, please contact us at{' '}
-        <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent hover:underline">{SUPPORT_EMAIL}</a>{' '}
-        and we will delete it promptly.
-      </p>
       <>
         <ul>
           <li>account data is kept while your account remains open and for a limited period afterward,</li>
@@ -150,7 +122,8 @@ const sections = [
     ),
   },
   {
-    title: "International transfers",
+    number: '8',
+    title: 'International Transfers',
     content: (
       <>
         <p>
@@ -161,7 +134,8 @@ const sections = [
     ),
   },
   {
-    title: "Your rights",
+    number: '9',
+    title: 'Your Rights',
     content: (
       <>
         <ul>
@@ -180,14 +154,17 @@ const sections = [
     ),
   },
   {
-    title: "Security and children",
+    number: '10',
+    title: 'Security and Children',
     content: (
       <>
         <ul>
           <li>We use technical and organizational measures intended to protect data in transit and at rest.</li>
           <li>
-            The service is not directed at children, and you should not use it if you are not old enough to
-            form a binding contract in your jurisdiction.
+            gravu.app is not directed at children under the age of 18. We do not knowingly collect personal
+            data from minors. If you believe a child has provided us with personal data, please contact us at{' '}
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent hover:underline">{SUPPORT_EMAIL}</a>{' '}
+            and we will delete it promptly.
           </li>
         </ul>
       </>
@@ -268,7 +245,7 @@ const PrivacyPolicy = () => {
                   >
                     {section.title}
                   </h2>
-                  <div className="space-y-2 text-sm leading-relaxed text-muted-foreground [&_ul]:ml-4 [&_ul]:list-none [&_ul>li]:relative [&_ul>li]:pl-4 [&_ul>li]:before:absolute [&_ul>li]:before:left-0 [&_ul>li]:before:text-accent [&_ul>li]:before:content-['—'] [&_strong]:font-semibold [&_strong]:text-foreground">
+                  <div className="space-y-2 text-sm leading-relaxed text-muted-foreground [&_ul]:ml-4 [&_ul]:list-none [&_ul>li]:relative [&_ul>li]:pl-4 [&_ul>li]:before:absolute [&_ul>li]:before:left-0 [&_ul>li]:before:text-accent [&_ul>li]:before:content-['—'] [&_strong]:font-semibold [&_strong]:text-foreground [&_a]:text-accent [&_a]:hover:underline">
                     {section.content}
                   </div>
                 </div>
@@ -298,35 +275,13 @@ const PrivacyPolicy = () => {
               </Button>
             </a>
           </div>
-          <div className="mt-4 border-t border-border/60 pt-4 space-y-1">
+          <div className="mt-4 border-t border-border/60 pt-4">
             <p className="font-mono text-xs text-muted-foreground/60">{SUPPORT_EMAIL}</p>
-
           </div>
         </motion.div>
       </div>
     </div>
   );
 };
-const PrivacyPolicy = () => (
-  <LegalPage
-    title="Privacy Policy"
-    lastUpdated={LEGAL_LAST_UPDATED}
-    contactEmail={LEGAL_CONFIG.supportEmail}
-    subtitle={
-      <p>
-        This policy explains what personal data <strong>{LEGAL_CONFIG.productName}</strong> processes, why we
-        process it, and what rights you have.
-      </p>
-    }
-    footerNote={
-      <p>
-        Before launch, replace the controller identity, address, and retention details with your final legal
-        and operational information.
-      </p>
-    }
-    sections={sections}
-  />
-);
 
 export default PrivacyPolicy;
-
