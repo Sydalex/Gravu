@@ -75,10 +75,6 @@ const Register = () => {
               <br />
               creating.
             </h1>
-            <div className="mt-10 flex items-center gap-4">
-              <span className="h-px w-12 bg-foreground/30" />
-              <span className="text-sm uppercase tracking-widest text-foreground/40">Gravu</span>
-            </div>
           </motion.div>
         </div>
 
