@@ -240,6 +240,10 @@ export const SubscriptionStatusSchema = z.object({
   stripeCustomerId: z.string().nullable(),
   credits: z.number(),
   isAdmin: z.boolean(),
+  billingEnabled: z.boolean(),
+  activeProPriceId: z.string().nullable(),
+  activeCreditsPackPriceId: z.string().nullable(),
+  activeCreditsPackAmount: z.number().nullable(),
 });
 export type SubscriptionStatus = z.infer<typeof SubscriptionStatusSchema>;
 

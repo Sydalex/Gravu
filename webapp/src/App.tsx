@@ -18,6 +18,10 @@ import LibraryDetail from "./pages/LibraryDetail";
 import Account from "./pages/Account";
 import Policy from "./pages/Policy";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfUse from "./pages/TermsOfUse";
+import ContentPolicy from "./pages/ContentPolicy";
+import DistanceSales from "./pages/DistanceSales";
+import LegalNotice from "./pages/LegalNotice";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import Landing from "./pages/Landing";
@@ -44,8 +48,12 @@ const App = () => (
           <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
           <Route path="/library/:id" element={<ProtectedRoute><LibraryDetail /></ProtectedRoute>} />
           <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+          <Route path="/policy/terms" element={<TermsOfUse />} />
+          <Route path="/policy/content" element={<ContentPolicy />} />
+          <Route path="/policy/distance-sales" element={<DistanceSales />} />
           <Route path="/policy/refunds" element={<Policy />} />
           <Route path="/policy/privacy" element={<PrivacyPolicy />} />
+          <Route path="/policy/legal-notice" element={<LegalNotice />} />
           <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -4,6 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import { stripe } from "../stripe";
 import { prisma } from "../prisma";
 import { env } from "../env";
+import { getBillingConfig } from "../billingConfig";
 import type { auth } from "../auth";
 import {
   CreateCheckoutSessionRequestSchema,
@@ -49,6 +50,7 @@ paymentsRouter.use("/webhook", requireStripe);
 // GET /api/payments/subscription — get current user's subscription status
 paymentsRouter.get("/subscription", async (c) => {
   const user = c.get("user")!;
+  const billingConfig = await getBillingConfig();
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
@@ -67,6 +69,12 @@ paymentsRouter.get("/subscription", async (c) => {
     stripeCustomerId: dbUser?.stripeCustomerId ?? null,
     credits: dbUser?.credits ?? 0,
     isAdmin: dbUser?.isAdmin ?? false,
+    billingEnabled: !!stripe,
+    activeProPriceId: billingConfig.activeProPriceId ?? null,
+    activeCreditsPackPriceId: billingConfig.activeCreditsPackPriceId ?? null,
+    activeCreditsPackAmount: billingConfig.activeCreditsPackPriceId
+      ? billingConfig.activeCreditsPackAmount
+      : null,
   };
 
   return c.json({ data: status });
