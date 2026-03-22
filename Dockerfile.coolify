@@ -16,7 +16,7 @@ RUN bunx prisma generate
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "bunx prisma migrate deploy && bun run src/index.ts"]
+CMD ["sh", "-c", "if [ -d prisma/migrations ] && [ \"$(find prisma/migrations -mindepth 1 -maxdepth 1 2>/dev/null | head -n 1)\" ]; then bunx prisma migrate deploy; else bunx prisma db push; fi && bun run src/index.ts"]
 
 FROM oven/bun:1 AS frontend-builder
 
