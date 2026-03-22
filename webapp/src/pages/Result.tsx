@@ -314,7 +314,7 @@ const Result = () => {
   };
 
   return (
-    <PageWrapper className="flex flex-col items-center justify-center px-4 py-12 md:py-0">
+    <PageWrapper className="flex flex-col items-center px-4 pt-20 pb-8 md:pt-24 md:pb-12">
       <div className="w-full max-w-2xl space-y-6">
         {/* Header */}
         <motion.div
@@ -323,7 +323,7 @@ const Result = () => {
           transition={{ duration: 0.45 }}
           className="space-y-1.5"
         >
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 bg-chart-3 shadow">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 shadow">
             <Check className="h-3 w-3 text-primary" />
             <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               {isVectorizeOnly ? 'Vectorization Complete' : 'Generation Complete'}
@@ -401,7 +401,7 @@ const Result = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="relative min-h-[320px] p-6"
+              className="relative min-h-[320px] p-6 pb-20"
             >
               {renderResult()}
             </motion.div>
