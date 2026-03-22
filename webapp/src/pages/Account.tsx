@@ -47,11 +47,14 @@ interface SubscriptionCardProps {
 const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) => {
   const isPro = subscription?.plan === 'pro';
   const isCanceling = isPro && subscription?.cancelAtPeriodEnd;
+  const activeProPriceId = subscription?.activeProPriceId ?? null;
+  const activeCreditsPackPriceId = subscription?.activeCreditsPackPriceId ?? null;
+  const activeCreditsPackAmount = subscription?.activeCreditsPackAmount ?? null;
 
   const checkoutMutation = useMutation({
     mutationFn: () =>
       api.post<{ url: string }>('/api/payments/checkout', {
-        priceId: 'price_1TBGSGQ7WzPqOKJm6SggAxyJ',
+        priceId: activeProPriceId,
         successUrl: `${window.location.origin}/account?upgraded=1`,
         cancelUrl: `${window.location.origin}/account`,
       }),
@@ -172,12 +175,21 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
           </button>
           {!subscription?.isAdmin && (
             <button
-              onClick={() => buyMutation.mutate({ credits: 10, priceId: 'price_credits_10' })}
-              disabled={buyMutation.isPending}
+              onClick={() =>
+                activeCreditsPackPriceId && activeCreditsPackAmount
+                  ? buyMutation.mutate({
+                      credits: activeCreditsPackAmount,
+                      priceId: activeCreditsPackPriceId,
+                    })
+                  : null
+              }
+              disabled={buyMutation.isPending || !activeCreditsPackPriceId || !activeCreditsPackAmount}
               className="flex w-full items-center justify-center gap-2 border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-neutral-600 transition-all hover:border-neutral-300 disabled:opacity-50"
             >
               {buyMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-              <span className="font-mono text-[9px] uppercase tracking-[0.1em]">Buy 10 credits</span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.1em]">
+                {activeCreditsPackAmount ? `Buy ${activeCreditsPackAmount} credits` : 'Credit pack unavailable'}
+              </span>
             </button>
           )}
         </div>
@@ -185,21 +197,32 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
         <div className="space-y-3">
           <button
             onClick={() => checkoutMutation.mutate()}
-            disabled={checkoutMutation.isPending}
+            disabled={checkoutMutation.isPending || !activeProPriceId}
             className="flex w-full items-center justify-center gap-2 border border-orange-500 bg-orange-500 px-4 py-3 text-white transition-all hover:bg-orange-600 disabled:opacity-50"
           >
             {checkoutMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
             <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Upgrade to Pro</span>
           </button>
-          <p className="text-center font-mono text-[9px] text-neutral-400">Secure checkout via Stripe.</p>
+          <p className="text-center font-mono text-[9px] text-neutral-400">
+            {activeProPriceId ? 'Secure checkout via Stripe.' : 'No active Pro price configured yet.'}
+          </p>
           {!subscription?.isAdmin && (
             <button
-              onClick={() => buyMutation.mutate({ credits: 10, priceId: 'price_credits_10' })}
-              disabled={buyMutation.isPending}
+              onClick={() =>
+                activeCreditsPackPriceId && activeCreditsPackAmount
+                  ? buyMutation.mutate({
+                      credits: activeCreditsPackAmount,
+                      priceId: activeCreditsPackPriceId,
+                    })
+                  : null
+              }
+              disabled={buyMutation.isPending || !activeCreditsPackPriceId || !activeCreditsPackAmount}
               className="flex w-full items-center justify-center gap-2 border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-neutral-600 transition-all hover:border-neutral-300 disabled:opacity-50"
             >
               {buyMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-              <span className="font-mono text-[9px] uppercase tracking-[0.1em]">Buy 10 credits</span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.1em]">
+                {activeCreditsPackAmount ? `Buy ${activeCreditsPackAmount} credits` : 'Credit pack unavailable'}
+              </span>
             </button>
           )}
         </div>
