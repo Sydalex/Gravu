@@ -19,6 +19,8 @@ import Account from "./pages/Account";
 import Policy from "./pages/Policy";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
+import Admin from "./pages/Admin";
+import { AdminRoute } from "@/components/AdminRoute";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +44,7 @@ const App = () => (
           <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
           <Route path="/policy/refunds" element={<Policy />} />
           <Route path="/policy/privacy" element={<PrivacyPolicy />} />
+          <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

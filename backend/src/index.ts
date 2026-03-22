@@ -10,6 +10,7 @@ import { aiRouter } from "./routes/ai";
 import { convertRouter } from "./routes/convert";
 import { conversionsRouter } from "./routes/conversions";
 import { paymentsRouter } from "./routes/payments";
+import { adminRouter } from "./routes/admin";
 import { logger } from "hono/logger";
 
 const app = new Hono<{
@@ -70,6 +71,7 @@ app.route("/api/ai", aiRouter);
 app.route("/api/convert", convertRouter);
 app.route("/api/conversions", conversionsRouter);
 app.route("/api/payments", paymentsRouter);
+app.route("/api/admin", adminRouter);
 
 const port = Number(process.env.PORT) || 3000;
 
