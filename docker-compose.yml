@@ -27,6 +27,9 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    networks:
+      - default
+      - coolify
 
   # ── Backend API ───────────────────────────────────────────────────────────
   backend:
@@ -74,7 +77,14 @@ services:
       timeout: 5s
       retries: 6
       start_period: 30s
+    networks:
+      - default
 
 # ── Volumes ───────────────────────────────────────────────────────────────────
 volumes:
   sqlite_data:
+
+# ── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  coolify:
+    external: true
