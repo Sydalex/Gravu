@@ -484,6 +484,43 @@ export default function Admin() {
     Number(configCreditsAmount) > 0 &&
     (!!configProPriceId || !!configCreditsPriceId);
 
+  const stripeUnavailableReason =
+    "Stripe is not configured on this environment. Add STRIPE_SECRET in Coolify and redeploy.";
+
+  const productActionHint = !billing?.stripeEnabled
+    ? stripeUnavailableReason
+    : !productName.trim()
+      ? "Enter a product name to create a Stripe product."
+      : "This will create a reusable Stripe product in your catalog.";
+
+  const priceActionHint = !billing?.stripeEnabled
+    ? stripeUnavailableReason
+    : !priceProductId
+      ? "Pick a Stripe product first."
+      : Number(priceAmount) <= 0
+        ? "Enter the price amount in the smallest currency unit, for example 900 for EUR 9.00."
+        : priceMode === "one_time" && priceCreditsAmount && Number(priceCreditsAmount) <= 0
+          ? "Credit-pack prices need a positive credit amount."
+          : "Create the Stripe price here, then choose whether it should become the live app price.";
+
+  const configActionHint = !billing?.stripeEnabled
+    ? stripeUnavailableReason
+    : !configProPriceId && !configCreditsPriceId
+      ? "Select at least one active price to make the billing config usable."
+      : Number(configCreditsAmount) <= 0
+        ? "Credit pack amount must be greater than zero."
+        : "Saving this updates the prices used by the account-page checkout buttons.";
+
+  const promoActionHint = !billing?.stripeEnabled
+    ? stripeUnavailableReason
+    : !promoCode.trim()
+      ? "Enter a code like SPRING20."
+      : Number(promoPercentOff) <= 0 || Number(promoPercentOff) > 100
+        ? "Discount percent must be between 1 and 100."
+        : promoDuration === "repeating" && Number(promoDurationMonths) <= 0
+          ? "Repeating promo codes need a duration in months."
+          : "This code will be available immediately in Stripe Checkout.";
+
   return (
     <div className="min-h-screen bg-background pt-[52px]">
       <main className="mx-auto flex w-full max-w-[1480px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -866,6 +903,12 @@ export default function Admin() {
               </div>
             ) : (
               <div className="mt-6 space-y-4">
+                {!billing?.stripeEnabled && (
+                  <div className="rounded-[18px] border border-[#edcbbd] bg-[#fcf2ee] px-4 py-3 text-[12px] leading-5 text-[#a65436]">
+                    Stripe is not configured on this environment. Add `STRIPE_SECRET` in Coolify,
+                    save, and redeploy before using billing controls.
+                  </div>
+                )}
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="space-y-2">
                     <span className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
@@ -931,6 +974,17 @@ export default function Admin() {
                   Save App Billing Config
                 </Button>
 
+                <p
+                  className={cn(
+                    "text-[12px] leading-5",
+                    !billing?.stripeEnabled || !canSaveConfig
+                      ? "text-[#a65436]"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  {configActionHint}
+                </p>
+
                 <div className="rounded-[18px] border border-dashed border-[#d9d0c2] px-4 py-3 text-[12px] leading-5 text-muted-foreground">
                   The account page checkout buttons use this config. If you create a new Stripe
                   price here, it only becomes customer-facing after you save it as active.
@@ -976,6 +1030,16 @@ export default function Admin() {
                   ) : null}
                   Create Product
                 </Button>
+                <p
+                  className={cn(
+                    "text-[12px] leading-5",
+                    !billing?.stripeEnabled || !canCreateProduct
+                      ? "text-[#a65436]"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  {productActionHint}
+                </p>
               </div>
 
               <div className="space-y-3 rounded-[18px] border border-[#e5dbc9] bg-background/80 p-4">
@@ -1062,6 +1126,16 @@ export default function Admin() {
                   ) : null}
                   Create Price
                 </Button>
+                <p
+                  className={cn(
+                    "text-[12px] leading-5",
+                    !billing?.stripeEnabled || !canCreatePrice
+                      ? "text-[#a65436]"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  {priceActionHint}
+                </p>
               </div>
             </div>
           </div>
@@ -1146,6 +1220,17 @@ export default function Admin() {
               ) : null}
               Create Promo Code
             </Button>
+
+            <p
+              className={cn(
+                "mt-3 text-[12px] leading-5",
+                !billing?.stripeEnabled || !canCreatePromoCode
+                  ? "text-[#a65436]"
+                  : "text-muted-foreground"
+              )}
+            >
+              {promoActionHint}
+            </p>
 
             <div className="mt-6 space-y-3">
               <div className="flex items-center justify-between">
