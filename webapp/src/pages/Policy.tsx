@@ -21,51 +21,34 @@ const sections = [
   {
     number: '2',
     title: 'Digital Content and Right of Withdrawal',
-import { LegalPage } from "@/components/legal/LegalPage";
-import { LEGAL_CONFIG, LEGAL_LAST_UPDATED } from "@/components/legal/legalConfig";
-
-const sections = [
-  {
-    title: "Scope of this policy",
     content: (
-      <>
-        <p>
-          This page explains how cancellations, refunds, subscription changes, and credit adjustments are
-          handled for <strong>{LEGAL_CONFIG.productName}</strong> at <strong>{LEGAL_CONFIG.websiteName}</strong>.
-        </p>
-        <p>
-          It is a first-pass operational policy and should be read together with the Terms of Use, the
-          Privacy Policy, and the consumer information page. Mandatory consumer rights under applicable law
-          continue to apply even if this page says otherwise.
-        </p>
-        <ul className="space-y-2">
-          <li>For goods provided as digital content or digital services, the right of withdrawal cannot be exercised if performance begins with the consumer's consent.</li>
-          <li>gravu.app credits are loaded to your account instantly upon completion of the purchase transaction and are ready for use.</li>
-          <li>Therefore, <strong>there is no right of withdrawal for credit purchase transactions.</strong></li>
-        </ul>
-      </>
+      <ul>
+        <li>For goods provided as digital content or digital services, the right of withdrawal cannot be exercised if performance begins with the consumer's consent.</li>
+        <li>gravu.app credits are loaded to your account instantly upon completion of the purchase transaction and are ready for use.</li>
+        <li>Therefore, <strong>there is no right of withdrawal for credit purchase transactions.</strong></li>
+      </ul>
     ),
   },
   {
-    title: "Subscriptions and cancellation",
+    number: '3',
+    title: 'Subscriptions and cancellation',
     content: (
-      <>
-        <ul>
-          <li>You may cancel a paid subscription at any time for the next billing period.</li>
-          <li>
-            Cancellation stops future renewals but does not normally create a refund for the current billing
-            period that has already started.
-          </li>
-          <li>
-            If you cancel, paid features typically remain available until the end of the already-paid period,
-            unless we state otherwise at checkout.
-          </li>
-        </ul>
-      </>
+      <ul>
+        <li>You may cancel a paid subscription at any time for the next billing period.</li>
+        <li>
+          Cancellation stops future renewals but does not normally create a refund for the current billing
+          period that has already started.
+        </li>
+        <li>
+          If you cancel, paid features typically remain available until the end of the already-paid period,
+          unless we state otherwise at checkout.
+        </li>
+      </ul>
     ),
   },
   {
-    title: "Credits, usage, and consumption",
+    number: '4',
+    title: 'Credits, usage, and consumption',
     content: (
       <>
         <p>
@@ -87,7 +70,8 @@ const sections = [
     ),
   },
   {
-    title: "When refunds may be granted",
+    number: '5',
+    title: 'When refunds may be granted',
     content: (
       <>
         <p>Refunds may be considered in particular where:</p>
@@ -102,7 +86,8 @@ const sections = [
     ),
   },
   {
-    title: "When refunds are normally not granted",
+    number: '6',
+    title: 'When refunds are normally not granted',
     content: (
       <>
         <ul>
@@ -116,12 +101,13 @@ const sections = [
     ),
   },
   {
-    title: "How to request a refund",
+    number: '7',
+    title: 'How to request a refund',
     content: (
       <>
         <p>
           Send your request without undue delay to{" "}
-          <a href={`mailto:${LEGAL_CONFIG.supportEmail}`}>{LEGAL_CONFIG.supportEmail}</a> and include:
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent hover:underline">{SUPPORT_EMAIL}</a> and include:
         </p>
         <ul>
           <li>the email address on your account,</li>
@@ -134,7 +120,8 @@ const sections = [
     ),
   },
   {
-    title: "Review and timing",
+    number: '8',
+    title: 'Review and timing',
     content: (
       <>
         <ul>
@@ -149,7 +136,8 @@ const sections = [
     ),
   },
   {
-    title: "Statutory withdrawal rights",
+    number: '9',
+    title: 'Statutory withdrawal rights',
     content: (
       <>
         <p>
@@ -245,7 +233,7 @@ const Policy = () => {
                   >
                     {section.title}
                   </h2>
-                  <div className="space-y-2 text-sm leading-relaxed text-muted-foreground [&_ul]:ml-4 [&_ul]:list-none [&_ul>li]:relative [&_ul>li]:pl-4 [&_ul>li]:before:absolute [&_ul>li]:before:left-0 [&_ul>li]:before:text-accent [&_ul>li]:before:content-['—'] [&_strong]:font-semibold [&_strong]:text-foreground">
+                  <div className="space-y-2 text-sm leading-relaxed text-muted-foreground [&_ul]:ml-4 [&_ul]:list-none [&_ul>li]:relative [&_ul>li]:pl-4 [&_ul>li]:before:absolute [&_ul>li]:before:left-0 [&_ul>li]:before:text-accent [&_ul>li]:before:content-['—'] [&_strong]:font-semibold [&_strong]:text-foreground [&_a]:text-accent [&_a]:hover:underline">
                     {section.content}
                   </div>
                 </div>
@@ -283,28 +271,5 @@ const Policy = () => {
     </div>
   );
 };
-];
-
-const Policy = () => (
-  <LegalPage
-    title="Refunds & Cancellation"
-    lastUpdated={LEGAL_LAST_UPDATED}
-    contactEmail={LEGAL_CONFIG.supportEmail}
-    subtitle={
-      <p>
-        This page covers subscription cancellation, billing issues, credits, and refund requests for{" "}
-        <strong>{LEGAL_CONFIG.productName}</strong>.
-      </p>
-    }
-    footerNote={
-      <p>
-        Replace this first-pass text with your final business rules before launch, and have it reviewed by a
-        lawyer qualified in your sales jurisdiction.
-      </p>
-    }
-    sections={sections}
-  />
-);
 
 export default Policy;
-
