@@ -28,7 +28,7 @@ export function NavBar() {
         className="mr-auto font-syne tracking-tight text-foreground hover:text-accent transition-colors text-2xl font-bold text-chart-3"
         style={{ fontFamily: "'Syne', sans-serif" }}
       >
-        AssetCreator
+        Gravu
       </Link>
 
       {/* Nav links */}

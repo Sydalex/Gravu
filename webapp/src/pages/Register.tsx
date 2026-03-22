@@ -92,9 +92,7 @@ const Register = () => {
             className="select-none font-sans font-extrabold text-foreground/[0.03] leading-none"
             style={{ fontSize: '10vw', letterSpacing: '-0.04em' }}
           >
-            Asset
-            <br />
-            Creator
+            Gravu
           </span>
         </div>
 
@@ -129,10 +127,10 @@ const Register = () => {
           className="mb-10 text-center lg:hidden"
         >
           <h1 className="text-display text-3xl font-extrabold tracking-tight text-foreground" style={{ fontFamily: '"Work Sans", sans-serif' }}>
-            AssetCreator
+            Gravu
           </h1>
           <p className="mt-2 font-mono text-xs text-muted-foreground uppercase tracking-widest">
-            Photo to CAD-ready vector assets
+            Photo to vector, instantly
           </p>
         </motion.div>
 
