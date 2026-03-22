@@ -10,6 +10,8 @@ import {
   RotateCcw,
   Layers,
   Eye,
+  Check,
+  Download,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -271,12 +273,18 @@ const Result = () => {
 
   const renderResult = () => {
     if (showOriginal && imageUri)
-      return <img src={imageUri} alt="Original" className="mx-auto max-h-[500px] w-full object-contain" />;
+      return (
+        <img 
+          src={imageUri} 
+          alt="Original" 
+          className="mx-auto max-h-[380px] w-full object-contain rounded-lg" 
+        />
+      );
 
     if (isVectorizeOnly && cachedSvg[current.subjectId])
       return (
         <div
-          className="mx-auto flex max-h-[500px] items-center justify-center overflow-auto p-4"
+          className="mx-auto flex max-h-[380px] items-center justify-center overflow-auto [&_svg]:max-w-full [&_svg]:h-auto"
           dangerouslySetInnerHTML={{ __html: cachedSvg[current.subjectId] }}
         />
       );
@@ -286,54 +294,65 @@ const Result = () => {
         <img
           src={`data:image/png;base64,${current.imageBase64}`}
           alt={`Result ${current.subjectId}`}
-          className="mx-auto max-h-[500px] w-full object-contain"
+          className="mx-auto max-h-[380px] w-full object-contain rounded-lg"
         />
       );
 
     if (cachedSvg[current.subjectId])
       return (
         <div
-          className="mx-auto flex max-h-[500px] items-center justify-center overflow-auto p-4"
+          className="mx-auto flex max-h-[380px] items-center justify-center overflow-auto [&_svg]:max-w-full [&_svg]:h-auto"
           dangerouslySetInnerHTML={{ __html: cachedSvg[current.subjectId] }}
         />
       );
 
     return (
-      <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+      <div className="flex h-[280px] items-center justify-center text-muted-foreground font-mono text-sm">
         No preview available
       </div>
     );
   };
 
   return (
-    <PageWrapper className="px-4 pt-[72px] pb-8 md:pt-[80px] md:pb-12">
-      <div className="mx-auto max-w-3xl space-y-6">
+    <PageWrapper className="flex flex-col items-center justify-center px-4 py-12 md:py-0">
+      <div className="w-full max-w-2xl space-y-6">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="flex items-center justify-between"
+          transition={{ duration: 0.45 }}
+          className="space-y-1.5"
         >
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Results</h1>
-            <p className="text-sm text-muted-foreground">
-              {hasMultiple
-                ? `${currentIndex + 1} of ${resultImages.length} subjects`
-                : 'Your vectorized asset is ready'}
-            </p>
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 bg-chart-3 shadow">
+            <Check className="h-3 w-3 text-primary" />
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              {isVectorizeOnly ? 'Vectorization Complete' : 'Generation Complete'}
+            </span>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onPointerDown={() => setShowOriginal(true)}
-            onPointerUp={() => setShowOriginal(false)}
-            onPointerLeave={() => setShowOriginal(false)}
-            className="gap-2 text-xs text-muted-foreground"
-          >
-            <Eye className="h-3.5 w-3.5" />
-            Hold to compare
-          </Button>
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h1 className="text-display text-foreground text-4xl md:text-5xl tracking-normal font-bold">
+                Your Asset
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {hasMultiple
+                  ? `Viewing ${currentIndex + 1} of ${resultImages.length} subjects`
+                  : 'Ready to export'}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onPointerDown={() => setShowOriginal(true)}
+              onPointerUp={() => setShowOriginal(false)}
+              onPointerLeave={() => setShowOriginal(false)}
+              className="gap-2 text-xs text-muted-foreground shrink-0"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Hold to compare</span>
+              <span className="sm:hidden">Compare</span>
+            </Button>
+          </div>
         </motion.div>
 
         {/* Result Display */}
@@ -341,26 +360,40 @@ const Result = () => {
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4, delay: 0.1 }}
-          className="relative overflow-hidden rounded-2xl border border-border bg-white"
+          className="relative overflow-hidden rounded-2xl border border-white/8 bg-card"
         >
+          {/* Subtle checkerboard pattern for transparency indication */}
+          <div 
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: `linear-gradient(45deg, currentColor 25%, transparent 25%), 
+                               linear-gradient(-45deg, currentColor 25%, transparent 25%), 
+                               linear-gradient(45deg, transparent 75%, currentColor 75%), 
+                               linear-gradient(-45deg, transparent 75%, currentColor 75%)`,
+              backgroundSize: '16px 16px',
+              backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
+            }}
+          />
+          
           {hasMultiple && (
             <>
               <button
                 onClick={() => setCurrentIndex((i) => Math.max(i - 1, 0))}
                 disabled={currentIndex === 0}
-                className="absolute left-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl bg-black/60 text-white backdrop-blur-sm transition-opacity disabled:opacity-30 hover:bg-black/80"
+                className="absolute left-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl border border-white/10 bg-background/80 text-foreground backdrop-blur-sm transition-all disabled:opacity-30 hover:bg-background hover:border-white/20"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <button
                 onClick={() => setCurrentIndex((i) => Math.min(i + 1, resultImages.length - 1))}
                 disabled={currentIndex === resultImages.length - 1}
-                className="absolute right-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl bg-black/60 text-white backdrop-blur-sm transition-opacity disabled:opacity-30 hover:bg-black/80"
+                className="absolute right-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl border border-white/10 bg-background/80 text-foreground backdrop-blur-sm transition-all disabled:opacity-30 hover:bg-background hover:border-white/20"
               >
                 <ChevronRight className="h-5 w-5" />
               </button>
             </>
           )}
+          
           <AnimatePresence mode="wait">
             <motion.div
               key={`${currentIndex}-${showOriginal}`}
@@ -368,11 +401,27 @@ const Result = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="min-h-[300px] p-4"
+              className="relative min-h-[320px] p-6"
             >
               {renderResult()}
             </motion.div>
           </AnimatePresence>
+
+          {/* Frosted glass metadata bar - matches Upload page */}
+          <div className="absolute bottom-0 left-0 right-0 flex items-center gap-3 border-t border-white/5 bg-background/70 px-4 py-3 backdrop-blur-xl">
+            <Download className="h-4 w-4 shrink-0 text-primary" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-mono text-xs text-foreground">
+                asset-{current.subjectId}
+              </p>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                {showOriginal ? 'Original' : isVectorizeOnly ? 'Vector Preview' : 'Linework'}
+              </p>
+            </div>
+            <span className="shrink-0 rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-primary">
+              Ready
+            </span>
+          </div>
         </motion.div>
 
         {/* Thumbnail Strip */}
@@ -381,24 +430,26 @@ const Result = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="flex gap-2 overflow-x-auto pb-2"
+            className="flex gap-2 overflow-x-auto pb-2 scrollbar-none"
           >
             {resultImages.map((item, i) => (
               <button
                 key={item.subjectId}
                 onClick={() => setCurrentIndex(i)}
-                className={`flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
-                  i === currentIndex ? 'border-accent' : 'border-border opacity-60 hover:opacity-100'
+                className={`flex-shrink-0 overflow-hidden rounded-xl border-2 transition-all ${
+                  i === currentIndex 
+                    ? 'border-primary ring-2 ring-primary/20' 
+                    : 'border-white/8 opacity-60 hover:opacity-100 hover:border-white/16'
                 }`}
               >
                 {item.imageBase64 ? (
                   <img
                     src={`data:image/png;base64,${item.imageBase64}`}
-                    alt={`Thumb ${i + 1}`}
+                    alt={`Subject ${i + 1}`}
                     className="h-16 w-16 object-cover"
                   />
                 ) : (
-                  <div className="flex h-16 w-16 items-center justify-center bg-card text-xs text-muted-foreground">
+                  <div className="flex h-16 w-16 items-center justify-center bg-card text-xs text-muted-foreground font-mono">
                     {i + 1}
                   </div>
                 )}
@@ -412,10 +463,36 @@ const Result = () => {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.4 }}
-          className="space-y-3"
+          className="space-y-4"
         >
-          <div className="grid grid-cols-3 gap-2">
-            <ExportButton label="PNG" icon={FileImage} onClick={handleSavePng} className="w-full" />
+          {/* Section label */}
+          <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            Export Formats
+          </p>
+
+          {/* Primary export - DXF (most valuable for target users) */}
+          <Button
+            onClick={handleExportDxf}
+            disabled={dxfMutation.isPending && dxfMutation.variables === current.subjectId}
+            className="group relative min-h-[52px] w-full overflow-hidden rounded-xl bg-primary text-primary-foreground font-semibold transition-all hover:bg-primary/90 hover:shadow-[0_0_24px_hsl(var(--primary)_/_0.25)]"
+          >
+            <span className="pointer-events-none absolute inset-0 translate-x-[-200%] skew-x-12 bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover:translate-x-[200%]" />
+            {dxfMutation.isPending && dxfMutation.variables === current.subjectId ? (
+              <span className="flex items-center gap-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
+                Exporting...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <FileType className="h-5 w-5" />
+                Download DXF
+                <span className="ml-1 rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-medium">CAD</span>
+              </span>
+            )}
+          </Button>
+
+          {/* Secondary exports */}
+          <div className="grid grid-cols-2 gap-2">
             <ExportButton
               label="SVG"
               icon={FileCode}
@@ -423,34 +500,42 @@ const Result = () => {
               onClick={handleExportSvg}
               className="w-full"
             />
-            <ExportButton
-              label="DXF"
-              icon={FileType}
-              loading={dxfMutation.isPending && dxfMutation.variables === current.subjectId}
-              onClick={handleExportDxf}
-              className="w-full"
+            <ExportButton 
+              label="PNG" 
+              icon={FileImage} 
+              onClick={handleSavePng} 
+              className="w-full" 
             />
           </div>
 
           {hasMultiple && (
-            <div className="grid grid-cols-2 gap-2">
-              <ExportButton
-                label="Combined SVG"
-                icon={Layers}
-                variant="accent"
-                loading={combinedSvgMutation.isPending}
-                onClick={() => combinedSvgMutation.mutate()}
-                className="w-full"
-              />
-              <ExportButton
-                label="Combined DXF"
-                icon={Layers}
-                variant="accent"
-                loading={combinedDxfMutation.isPending}
-                onClick={() => combinedDxfMutation.mutate()}
-                className="w-full"
-              />
-            </div>
+            <>
+              <div className="flex items-center gap-3 py-1">
+                <div className="h-px flex-1 bg-border" />
+                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                  All Subjects
+                </span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <ExportButton
+                  label="All DXF"
+                  icon={Layers}
+                  variant="accent"
+                  loading={combinedDxfMutation.isPending}
+                  onClick={() => combinedDxfMutation.mutate()}
+                  className="w-full"
+                />
+                <ExportButton
+                  label="All SVG"
+                  icon={Layers}
+                  variant="accent"
+                  loading={combinedSvgMutation.isPending}
+                  onClick={() => combinedSvgMutation.mutate()}
+                  className="w-full"
+                />
+              </div>
+            </>
           )}
 
           {/* Export error messages */}
@@ -474,7 +559,7 @@ const Result = () => {
           <Button
             variant="secondary"
             onClick={() => { reset(); navigate('/'); }}
-            className="min-h-[44px] w-full rounded-xl"
+            className="min-h-[44px] w-full rounded-xl border border-white/8 bg-card hover:border-white/16 hover:bg-card/80 transition-all"
           >
             <RotateCcw className="mr-2 h-4 w-4" />
             Convert Another
