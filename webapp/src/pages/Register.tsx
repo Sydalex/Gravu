@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { authClient } from '@/lib/auth-client';
-import { Footer } from '@/components/Footer';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -16,32 +14,17 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const clearError = () => { if (error) setError(null); };
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!name.trim() || !email.trim() || !password || !confirmPassword) return;
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
+    if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
+    if (password !== confirmPassword) { setError('Passwords do not match'); return; }
     setLoading(true);
     setError(null);
-
-    const result = await authClient.signUp.email({
-      email: email.trim(),
-      password,
-      name: name.trim(),
-    });
-
+    const result = await authClient.signUp.email({ email: email.trim(), password, name: name.trim() });
     setLoading(false);
-
     if (result.error) {
       setError(result.error.message || 'Failed to create account');
     } else {
@@ -49,111 +32,82 @@ const Register = () => {
     }
   };
 
-  const clearError = () => {
-    if (error) setError(null);
-  };
-
   return (
-    <div className="relative min-h-screen bg-background overflow-hidden flex">
-      {/* Left visual panel — desktop only */}
-      <div className="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center p-16 overflow-hidden">
-        {/* Large emerald orb */}
-        <div
-          className="absolute top-1/2 left-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full animate-glow-pulse"
-          style={{
-            background:
-              'radial-gradient(circle, hsl(160 84% 39% / 0.12) 0%, hsl(160 84% 39% / 0.04) 40%, transparent 70%)',
-          }}
-        />
+    <div className="relative min-h-screen bg-[#f8f8f6] overflow-hidden flex flex-col">
+      {/* Warm gradient blob */}
+      <div
+        className="pointer-events-none absolute top-0 left-0 w-[600px] h-[600px] opacity-50 blur-3xl"
+        style={{
+          background: 'radial-gradient(circle, hsl(45 90% 75% / 0.3) 0%, hsl(30 80% 70% / 0.2) 40%, transparent 70%)',
+        }}
+      />
 
-        {/* Grid pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage:
-              'linear-gradient(hsl(0 0% 100%) 1px, transparent 1px), linear-gradient(90deg, hsl(0 0% 100%) 1px, transparent 1px)',
-            backgroundSize: '50px 50px',
-          }}
-        />
+      {/* Header */}
+      <header className="relative z-20 flex items-center justify-between px-6 py-6 md:px-12 md:py-8">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-1.5">
+          <Link to="/welcome" className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-foreground" />
+            <span className="h-2 w-2 rounded-full bg-foreground" />
+          </Link>
+        </motion.div>
+        <nav className="flex items-center gap-6">
+          <Link to="/welcome" className="text-sm uppercase tracking-widest text-foreground/50 hover:text-foreground transition-colors">
+            Back
+          </Link>
+          <Link to="/login" className="text-sm uppercase tracking-widest text-foreground/70 hover:text-foreground transition-colors hover:underline underline-offset-4">
+            Sign In
+          </Link>
+        </nav>
+      </header>
 
-        {/* Floating secondary orb */}
-        <div
-          className="absolute top-24 left-24 h-[200px] w-[200px] rounded-full animate-float"
-          style={{
-            background:
-              'radial-gradient(circle, hsl(160 84% 39% / 0.06) 0%, transparent 70%)',
-            animationDelay: '1.5s',
-          }}
-        />
-
-        {/* Wordmark as background texture */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-          <span
-            className="select-none font-sans font-extrabold text-foreground/[0.03] leading-none"
-            style={{ fontSize: '10vw', letterSpacing: '-0.04em' }}
+      {/* Main */}
+      <main className="relative z-10 flex flex-1 flex-col lg:flex-row">
+        {/* Left — editorial headline */}
+        <div className="hidden lg:flex lg:flex-1 flex-col justify-end px-12 pb-20 pt-12">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
-            Gravu
-          </span>
+            <h1 className="text-[clamp(3rem,8vw,5.5rem)] font-light leading-[0.95] tracking-tight text-foreground uppercase">
+              Start
+              <br />
+              creating.
+            </h1>
+            <div className="mt-10 flex items-center gap-4">
+              <span className="h-px w-12 bg-foreground/30" />
+              <span className="text-sm uppercase tracking-widest text-foreground/40">Gravu</span>
+            </div>
+          </motion.div>
         </div>
 
-        {/* Foreground content */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="relative z-10 text-center"
-        >
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-glow-pulse" />
-            <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-              SVG &middot; DXF &middot; PNG
-            </span>
-          </div>
-          <h2 className="text-display text-3xl font-extrabold tracking-tight text-foreground">
-            Start creating
-            <br />
-            <span className="text-primary">precision assets.</span>
-          </h2>
-        </motion.div>
-      </div>
+        {/* Right — form */}
+        <div className="flex flex-1 flex-col justify-center px-6 py-12 lg:px-16 lg:max-w-lg">
+          {/* Mobile wordmark */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-12 lg:hidden"
+          >
+            <h1 className="text-4xl font-light uppercase tracking-tight text-foreground">
+              Start creating.
+            </h1>
+          </motion.div>
 
-      {/* Right form panel */}
-      <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 lg:px-16">
-        {/* Mobile logo */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-10 text-center lg:hidden"
-        >
-          <h1 className="text-display text-3xl font-extrabold tracking-tight text-foreground" style={{ fontFamily: '"Work Sans", sans-serif' }}>
-            Gravu
-          </h1>
-          <p className="mt-2 font-mono text-xs text-muted-foreground uppercase tracking-widest">
-            Photo to vector, instantly
-          </p>
-        </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="w-full max-w-sm"
+          >
+            {/* Section label */}
+            <div className="mb-8 flex items-center gap-4">
+              <span className="h-px w-8 bg-foreground/20" />
+              <span className="text-xs uppercase tracking-widest text-foreground/40">Create account</span>
+            </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="w-full max-w-sm"
-        >
-          {/* Form header */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-              Create account
-            </h2>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              Start converting photos to vector assets today
-            </p>
-          </div>
-
-          {/* Glassy card form */}
-          <div className="rounded-2xl border border-white/8 bg-card/60 p-7 backdrop-blur-xl">
-            <form onSubmit={handleSignUp} className="space-y-4">
-              {/* Full name */}
+            <form onSubmit={handleSignUp} className="space-y-5">
+              {/* Name */}
               <div className="relative">
                 <Input
                   id="name"
@@ -161,15 +115,12 @@ const Register = () => {
                   placeholder=" "
                   value={name}
                   onChange={(e) => { setName(e.target.value); clearError(); }}
-                  className="peer h-14 w-full rounded-xl border border-border bg-muted/60 px-4 pt-5 pb-2 text-sm text-foreground placeholder-transparent transition-all focus:border-accent/50 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="peer h-14 w-full rounded-none border-0 border-b border-foreground/20 bg-transparent px-0 pt-5 pb-2 text-sm text-foreground placeholder-transparent transition-all focus:border-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                   autoComplete="name"
                   autoFocus
                   required
                 />
-                <label
-                  htmlFor="name"
-                  className="pointer-events-none absolute left-4 top-1.5 text-[10px] font-mono uppercase tracking-widest text-muted-foreground transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-sm peer-placeholder-shown:font-normal peer-placeholder-shown:tracking-normal peer-focus:top-1.5 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:uppercase peer-focus:tracking-widest peer-focus:text-accent"
-                >
+                <label htmlFor="name" className="pointer-events-none absolute left-0 top-1.5 text-[10px] uppercase tracking-widest text-foreground/40 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-sm peer-placeholder-shown:tracking-normal peer-focus:top-1.5 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:uppercase peer-focus:tracking-widest">
                   Full name
                 </label>
               </div>
@@ -182,14 +133,11 @@ const Register = () => {
                   placeholder=" "
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); clearError(); }}
-                  className="peer h-14 w-full rounded-xl border border-border bg-muted/60 px-4 pt-5 pb-2 text-sm text-foreground placeholder-transparent transition-all focus:border-accent/50 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="peer h-14 w-full rounded-none border-0 border-b border-foreground/20 bg-transparent px-0 pt-5 pb-2 text-sm text-foreground placeholder-transparent transition-all focus:border-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                   autoComplete="email"
                   required
                 />
-                <label
-                  htmlFor="email"
-                  className="pointer-events-none absolute left-4 top-1.5 text-[10px] font-mono uppercase tracking-widest text-muted-foreground transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-sm peer-placeholder-shown:font-normal peer-placeholder-shown:tracking-normal peer-focus:top-1.5 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:uppercase peer-focus:tracking-widest peer-focus:text-accent"
-                >
+                <label htmlFor="email" className="pointer-events-none absolute left-0 top-1.5 text-[10px] uppercase tracking-widest text-foreground/40 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-sm peer-placeholder-shown:tracking-normal peer-focus:top-1.5 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:uppercase peer-focus:tracking-widest">
                   Email address
                 </label>
               </div>
@@ -202,19 +150,16 @@ const Register = () => {
                   placeholder=" "
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); clearError(); }}
-                  className="peer h-14 w-full rounded-xl border border-border bg-muted/60 px-4 pt-5 pb-2 text-sm text-foreground placeholder-transparent transition-all focus:border-accent/50 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="peer h-14 w-full rounded-none border-0 border-b border-foreground/20 bg-transparent px-0 pt-5 pb-2 text-sm text-foreground placeholder-transparent transition-all focus:border-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                   autoComplete="new-password"
                   required
                 />
-                <label
-                  htmlFor="password"
-                  className="pointer-events-none absolute left-4 top-1.5 text-[10px] font-mono uppercase tracking-widest text-muted-foreground transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-sm peer-placeholder-shown:font-normal peer-placeholder-shown:tracking-normal peer-focus:top-1.5 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:uppercase peer-focus:tracking-widest peer-focus:text-accent"
-                >
+                <label htmlFor="password" className="pointer-events-none absolute left-0 top-1.5 text-[10px] uppercase tracking-widest text-foreground/40 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-sm peer-placeholder-shown:tracking-normal peer-focus:top-1.5 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:uppercase peer-focus:tracking-widest">
                   Password (min. 8 chars)
                 </label>
               </div>
 
-              {/* Confirm password */}
+              {/* Confirm Password */}
               <div className="relative">
                 <Input
                   id="confirm-password"
@@ -222,14 +167,11 @@ const Register = () => {
                   placeholder=" "
                   value={confirmPassword}
                   onChange={(e) => { setConfirmPassword(e.target.value); clearError(); }}
-                  className="peer h-14 w-full rounded-xl border border-border bg-muted/60 px-4 pt-5 pb-2 text-sm text-foreground placeholder-transparent transition-all focus:border-accent/50 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="peer h-14 w-full rounded-none border-0 border-b border-foreground/20 bg-transparent px-0 pt-5 pb-2 text-sm text-foreground placeholder-transparent transition-all focus:border-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                   autoComplete="new-password"
                   required
                 />
-                <label
-                  htmlFor="confirm-password"
-                  className="pointer-events-none absolute left-4 top-1.5 text-[10px] font-mono uppercase tracking-widest text-muted-foreground transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-sm peer-placeholder-shown:font-normal peer-placeholder-shown:tracking-normal peer-focus:top-1.5 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:uppercase peer-focus:tracking-widest peer-focus:text-accent"
-                >
+                <label htmlFor="confirm-password" className="pointer-events-none absolute left-0 top-1.5 text-[10px] uppercase tracking-widest text-foreground/40 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-sm peer-placeholder-shown:tracking-normal peer-focus:top-1.5 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:uppercase peer-focus:tracking-widest">
                   Confirm password
                 </label>
               </div>
@@ -238,62 +180,60 @@ const Register = () => {
                 {error ? (
                   <motion.p
                     key="error"
-                    initial={{ opacity: 0, y: -6 }}
+                    initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    className="text-sm text-destructive"
+                    exit={{ opacity: 0, y: -4 }}
+                    className="text-xs text-destructive uppercase tracking-widest"
                   >
                     {error}
                   </motion.p>
                 ) : null}
               </AnimatePresence>
 
-              {/* CTA Button with shimmer */}
-              <Button
-                type="submit"
-                disabled={
-                  loading ||
-                  !name.trim() ||
-                  !email.trim() ||
-                  !password ||
-                  !confirmPassword
-                }
-                className="group relative h-12 w-full overflow-hidden rounded-xl bg-primary text-primary-foreground font-semibold transition-all hover:bg-primary/90 hover:shadow-[0_0_24px_hsl(var(--primary)_/_0.25)] disabled:opacity-50"
-              >
-                {/* Shimmer sweep on hover */}
-                <span className="pointer-events-none absolute inset-0 translate-x-[-200%] skew-x-12 bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover:translate-x-[200%]" />
-                {loading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <ArrowRight className="mr-2 h-4 w-4" />
-                )}
-                {loading ? 'Creating account...' : 'Create Account'}
-              </Button>
+              {/* Submit — pill style matching Landing */}
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  disabled={loading || !name.trim() || !email.trim() || !password || !confirmPassword}
+                  className="group relative disabled:opacity-40"
+                >
+                  <span className="absolute -inset-1 rounded-full border border-dashed border-foreground/20 animate-spin-slow" style={{ animationDuration: '12s' }} />
+                  <span className="relative inline-flex items-center gap-3 rounded-full border-2 border-foreground px-8 py-4 text-sm uppercase tracking-widest text-foreground transition-all group-hover:bg-foreground group-hover:text-background group-disabled:pointer-events-none">
+                    {loading ? (
+                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating account...</>
+                    ) : (
+                      'Create Account'
+                    )}
+                  </span>
+                </button>
+              </div>
             </form>
-          </div>
 
-          {/* Sign in link */}
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Already have an account?{' '}
-            <Link
-              to="/login"
-              className="font-medium text-primary transition-colors hover:text-primary/80"
-            >
-              Sign in
-            </Link>
-          </p>
+            {/* Sign in link */}
+            <div className="mt-12 flex items-center gap-4">
+              <span className="h-px flex-1 bg-foreground/10" />
+              <Link to="/login" className="text-xs uppercase tracking-widest text-foreground/40 hover:text-foreground transition-colors">
+                Already registered? Sign in
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </main>
 
-          {/* Footer tag */}
-          <div className="mt-8 flex items-center justify-center gap-2">
-            <div className="h-px w-8 bg-border" />
-            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50">
-              SVG &middot; DXF &middot; PNG
-            </span>
-            <div className="h-px w-8 bg-border" />
-          </div>
-        </motion.div>
-      </div>
-      <Footer />
+      {/* Bottom strip */}
+      <footer className="relative z-10 border-t border-foreground/10 px-6 py-5 md:px-12">
+        <div className="flex flex-wrap items-center gap-6 text-xs uppercase tracking-widest text-foreground/30">
+          <span>SVG</span>
+          <span className="h-1 w-1 rounded-full bg-foreground/20" />
+          <span>DXF</span>
+          <span className="h-1 w-1 rounded-full bg-foreground/20" />
+          <span>PNG</span>
+          <span className="h-1 w-1 rounded-full bg-foreground/20" />
+          <span>Vectorworks</span>
+          <span className="h-1 w-1 rounded-full bg-foreground/20" />
+          <span>AutoCAD</span>
+        </div>
+      </footer>
     </div>
   );
 };
