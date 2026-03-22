@@ -94,19 +94,19 @@ const Upload = () => {
           transition={{ duration: 0.45 }}
           className="space-y-1.5"
         >
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 opacity-100 bg-chart-3 shadow">
-            <span className="h-1 w-1 rounded-full bg-accent opacity-100" />
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 shadow">
+            <span className="h-1 w-1 rounded-full bg-primary" />
             <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               {flowType === 'full' ? 'Photo to Vector' : 'Vectorize Linework'}
             </span>
           </div>
-          <h1 className="text-display text-foreground text-7xl tracking-normal font-bold">
-            Upload Image
+          <h1 className="text-display text-foreground text-4xl md:text-5xl tracking-normal font-bold">
+            {flowType === 'full' ? 'Choose Your Subjects' : 'Ready Your Drawing'}
           </h1>
           <p className="text-sm text-muted-foreground">
             {flowType === 'full'
-              ? 'Upload a photo to extract and vectorize subjects'
-              : 'Upload a line drawing to convert to vector'}
+              ? 'Select which elements to extract and convert to vector format'
+              : 'Upload a clean line drawing to convert to editable vector'}
           </p>
         </motion.div>
 
@@ -115,12 +115,12 @@ const Upload = () => {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: 0.05 }}
-            className="space-y-2"
+            className="space-y-3"
           >
             <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-              Simplification
+              Detail Level
             </p>
-            <div className="inline-flex rounded-xl border border-white/8 bg-card p-1">
+            <div className="flex gap-2">
               {simplificationOptions.map((option) => {
                 const active = simplificationLevel === option.value;
                 return (
@@ -128,10 +128,10 @@ const Upload = () => {
                     key={option.value}
                     type="button"
                     onClick={() => setSimplificationLevel(option.value)}
-                    className={`min-w-[72px] rounded-lg px-3 py-2 text-sm transition-colors ${
+                    className={`flex-1 rounded-xl px-3 py-2.5 text-sm font-medium transition-all border ${
                       active
-                        ? 'bg-accent text-accent-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-white/8 bg-card text-muted-foreground hover:border-white/16 hover:text-foreground'
                     }`}
                   >
                     {option.label}
@@ -139,6 +139,11 @@ const Upload = () => {
                 );
               })}
             </div>
+            <p className="text-xs text-muted-foreground font-mono">
+              {simplificationLevel === 'low' && 'Preserve all details and line variations'}
+              {simplificationLevel === 'mid' && 'Balanced simplification and quality'}
+              {simplificationLevel === 'high' && 'Maximum simplification for clean vectors'}
+            </p>
           </motion.div>
         ) : null}
 
@@ -153,51 +158,38 @@ const Upload = () => {
               transition={{ duration: 0.3 }}
               className="space-y-4"
             >
-              {/* Edge-to-edge image preview */}
+              {/* Premium preview card with visual hierarchy */}
               <div className="relative overflow-hidden rounded-2xl border border-white/8 bg-card">
-                <img
-                  src={imageUri}
-                  alt={imageName ?? 'Uploaded'}
-                  className="w-full object-cover"
-                  style={{ maxHeight: '420px', objectFit: 'contain' }}
-                />
-                {/* Frosted glass metadata bar */}
-                <div className="absolute bottom-0 left-0 right-0 flex items-center gap-3 border-t border-white/5 bg-background/70 px-4 py-3 backdrop-blur-xl">
-                  <ImageIcon className="h-4 w-4 shrink-0 text-accent" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-mono text-xs text-foreground">
-                      {imageName}
-                    </p>
-                    {fileSize ? (
-                      <p className="font-mono text-[10px] text-muted-foreground">
-                        {fileSize}
-                      </p>
-                    ) : null}
-                  </div>
-                  <span className="shrink-0 rounded-md border border-white/10 bg-white/[0.06] px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Ready
-                  </span>
+                <div className="relative">
+                  <img
+                    src={imageUri}
+                    alt={imageName ?? 'Uploaded'}
+                    className="w-full object-cover"
+                    style={{ maxHeight: '380px', objectFit: 'contain' }}
+                  />
+                  {/* Subtle overlay gradient for depth */}
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/[0.02]" />
                 </div>
-              </div>
-
-              {/* Action buttons */}
-              <div className="flex gap-3">
-                <Button
-                  variant="secondary"
-                  className="min-h-[44px] flex-1 rounded-xl border border-white/8 bg-card hover:border-white/16 hover:bg-card/80 transition-all"
-                  onClick={() => inputRef.current?.click()}
-                >
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  Change Image
-                </Button>
-                <Button
-                  className="group relative min-h-[44px] flex-1 overflow-hidden rounded-xl bg-accent text-accent-foreground font-semibold transition-all hover:bg-accent/90 hover:shadow-[0_0_24px_hsl(160_84%_39%_/_0.25)]"
-                  onClick={handleContinue}
-                >
-                  <span className="pointer-events-none absolute inset-0 translate-x-[-200%] skew-x-12 bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover:translate-x-[200%]" />
-                  {flowType === 'full' ? 'Continue' : 'Vectorize'}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+                
+                {/* Frosted glass metadata bar */}
+                <div className="border-t border-white/5 bg-background/70 px-4 py-3 backdrop-blur-xl">
+                  <div className="flex items-center gap-3">
+                    <ImageIcon className="h-4 w-4 shrink-0 text-primary" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-mono text-xs text-foreground">
+                        {imageName}
+                      </p>
+                      {fileSize ? (
+                        <p className="font-mono text-[10px] text-muted-foreground">
+                          {fileSize}
+                        </p>
+                      ) : null}
+                    </div>
+                    <span className="shrink-0 rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-primary">
+                      Ready
+                    </span>
+                  </div>
+                </div>
               </div>
             </motion.div>
           ) : (
@@ -214,9 +206,9 @@ const Upload = () => {
                 onDrop={onDrop}
                 onDragOver={onDragOver}
                 onDragLeave={onDragLeave}
-                className={`group relative flex w-full cursor-pointer flex-col items-center justify-center gap-6 overflow-hidden rounded-2xl border-2 border-dashed px-8 py-20 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                className={`group relative flex w-full cursor-pointer flex-col items-center justify-center gap-6 overflow-hidden rounded-2xl border-2 border-dashed px-8 py-24 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                   dragActive
-                    ? 'border-accent bg-accent/[0.06] shadow-[0_0_40px_hsl(160_84%_39%_/_0.1)]'
+                    ? 'border-primary bg-primary/[0.06] shadow-[0_0_40px_hsl(var(--primary)_/_0.1)]'
                     : 'border-border bg-card hover:border-muted-foreground/20 hover:bg-card/80'
                 }`}
               >
@@ -225,17 +217,17 @@ const Upload = () => {
                   <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="pointer-events-none absolute inset-0 rounded-2xl border border-accent/20"
+                    className="pointer-events-none absolute inset-0 rounded-2xl border border-primary/20"
                   />
                 ) : null}
 
-                {/* Upload icon — custom arrow into circle */}
+                {/* Upload icon with enhanced styling */}
                 <motion.div
                   animate={dragActive ? { y: -4, scale: 1.05 } : { y: 0, scale: 1 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                   className={`flex h-16 w-16 items-center justify-center rounded-full border transition-all duration-300 ${
                     dragActive
-                      ? 'border-accent/40 bg-accent/10 shadow-[0_0_20px_hsl(160_84%_39%_/_0.2)]'
+                      ? 'border-primary/40 bg-primary/10 shadow-[0_0_24px_hsl(var(--primary)_/_0.15)]'
                       : 'border-border bg-muted group-hover:border-muted-foreground/20'
                   }`}
                 >
@@ -243,7 +235,7 @@ const Upload = () => {
                     viewBox="0 0 24 24"
                     fill="none"
                     className={`h-7 w-7 transition-colors duration-300 ${
-                      dragActive ? 'stroke-accent' : 'stroke-muted-foreground group-hover:stroke-foreground/60'
+                      dragActive ? 'stroke-primary' : 'stroke-muted-foreground group-hover:stroke-foreground/60'
                     }`}
                     strokeWidth="1.5"
                     strokeLinecap="round"
@@ -254,16 +246,16 @@ const Upload = () => {
                   </svg>
                 </motion.div>
 
-                <div className="space-y-1.5 text-center">
-                  <p className="text-base font-semibold text-foreground">
-                    {dragActive ? 'Release to upload' : 'Drop your image here'}
+                <div className="space-y-2 text-center">
+                  <p className="text-lg font-semibold text-foreground">
+                    {dragActive ? 'Release to upload' : 'Drop your file here'}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    or click to browse files
+                    or click to browse
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
                   {['PNG', 'JPG', 'WEBP'].map((fmt) => (
                     <span
                       key={fmt}
@@ -272,8 +264,8 @@ const Upload = () => {
                       {fmt}
                     </span>
                   ))}
-                  <span className="font-mono text-xs text-muted-foreground/40">
-                    up to 20MB
+                  <span className="font-mono text-xs text-muted-foreground/50 ml-2">
+                    max 20MB
                   </span>
                 </div>
               </button>
