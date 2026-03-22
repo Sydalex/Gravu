@@ -2,12 +2,20 @@ FROM oven/bun:1 AS base
 
 WORKDIR /app
 
+# Install Python runtime for the embedded centerline sidecar.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 python3-pip python3-venv \
+  && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
 # Copy source code
 COPY . .
+
+# Preinstall vectorizer Python dependencies so the sidecar can start immediately.
+RUN python3 -m pip install --break-system-packages -r /app/vendor/raster-dxf-centerline/requirements.txt
 
 # Generate Prisma client
 RUN bunx prisma generate

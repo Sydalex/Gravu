@@ -40,8 +40,8 @@ services:
       PORT: "3000"
       # SQLite file in the persistent volume mounted at /app/data
       DATABASE_URL: "file:/app/data/gravu.db"
-      # Python vectorizer runs as a separate container on the internal network
-      CENTERLINE_VECTORIZER_URL: "http://vectorizer:8000"
+      # Auto-start the vendored Python sidecar inside the backend container.
+      CENTERLINE_VECTORIZER_URL: "http://127.0.0.1:8001"
       # --- Required secrets (set in .env.staging or Coolify environment) ---
       BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET}"
       # Public URL the browser reaches the app on (used by Better Auth for
@@ -70,28 +70,6 @@ services:
         - "bun"
         - "--eval"
         - "const r = await fetch('http://localhost:3000/health'); process.exit(r.ok ? 0 : 1)"
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 30s
-    depends_on:
-      vectorizer:
-        condition: service_healthy
-    networks:
-      - app
-
-  # ── Python Vectorizer Sidecar ─────────────────────────────────────────────
-  vectorizer:
-    build:
-      context: ./backend/vendor/raster-dxf-centerline
-      dockerfile: Dockerfile.vectorizer
-    restart: unless-stopped
-    healthcheck:
-      test:
-        - "CMD"
-        - "python3"
-        - "-c"
-        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
       interval: 10s
       timeout: 5s
       retries: 6
