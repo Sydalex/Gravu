@@ -16,7 +16,7 @@ services:
   frontend:
     build:
       context: ./webapp
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.frontend
     restart: unless-stopped
     # Expose port 80 to the internal Docker network only.
     # Coolify's Traefik reverse proxy routes external HTTPS traffic here;
@@ -33,7 +33,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.backend
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -84,7 +84,7 @@ services:
   vectorizer:
     build:
       context: ./backend/vendor/raster-dxf-centerline
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.vectorizer
     restart: unless-stopped
     healthcheck:
       test:
