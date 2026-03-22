@@ -27,8 +27,6 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    networks:
-      - app
 
   # ── Backend API ───────────────────────────────────────────────────────────
   backend:
@@ -76,14 +74,7 @@ services:
       timeout: 5s
       retries: 6
       start_period: 30s
-    networks:
-      - app
 
 # ── Volumes ───────────────────────────────────────────────────────────────────
 volumes:
   sqlite_data:
-
-# ── Networks ──────────────────────────────────────────────────────────────────
-networks:
-  app:
-    driver: bridge
