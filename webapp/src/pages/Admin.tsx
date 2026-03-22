@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -11,14 +11,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  CreditCard,
   Loader2,
   RefreshCw,
-  Users,
-  CreditCard,
-  BarChart3,
-  DollarSign,
-  Settings,
+  Search,
+  Shield,
   Sparkles,
+  Users,
 } from "lucide-react";
 
 interface AdminStats {
@@ -39,48 +38,90 @@ interface AdminUser {
   conversionCount: number;
 }
 
-const sidebarItems = [
-  { section: "OVERVIEW", items: [
-    { label: "Users", icon: Users, id: "users" },
-    { label: "Conversions", icon: BarChart3, id: "conversions" },
-    { label: "Revenue", icon: DollarSign, id: "revenue" },
-  ]},
-  { section: "CONTROLS", items: [
-    { label: "AI Settings", icon: Sparkles, id: "ai-settings" },
-    { label: "Settings", icon: Settings, id: "settings" },
-  ]},
+type FilterId = "all" | "admins" | "pro" | "low-credits";
+
+const filters: Array<{ id: FilterId; label: string }> = [
+  { id: "all", label: "All Users" },
+  { id: "admins", label: "Admins" },
+  { id: "pro", label: "Pro" },
+  { id: "low-credits", label: "Low Credits" },
 ];
+
+function formatJoinDate(iso: string) {
+  const date = new Date(iso);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatRelativeJoinDate(iso: string) {
+  const date = new Date(iso);
+  return `Joined ${date.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
+}
 
 function PlanBadge({ plan, isAdmin }: { plan: string; isAdmin: boolean }) {
   if (isAdmin) {
     return (
-      <span className="inline-flex items-center rounded-full border border-[#edcbbd] bg-[#fcf2ee] px-2.5 py-0.5 text-[11px] font-semibold text-[#c96240]">
-        ADMIN
+      <span className="inline-flex items-center gap-1 rounded-full border border-[#edcbbd] bg-[#fcf2ee] px-2.5 py-1 text-[11px] font-semibold text-[#c96240]">
+        <Shield className="h-3 w-3" />
+        Admin
       </span>
     );
   }
+
   if (plan === "pro") {
     return (
-      <span className="inline-flex items-center rounded-full border border-[#c8edde] bg-[#ebfaf4] px-2.5 py-0.5 text-[11px] font-semibold text-[#10b77f]">
-        ⬡ PRO
+      <span className="inline-flex items-center rounded-full border border-[#ead8b7] bg-[#f7f0e3] px-2.5 py-1 text-[11px] font-semibold text-[#8f6a1d]">
+        Pro
       </span>
     );
   }
+
   return (
-    <span className="inline-flex items-center rounded-full border border-[#d9d8d3] bg-[#f5f3ee] px-2.5 py-0.5 text-[11px] font-semibold text-[#82817d]">
-      FREE
+    <span className="inline-flex items-center rounded-full border border-[#d9d8d3] bg-[#f5f3ee] px-2.5 py-1 text-[11px] font-semibold text-[#82817d]">
+      Free
     </span>
   );
 }
 
-function formatJoinDate(iso: string) {
-  const d = new Date(iso);
-  return `Joined ${d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  meta,
+}: {
+  icon: typeof Users;
+  label: string;
+  value: string | number;
+  meta: string;
+}) {
+  return (
+    <div className="rounded-[22px] border border-[#dfd8cc] bg-[#f8f4ec] p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+            {label}
+          </p>
+          <p className="mt-3 text-[34px] font-black leading-none tracking-[-1.2px] text-[#332e24]">
+            {value}
+          </p>
+        </div>
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[#eadfce] bg-background text-[#c96240]">
+          <Icon className="h-4 w-4" />
+        </span>
+      </div>
+      <p className="mt-3 text-[12px] text-muted-foreground">{meta}</p>
+    </div>
+  );
 }
 
 export default function Admin() {
   const queryClient = useQueryClient();
-  const [activeTab] = useState("users");
+  const [activeFilter, setActiveFilter] = useState<FilterId>("all");
+  const [search, setSearch] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [creditDialogUser, setCreditDialogUser] = useState<AdminUser | null>(null);
   const [creditAmount, setCreditAmount] = useState("");
 
@@ -100,16 +141,54 @@ export default function Admin() {
         amount: params.amount,
         operation: params.operation,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-      queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "stats"] }),
+      ]);
       setCreditDialogUser(null);
       setCreditAmount("");
     },
   });
 
+  const allUsers = users ?? [];
+  const filteredUsers = allUsers.filter((user) => {
+    const matchesSearch =
+      search.trim().length === 0 ||
+      user.email.toLowerCase().includes(search.toLowerCase()) ||
+      user.name.toLowerCase().includes(search.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    if (activeFilter === "admins") return user.isAdmin;
+    if (activeFilter === "pro") return !user.isAdmin && user.plan === "pro";
+    if (activeFilter === "low-credits") return !user.isAdmin && user.credits <= 3;
+    return true;
+  });
+
+  useEffect(() => {
+    if (!filteredUsers.length) {
+      setSelectedUserId(null);
+      return;
+    }
+
+    const exists = filteredUsers.some((user) => user.id === selectedUserId);
+    if (!exists) {
+      setSelectedUserId(filteredUsers[0].id);
+    }
+  }, [filteredUsers, selectedUserId]);
+
+  const selectedUser =
+    filteredUsers.find((user) => user.id === selectedUserId) ??
+    allUsers.find((user) => user.id === selectedUserId) ??
+    null;
+
+  const lowCreditCount = allUsers.filter((user) => !user.isAdmin && user.credits <= 3).length;
+  const adminCount = allUsers.filter((user) => user.isAdmin).length;
+
   const handleCredits = (operation: "add" | "set") => {
     if (!creditDialogUser || !creditAmount) return;
+
     creditsMutation.mutate({
       userId: creditDialogUser.id,
       amount: Number(creditAmount),
@@ -118,173 +197,256 @@ export default function Admin() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background pt-[52px]">
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-[52px] bottom-0 w-[220px] border-r border-border bg-secondary/60 flex flex-col">
-        <div className="flex items-center gap-2 px-5 py-5">
-          <span className="text-[18px] font-bold tracking-[-0.5px] text-[#3d3929]">Gravu</span>
-          <span className="inline-flex items-center rounded-full border border-[#edcbbd] bg-[#fcf2ee] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#c96240]">
-            ADMIN
-          </span>
-        </div>
-
-        <nav className="flex-1 px-3">
-          {sidebarItems.map((group) => (
-            <div key={group.section} className="mb-4">
-              <p className="mb-2 px-2 font-mono text-[9px] font-medium uppercase tracking-[1.5px] text-muted-foreground">
-                {group.section}
+    <div className="min-h-screen bg-background pt-[52px]">
+      <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="overflow-hidden rounded-[28px] border border-[#e6ddcf] bg-gradient-to-br from-[#fbf7ef] via-[#f7f0e7] to-[#f4ece1]">
+          <div className="flex flex-col gap-6 px-6 py-7 md:px-8 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-[720px]">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#edcbbd] bg-[#fcf2ee] px-3 py-1 text-[10px] font-semibold uppercase tracking-[1.6px] text-[#c96240]">
+                <Sparkles className="h-3.5 w-3.5" />
+                Admin Control
+              </div>
+              <h1 className="max-w-[10ch] text-[38px] font-black leading-[0.95] tracking-[-1.8px] text-[#332e24] sm:text-[52px]">
+                Run users, credits, and support from one screen.
+              </h1>
+              <p className="mt-4 max-w-[62ch] text-[14px] leading-6 text-[#6f695f] sm:text-[15px]">
+                This is the operator view for staging. Filter accounts, inspect plan state, and
+                adjust credits without hopping across placeholder tabs.
               </p>
-              {group.items.map((item) => {
-                const Icon = item.icon;
-                const isActive = item.id === activeTab;
-                return (
-                  <button
-                    key={item.id}
-                    className={cn(
-                      "flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2 text-[13px] font-medium transition-colors",
-                      isActive
-                        ? "border border-[#c8edde] bg-[#ebfaf4] text-[#10b77f]"
-                        : "text-muted-foreground hover:bg-secondary"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </button>
-                );
-              })}
             </div>
-          ))}
-        </nav>
-      </aside>
 
-      {/* Main content */}
-      <main className="ml-[220px] flex-1 p-8">
-        {/* Header */}
-        <div className="mb-6 flex items-start justify-between">
-          <div>
-            <h1 className="text-[28px] font-extrabold tracking-[-0.84px] text-[#3d3929]">
-              Users
-            </h1>
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              Manage accounts, credits, and subscriptions.
-            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                variant="outline"
+                className="h-11 rounded-2xl border-[#d9d0c2] bg-background/80 px-5"
+                onClick={() => refetchUsers()}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh Data
+              </Button>
+            </div>
           </div>
-          <Button
-            variant="outline"
-            className="rounded-xl"
-            onClick={() => refetchUsers()}
-          >
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
-        </div>
+        </section>
 
-        {/* Stat cards */}
         {statsLoading ? (
-          <div className="flex h-24 items-center justify-center">
+          <div className="flex h-28 items-center justify-center rounded-[22px] border border-[#dfd8cc] bg-[#f8f4ec]">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="mb-6 grid grid-cols-4 gap-4">
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard
+              icon={Users}
               label="Total Users"
               value={stats?.totalUsers ?? 0}
-              sub={`↑ ${stats?.totalUsers ?? 0} this week`}
-              subColor="text-[#10b77f]"
+              meta={`${adminCount} admins across staging`}
             />
             <StatCard
+              icon={Sparkles}
               label="Pro Subscribers"
               value={stats?.proSubscribers ?? 0}
-              sub={
-                stats && stats.totalUsers > 0
-                  ? `${Math.round((stats.proSubscribers / stats.totalUsers) * 100)}% of users`
-                  : "0% of users"
-              }
-              subColor="text-[#10b77f]"
+              meta={`${stats?.totalUsers ? Math.round((stats.proSubscribers / stats.totalUsers) * 100) : 0}% of current accounts`}
             />
             <StatCard
+              icon={CreditCard}
               label="Conversions"
               value={stats?.totalConversions ?? 0}
-              sub={`↑ ${stats?.totalConversions ?? 0} today`}
-              subColor="text-[#10b77f]"
+              meta={`${lowCreditCount} users at 3 credits or below`}
             />
             <StatCard
+              icon={Shield}
               label="MRR"
               value={`€${stats?.mrr ?? 0}`}
-              sub="Stripe live pending"
-              subColor="text-muted-foreground"
+              meta="Estimated from active Pro subscriptions"
             />
-          </div>
+          </section>
         )}
 
-        {/* Users table */}
-        <div className="rounded-[16px] border border-[#d9d8d3] bg-[#f5f3ee]">
-          <div className="flex items-center justify-between border-b border-[#d9d8d3] px-5 py-4">
-            <span className="text-[14px] font-semibold text-[#3d3929]">All Users</span>
-            <span className="rounded-full border border-[#d9d8d3] bg-background px-2.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
-              {users?.length ?? 0} TOTAL
-            </span>
-          </div>
-
-          {/* Column headers */}
-          <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1.2fr] border-b border-[#d9d8d3] px-5 py-2.5">
-            {["USER", "PLAN", "CREDITS", "CONVERSIONS", "ACTIONS"].map((h) => (
-              <span
-                key={h}
-                className="font-mono text-[9px] font-medium uppercase tracking-[1.5px] text-muted-foreground"
-              >
-                {h}
-              </span>
-            ))}
-          </div>
-
-          {/* Rows */}
-          {usersLoading ? (
-            <div className="flex h-32 items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            users?.map((user) => (
-              <div
-                key={user.id}
-                className="grid h-[52px] grid-cols-[2fr_1fr_1fr_1fr_1.2fr] items-center border-b border-[#d9d8d3] px-5 last:border-b-0"
-              >
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_380px]">
+          <div className="overflow-hidden rounded-[24px] border border-[#dfd8cc] bg-[#f8f4ec]">
+            <div className="border-b border-[#dfd8cc] px-5 py-4 sm:px-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                  <p className="text-[13px] font-medium text-[#3d3929]">{user.email}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {formatJoinDate(user.createdAt)}
+                  <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+                    User Workspace
                   </p>
+                  <h2 className="mt-2 text-[26px] font-black tracking-[-0.9px] text-[#332e24]">
+                    Accounts
+                  </h2>
                 </div>
-                <div>
-                  <PlanBadge plan={user.plan} isAdmin={user.isAdmin} />
-                </div>
-                <span className="text-[13px] font-semibold text-[#3d3929]">
-                  {user.isAdmin ? "∞" : user.credits}
-                </span>
-                <span className="text-[13px] text-muted-foreground">
-                  {user.conversionCount}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setCreditDialogUser(user);
-                      setCreditAmount("");
-                    }}
-                    className="rounded-[8px] border border-[#c8edde] bg-[#ebfaf4] px-3 py-1 text-[11px] font-medium text-[#10b77f] transition-colors hover:bg-[#d6f5e8]"
-                  >
-                    Credits
-                  </button>
-                  <button className="rounded-[8px] border border-[#d9d8d3] px-3 py-1 text-[11px] font-medium text-[#82817d] transition-colors hover:bg-secondary">
-                    View
-                  </button>
+
+                <div className="flex flex-col gap-3 lg:min-w-[420px]">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search by email or name"
+                      className="h-11 rounded-2xl border-[#d8d0c5] bg-background pl-10"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {filters.map((filter) => (
+                      <button
+                        key={filter.id}
+                        type="button"
+                        onClick={() => setActiveFilter(filter.id)}
+                        className={cn(
+                          "rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
+                          activeFilter === filter.id
+                            ? "border-[#c96240] bg-[#fcf2ee] text-[#c96240]"
+                            : "border-[#d9d0c2] bg-background text-[#6f695f] hover:bg-[#f4ede4]"
+                        )}
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            </div>
+
+            <div className="grid grid-cols-[minmax(0,1.6fr)_110px_90px_110px] gap-3 border-b border-[#dfd8cc] px-5 py-3 text-[10px] uppercase tracking-[1.8px] text-muted-foreground sm:px-6">
+              <span>User</span>
+              <span>Plan</span>
+              <span>Credits</span>
+              <span>Conversions</span>
+            </div>
+
+            {usersLoading ? (
+              <div className="flex h-40 items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredUsers.length === 0 ? (
+              <div className="px-6 py-16 text-center">
+                <p className="text-[15px] font-medium text-[#332e24]">No users match this view.</p>
+                <p className="mt-2 text-[13px] text-muted-foreground">
+                  Clear the search or switch filters to inspect another segment.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-[#e4ddd0]">
+                {filteredUsers.map((user) => {
+                  const isSelected = user.id === selectedUser?.id;
+
+                  return (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => setSelectedUserId(user.id)}
+                      className={cn(
+                        "grid w-full grid-cols-[minmax(0,1.6fr)_110px_90px_110px] gap-3 px-5 py-4 text-left transition-colors sm:px-6",
+                        isSelected ? "bg-[#f2e8db]" : "hover:bg-[#f4ede4]"
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[#eadfce] bg-background text-[13px] font-bold text-[#332e24]">
+                            {(user.name || user.email).slice(0, 1).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-[14px] font-semibold text-[#332e24]">
+                              {user.name || user.email}
+                            </p>
+                            <p className="truncate text-[12px] text-muted-foreground">{user.email}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center">
+                        <PlanBadge plan={user.plan} isAdmin={user.isAdmin} />
+                      </div>
+                      <div className="flex items-center text-[14px] font-semibold text-[#332e24]">
+                        {user.isAdmin ? "∞" : user.credits}
+                      </div>
+                      <div className="flex items-center text-[14px] text-[#6f695f]">
+                        {user.conversionCount}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <aside className="rounded-[24px] border border-[#dfd8cc] bg-[#f8f4ec] p-5 sm:p-6 xl:sticky xl:top-[84px] xl:h-fit">
+            {selectedUser ? (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+                      Selected User
+                    </p>
+                    <h3 className="mt-2 text-[26px] font-black tracking-[-0.8px] text-[#332e24]">
+                      {selectedUser.name || "Account"}
+                    </h3>
+                  </div>
+                  <PlanBadge plan={selectedUser.plan} isAdmin={selectedUser.isAdmin} />
+                </div>
+
+                <div className="mt-5 rounded-[20px] border border-[#e5dbc9] bg-background/90 p-4">
+                  <p className="truncate text-[14px] font-medium text-[#332e24]">{selectedUser.email}</p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">
+                    {formatRelativeJoinDate(selectedUser.createdAt)}
+                  </p>
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                  <div className="rounded-[18px] border border-[#e5dbc9] bg-background/80 p-4">
+                    <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+                      Credits
+                    </p>
+                    <p className="mt-2 text-[28px] font-black leading-none tracking-[-1px] text-[#332e24]">
+                      {selectedUser.isAdmin ? "∞" : selectedUser.credits}
+                    </p>
+                  </div>
+                  <div className="rounded-[18px] border border-[#e5dbc9] bg-background/80 p-4">
+                    <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+                      Conversions
+                    </p>
+                    <p className="mt-2 text-[28px] font-black leading-none tracking-[-1px] text-[#332e24]">
+                      {selectedUser.conversionCount}
+                    </p>
+                  </div>
+                  <div className="rounded-[18px] border border-[#e5dbc9] bg-background/80 p-4">
+                    <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+                      Joined
+                    </p>
+                    <p className="mt-2 text-[16px] font-semibold text-[#332e24]">
+                      {formatJoinDate(selectedUser.createdAt)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 space-y-3">
+                  <Button
+                    className="h-11 w-full rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90"
+                    onClick={() => {
+                      setCreditDialogUser(selectedUser);
+                      setCreditAmount("");
+                    }}
+                  >
+                    Adjust Credits
+                  </Button>
+                  <div className="rounded-[18px] border border-dashed border-[#d9d0c2] px-4 py-3 text-[12px] leading-5 text-muted-foreground">
+                    Credit edits happen instantly on staging. Admin accounts always retain unlimited
+                    access even if a numeric balance is set.
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex min-h-[320px] items-center justify-center rounded-[20px] border border-dashed border-[#d9d0c2] bg-background/70 p-6 text-center">
+                <div>
+                  <p className="text-[15px] font-medium text-[#332e24]">Select a user</p>
+                  <p className="mt-2 text-[13px] text-muted-foreground">
+                    Pick a row to inspect account details and adjust credits.
+                  </p>
+                </div>
+              </div>
+            )}
+          </aside>
+        </section>
       </main>
 
-      {/* Credits Dialog */}
       <Dialog
         open={!!creditDialogUser}
         onOpenChange={(open) => {
@@ -294,31 +456,35 @@ export default function Admin() {
           }
         }}
       >
-        <DialogContent>
+        <DialogContent className="border-[#dfd8cc] bg-[#fbf7ef]">
           <DialogHeader>
-            <DialogTitle>
-              Adjust Credits — {creditDialogUser?.email}
+            <DialogTitle className="text-[22px] font-black tracking-[-0.7px] text-[#332e24]">
+              Adjust credits
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 pt-2">
-            <p className="text-sm text-muted-foreground">
-              Current balance:{" "}
-              <span className="font-semibold text-foreground">
-                {creditDialogUser?.isAdmin ? "∞" : creditDialogUser?.credits}
-              </span>
-            </p>
+          <div className="space-y-5 pt-2">
+            <div className="rounded-[18px] border border-[#e5dbc9] bg-background/90 p-4">
+              <p className="text-[13px] font-medium text-[#332e24]">{creditDialogUser?.email}</p>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                Current balance:{" "}
+                <span className="font-semibold text-foreground">
+                  {creditDialogUser?.isAdmin ? "∞" : creditDialogUser?.credits}
+                </span>
+              </p>
+            </div>
 
             <Input
               type="number"
-              placeholder="Amount"
+              placeholder="Credit amount"
               value={creditAmount}
               onChange={(e) => setCreditAmount(e.target.value)}
+              className="h-12 rounded-2xl border-[#d8d0c5] bg-background"
             />
 
-            <div className="flex gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <Button
-                className="flex-1"
+                className="h-11 rounded-2xl"
                 onClick={() => handleCredits("add")}
                 disabled={!creditAmount || creditsMutation.isPending}
               >
@@ -329,40 +495,16 @@ export default function Admin() {
               </Button>
               <Button
                 variant="outline"
-                className="flex-1"
+                className="h-11 rounded-2xl border-[#d8d0c5] bg-background"
                 onClick={() => handleCredits("set")}
                 disabled={!creditAmount || creditsMutation.isPending}
               >
-                Set Credits
+                Set Balance
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  sub,
-  subColor,
-}: {
-  label: string;
-  value: number | string;
-  sub: string;
-  subColor: string;
-}) {
-  return (
-    <div className="rounded-[16px] border border-[#d9d8d3] bg-[#f5f3ee] p-5">
-      <p className="font-mono text-[9px] font-medium uppercase tracking-[1.5px] text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-2 text-[28px] font-extrabold leading-none text-[#3d3929]">
-        {value}
-      </p>
-      <p className={cn("mt-1 text-[10px]", subColor)}>{sub}</p>
     </div>
   );
 }
