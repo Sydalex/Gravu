@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { LogOut, Check, Zap, Pencil, Crown, CreditCard, Loader2, Plus } from 'lucide-react';
+import { LogOut, Check, Zap, Pencil, Crown, CreditCard, Loader2, Plus, Shield, ArrowRight } from 'lucide-react';
 import { PageWrapper } from '@/components/PageWrapper';
 import { useSession, signOut } from '@/lib/auth-client';
 import { api } from '@/lib/api';
@@ -336,6 +336,31 @@ const Account = () => {
                 </span>
               </div>
             </div>
+
+            {subscription?.isAdmin && (
+              <>
+                <div className="h-px bg-neutral-200" />
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="flex w-full items-center justify-between border border-orange-500/20 bg-orange-500/5 px-4 py-3 text-left transition-all hover:border-orange-500/35 hover:bg-orange-500/10"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-8 w-8 items-center justify-center border border-orange-500/20 bg-white">
+                      <Shield className="h-3.5 w-3.5 text-orange-500" />
+                    </span>
+                    <div>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-orange-600">
+                        Admin access
+                      </p>
+                      <p className="mt-0.5 font-mono text-[10px] text-neutral-500">
+                        Open the operator workspace
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-3.5 w-3.5 text-orange-500" />
+                </button>
+              </>
+            )}
           </motion.div>
 
           {/* Subscription Card */}
