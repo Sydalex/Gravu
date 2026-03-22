@@ -20,51 +20,50 @@ export function NavBar() {
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="fixed top-0 left-0 right-0 z-50 h-[52px] bg-background/80 backdrop-blur-xl border-b border-border/50 flex items-center px-4 md:px-6"
+      className="fixed top-0 left-0 right-0 z-50 h-14 bg-[#f8f8f6]/80 backdrop-blur-xl flex items-center justify-between px-6 md:px-10"
     >
-      {/* Wordmark */}
-      <Link
-        to="/"
-        className="mr-auto font-syne tracking-tight text-foreground hover:text-accent transition-colors text-2xl font-bold text-chart-3"
-        style={{ fontFamily: "'Syne', sans-serif" }}
-      >
-        Gravu
+      {/* Two-dot logo */}
+      <Link to="/" className="flex items-center gap-3">
+        <div className="flex items-center gap-1">
+          <div className="h-2 w-2 rounded-full bg-neutral-900" />
+          <div className="h-2 w-2 rounded-full bg-orange-500" />
+        </div>
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500">
+          Gravu
+        </span>
       </Link>
 
       {/* Nav links */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-6">
         <Link
           to="/library"
           className={cn(
-            'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+            'font-mono text-[10px] uppercase tracking-[0.15em] transition-colors',
             isActive('/library')
-              ? 'text-accent bg-accent/10'
-              : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+              ? 'text-neutral-900'
+              : 'text-neutral-400 hover:text-neutral-700'
           )}
         >
-          <BookOpen className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Library</span>
+          Library
         </Link>
 
         <Link
           to="/account"
           className={cn(
-            'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+            'font-mono text-[10px] uppercase tracking-[0.15em] transition-colors',
             isActive('/account')
-              ? 'text-accent bg-accent/10'
-              : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+              ? 'text-neutral-900'
+              : 'text-neutral-400 hover:text-neutral-700'
           )}
         >
-          <User className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Account</span>
+          Account
         </Link>
 
         <button
           onClick={handleSignOut}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400 hover:text-neutral-700 transition-colors"
         >
-          <LogOut className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Sign out</span>
+          Sign out
         </button>
       </div>
     </motion.nav>

@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { Sparkles, Loader2, Users, User } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageWrapper } from '@/components/PageWrapper';
 import { SubjectList } from '@/components/SubjectList';
@@ -64,7 +63,6 @@ const Selection = () => {
     navigate('/processing');
   };
 
-  // Redirect guards
   useEffect(() => {
     if (!flowType || flowType !== 'full' || !imageUri) {
       navigate('/', { replace: true });
@@ -78,31 +76,35 @@ const Selection = () => {
   }
 
   return (
-    <PageWrapper className="px-4 pt-[72px] pb-8 md:pt-[80px] md:pb-12">
+    <PageWrapper className="px-6 pt-20 pb-12">
       <div className="mx-auto max-w-5xl">
+        {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="mb-6 space-y-1"
+          transition={{ duration: 0.6 }}
+          className="mb-10"
         >
-          <h1 className="text-2xl font-bold text-foreground">
-            Detect Subjects
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            AI will identify objects in your photo for individual processing
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-400 mb-3">
+            02 — Detect Subjects
           </p>
+          <h1
+            className="text-4xl md:text-5xl font-light uppercase tracking-[-0.02em] leading-[1.1] text-neutral-900"
+            style={{ fontFamily: 'system-ui, sans-serif' }}
+          >
+            Select your subjects.
+          </h1>
         </motion.div>
 
-        <div className="flex flex-col gap-6 md:flex-row">
+        <div className="flex flex-col gap-8 lg:flex-row">
           {/* Left - Image Preview */}
           <motion.div
-            initial={{ opacity: 0, x: -16 }}
+            initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-            className="w-full md:w-1/2"
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="w-full lg:w-1/2"
           >
-            <div className="overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="overflow-hidden border border-neutral-200 bg-white">
               <img
                 src={imageUri}
                 alt="Uploaded"
@@ -113,56 +115,58 @@ const Selection = () => {
 
           {/* Right - Controls */}
           <motion.div
-            initial={{ opacity: 0, x: 16 }}
+            initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, delay: 0.15 }}
-            className="flex w-full flex-col gap-5 md:w-1/2"
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="flex w-full flex-col gap-6 lg:w-1/2"
           >
             {/* Description Input */}
-            <div className="space-y-2">
-              <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400 mb-2">
                 Description (optional)
               </p>
-              <Input
+              <input
                 placeholder="Describe what to extract..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="rounded-xl border-border bg-secondary"
+                className="w-full border-b border-neutral-300 bg-transparent py-3 font-mono text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-orange-500 focus:outline-none transition-colors"
               />
             </div>
 
             {/* Detect Button */}
-            <Button
+            <button
               onClick={() => detectMutation.mutate()}
               disabled={detectMutation.isPending}
-              className="min-h-[44px] rounded-xl bg-accent text-accent-foreground hover:bg-accent/90"
+              className="flex items-center justify-center gap-3 border border-neutral-900 bg-neutral-900 px-6 py-4 text-white transition-all hover:bg-neutral-800 disabled:opacity-50"
             >
               {detectMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="font-mono text-xs uppercase tracking-[0.15em]">Analyzing...</span>
+                </>
               ) : (
-                <Sparkles className="mr-2 h-4 w-4" />
+                <span className="font-mono text-xs uppercase tracking-[0.15em]">Detect Subjects</span>
               )}
-              {detectMutation.isPending ? 'Analyzing...' : 'Detect Subjects'}
-            </Button>
+            </button>
 
             {/* Error State */}
-            {detectMutation.isError ? (
+            {detectMutation.isError && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                className="border border-red-200 bg-red-50 px-4 py-3 font-mono text-xs text-red-600"
               >
                 {detectMutation.error?.message ?? 'Failed to detect subjects. Please try again.'}
               </motion.div>
-            ) : null}
+            )}
 
             {/* Detected Subjects */}
-            {detectedSubjects ? (
+            {detectedSubjects && (
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="space-y-5"
+                className="space-y-6"
               >
                 <SubjectList
                   subjects={detectedSubjects}
@@ -179,11 +183,12 @@ const Selection = () => {
                   onCustomChange={setCustomViewDescription}
                 />
 
-                <div className="space-y-2">
-                  <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                {/* Simplification */}
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400 mb-3">
                     Simplification
                   </p>
-                  <div className="inline-flex rounded-xl border border-white/8 bg-card p-1">
+                  <div className="flex gap-2">
                     {simplificationOptions.map((option) => {
                       const active = simplificationLevel === option.value;
                       return (
@@ -191,10 +196,10 @@ const Selection = () => {
                           key={option.value}
                           type="button"
                           onClick={() => setSimplificationLevel(option.value)}
-                          className={`min-w-[72px] rounded-lg px-3 py-2 text-sm transition-colors ${
+                          className={`flex-1 border px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] transition-all ${
                             active
-                              ? 'bg-accent text-accent-foreground'
-                              : 'text-muted-foreground hover:text-foreground'
+                              ? 'border-orange-500 bg-orange-500/10 text-orange-600'
+                              : 'border-neutral-300 text-neutral-500 hover:border-neutral-400'
                           }`}
                         >
                           {option.label}
@@ -205,29 +210,26 @@ const Selection = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-col gap-2 pt-2 sm:flex-row">
-                  <Button
+                <div className="flex flex-col gap-3 pt-4 border-t border-neutral-200">
+                  <button
                     onClick={() => handleProcess('keep_together')}
                     disabled={selectedCount === 0}
-                    className="min-h-[44px] flex-1 rounded-xl"
+                    className="flex items-center justify-center gap-3 border border-neutral-300 bg-transparent px-6 py-4 text-neutral-900 transition-all hover:border-neutral-400 disabled:opacity-50"
                   >
-                    <User className="mr-2 h-4 w-4" />
-                    Process Combined
-                  </Button>
-                  <Button
+                    <span className="font-mono text-xs uppercase tracking-[0.15em]">Process Combined</span>
+                  </button>
+                  <button
                     onClick={() => handleProcess('extract_all')}
                     disabled={selectedCount === 0}
-                    className="min-h-[44px] flex-1 rounded-xl bg-accent text-accent-foreground hover:bg-accent/90"
+                    className="flex items-center justify-center gap-3 border border-orange-500 bg-orange-500 px-6 py-4 text-white transition-all hover:bg-orange-600 disabled:opacity-50"
                   >
-                    <Users className="mr-2 h-4 w-4" />
-                    Process Separately
-                    <span className="ml-1 font-mono text-xs opacity-70">
-                      ({selectedCount})
+                    <span className="font-mono text-xs uppercase tracking-[0.15em]">
+                      Process Separately ({selectedCount})
                     </span>
-                  </Button>
+                  </button>
                 </div>
               </motion.div>
-            ) : null}
+            )}
           </motion.div>
         </div>
       </div>

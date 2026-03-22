@@ -20,37 +20,15 @@ export function PageWrapper({ children, className = '' }: PageWrapperProps) {
       animate="animate"
       exit="exit"
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className={`relative min-h-screen bg-background overflow-hidden ${className}`}
+      className={`relative min-h-screen bg-[#f8f8f6] overflow-hidden ${className}`}
     >
-      {/* Atmospheric gradient background */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {/* Top-left radial accent */}
-        <div
-          className="absolute -top-48 -left-48 h-[600px] w-[600px] rounded-full animate-glow-pulse"
-          style={{
-            background:
-              'radial-gradient(circle, hsl(160 84% 39% / 0.05) 0%, transparent 70%)',
-          }}
-        />
-        {/* Bottom-right radial accent */}
-        <div
-          className="absolute -bottom-64 -right-64 h-[700px] w-[700px] rounded-full animate-glow-pulse"
-          style={{
-            background:
-              'radial-gradient(circle, hsl(160 84% 39% / 0.03) 0%, transparent 70%)',
-            animationDelay: '1.5s',
-          }}
-        />
-        {/* Subtle grid pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.02]"
-          style={{
-            backgroundImage:
-              'linear-gradient(hsl(0 0% 100%) 1px, transparent 1px), linear-gradient(90deg, hsl(0 0% 100%) 1px, transparent 1px)',
-            backgroundSize: '60px 60px',
-          }}
-        />
-      </div>
+      {/* Warm gradient blob - top right */}
+      <div
+        className="pointer-events-none absolute -top-32 -right-32 h-[500px] w-[500px] rounded-full opacity-40 blur-3xl"
+        style={{
+          background: 'radial-gradient(circle, #f97316 0%, #fbbf24 50%, transparent 70%)',
+        }}
+      />
 
       {/* Content */}
       <div className="relative z-10">{children}</div>

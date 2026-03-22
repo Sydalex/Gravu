@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Layers, Pen, Trash2, ArrowRight, Calendar } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Layers, Pen, Trash2, ArrowRight } from 'lucide-react';
 import { PageWrapper } from '@/components/PageWrapper';
 import { api } from '@/lib/api';
 import type { ConversionSummary } from '../../../backend/src/types';
@@ -18,18 +17,18 @@ function formatDate(dateStr: string) {
 
 function FlowTypeIcon({ flowType }: { flowType: string }) {
   if (flowType === 'full') {
-    return <Pen className="h-8 w-8 text-muted-foreground/40" />;
+    return <Pen className="h-6 w-6 text-neutral-300" />;
   }
-  return <Layers className="h-8 w-8 text-muted-foreground/40" />;
+  return <Layers className="h-6 w-6 text-neutral-300" />;
 }
 
 function SkeletonCard() {
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden animate-pulse">
-      <div className="aspect-square bg-secondary" />
+    <div className="border border-neutral-200 bg-white overflow-hidden animate-pulse">
+      <div className="aspect-square bg-neutral-100" />
       <div className="p-3 space-y-2">
-        <div className="h-3 bg-secondary rounded w-2/3" />
-        <div className="h-3 bg-secondary rounded w-1/3" />
+        <div className="h-3 bg-neutral-100 w-2/3" />
+        <div className="h-3 bg-neutral-100 w-1/3" />
       </div>
     </div>
   );
@@ -38,14 +37,12 @@ function SkeletonCard() {
 const containerVariants = {
   hidden: {},
   show: {
-    transition: {
-      staggerChildren: 0.06,
-    },
+    transition: { staggerChildren: 0.06 },
   },
 };
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.97 },
+  hidden: { opacity: 0, y: 16, scale: 0.98 },
   show: { opacity: 1, y: 0, scale: 1 },
 };
 
@@ -81,40 +78,38 @@ const Library = () => {
   const list = conversions ?? [];
 
   return (
-    <PageWrapper className="pt-[52px]">
-      <div className="mx-auto max-w-5xl px-4 py-8 md:py-12">
-        {/* Hero section */}
+    <PageWrapper className="pt-20">
+      <div className="mx-auto max-w-5xl px-6 py-8 md:py-12">
+        {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
+          transition={{ duration: 0.6 }}
+          className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
         >
-          <div className="space-y-1">
-            <div className="flex items-center gap-3">
-              <h1
-                className="text-display text-3xl md:text-4xl text-foreground"
-              >
-                Your Library
-              </h1>
-              {!isLoading && list.length > 0 && (
-                <span className="font-data rounded-full border border-border bg-secondary px-2.5 py-0.5 text-xs text-muted-foreground">
-                  {list.length}
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              All your past conversions in one place.
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-400 mb-3">
+              Your Work
             </p>
+            <h1
+              className="text-4xl md:text-5xl font-light uppercase tracking-[-0.02em] leading-[1.1] text-neutral-900"
+              style={{ fontFamily: 'system-ui, sans-serif' }}
+            >
+              Library.
+            </h1>
+            {!isLoading && list.length > 0 && (
+              <p className="mt-2 font-mono text-[10px] text-neutral-400">
+                {list.length} conversion{list.length !== 1 ? 's' : ''}
+              </p>
+            )}
           </div>
-          <Button
+          <button
             onClick={() => navigate('/')}
-            className="group relative min-h-[40px] overflow-hidden rounded-xl bg-accent px-5 text-sm font-semibold text-accent-foreground hover:bg-accent/90 self-start sm:self-auto"
+            className="group flex items-center gap-3 border border-neutral-900 bg-neutral-900 px-6 py-3 text-white transition-all hover:bg-neutral-800 self-start sm:self-auto"
           >
-            <span className="pointer-events-none absolute inset-0 translate-x-[-200%] skew-x-12 bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover:translate-x-[200%]" />
-            New Conversion
-            <ArrowRight className="ml-2 h-3.5 w-3.5" />
-          </Button>
+            <span className="font-mono text-xs uppercase tracking-[0.15em]">New Conversion</span>
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </button>
         </motion.div>
 
         {/* Loading skeletons */}
@@ -127,27 +122,26 @@ const Library = () => {
         ) : list.length === 0 ? (
           /* Empty state */
           <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
+            initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4 }}
-            className="flex flex-col items-center justify-center gap-5 rounded-2xl border border-border bg-card/50 py-20 text-center"
+            className="flex flex-col items-center justify-center gap-6 border border-neutral-200 bg-white py-20 text-center"
           >
-            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border bg-secondary">
-              <BookOpen className="h-7 w-7 text-muted-foreground/60" />
+            <div className="flex h-16 w-16 items-center justify-center border border-neutral-200">
+              <Layers className="h-6 w-6 text-neutral-300" />
             </div>
-            <div className="space-y-1">
-              <p className="text-base font-semibold text-foreground">No conversions yet</p>
-              <p className="text-sm text-muted-foreground">
+            <div className="space-y-2">
+              <p className="font-mono text-xs uppercase tracking-[0.1em] text-neutral-900">No conversions yet</p>
+              <p className="font-mono text-[10px] text-neutral-400">
                 Your completed conversions will appear here.
               </p>
             </div>
-            <Button
+            <button
               onClick={() => navigate('/')}
-              className="group relative min-h-[40px] overflow-hidden rounded-xl bg-accent px-5 text-sm font-semibold text-accent-foreground hover:bg-accent/90"
+              className="flex items-center gap-3 border border-orange-500 bg-orange-500 px-6 py-3 text-white transition-all hover:bg-orange-600"
             >
-              <span className="pointer-events-none absolute inset-0 translate-x-[-200%] skew-x-12 bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover:translate-x-[200%]" />
-              Start Converting
-            </Button>
+              <span className="font-mono text-xs uppercase tracking-[0.15em]">Start Converting</span>
+            </button>
           </motion.div>
         ) : (
           /* Conversion grid */
@@ -165,10 +159,10 @@ const Library = () => {
                   transition={{ duration: 0.3, ease: 'easeOut' }}
                   layout
                   onClick={() => navigate(`/library/${item.id}`)}
-                  className="group relative cursor-pointer rounded-xl border border-border bg-card overflow-hidden transition-all duration-200 hover:border-accent/30 hover:shadow-[0_4px_24px_hsl(160_84%_39%_/_0.1)] hover:scale-[1.02]"
+                  className="group relative cursor-pointer border border-neutral-200 bg-white overflow-hidden transition-all hover:border-orange-500/50 hover:shadow-lg"
                 >
                   {/* Thumbnail */}
-                  <div className="aspect-square overflow-hidden bg-secondary flex items-center justify-center relative">
+                  <div className="aspect-square overflow-hidden bg-neutral-50 flex items-center justify-center relative">
                     {item.thumbnailBase64 ? (
                       <img
                         src={`data:image/png;base64,${item.thumbnailBase64}`}
@@ -185,26 +179,23 @@ const Library = () => {
                       <FlowTypeIcon flowType={item.flowType} />
                     )}
                     {/* Flow type badge */}
-                    <span className="absolute top-2 left-2 font-data rounded-md bg-background/70 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-muted-foreground border border-border/50">
+                    <span className="absolute top-2 left-2 font-mono bg-white/90 backdrop-blur-sm px-2 py-1 text-[9px] uppercase tracking-[0.1em] text-neutral-500 border border-neutral-200">
                       {item.flowType === 'full' ? 'Linework' : 'Vectorize'}
                     </span>
                   </div>
 
                   {/* Info bar */}
-                  <div className="px-3 py-2.5 flex items-center justify-between gap-2">
+                  <div className="px-3 py-3 flex items-center justify-between gap-2 border-t border-neutral-100">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium text-foreground">
+                      <p className="truncate font-mono text-xs text-neutral-900">
                         {item.name ?? 'Untitled'}
                       </p>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <Calendar className="h-2.5 w-2.5 text-muted-foreground/60 flex-shrink-0" />
-                        <span className="font-data text-[10px] text-muted-foreground">
-                          {formatDate(item.createdAt)}
-                        </span>
-                      </div>
+                      <span className="font-mono text-[9px] text-neutral-400">
+                        {formatDate(item.createdAt)}
+                      </span>
                     </div>
-                    <span className="font-data flex-shrink-0 rounded-full border border-border/60 bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                      {item.assets.length} {item.assets.length === 1 ? 'asset' : 'assets'}
+                    <span className="font-mono flex-shrink-0 text-[9px] text-neutral-400">
+                      {item.assets.length} asset{item.assets.length !== 1 ? 's' : ''}
                     </span>
                   </div>
 
@@ -212,7 +203,7 @@ const Library = () => {
                   <button
                     onClick={(e) => handleDelete(e, item.id)}
                     disabled={deletingId === item.id}
-                    className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-lg bg-background/70 backdrop-blur-sm border border-border/50 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive hover:border-destructive/30"
+                    className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center bg-white/90 backdrop-blur-sm border border-neutral-200 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500 hover:border-red-200"
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>

@@ -1,8 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, PenTool, FileCode, FileType, FileImage } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { FlowCard } from '@/components/FlowCard';
-import { Footer } from '@/components/Footer';
 import { useImageStore } from '@/lib/store';
 
 const Index = () => {
@@ -17,118 +14,98 @@ const Index = () => {
   };
 
   return (
-    <div className="relative min-h-screen bg-background overflow-hidden flex flex-col items-center justify-center px-4 py-16">
-      {/* Subtle grid pattern */}
+    <div className="relative min-h-screen bg-[#f8f8f6] overflow-hidden">
+      {/* Warm gradient blob */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.018]"
+        className="pointer-events-none absolute -top-32 -right-32 h-[500px] w-[500px] rounded-full opacity-40 blur-3xl"
         style={{
-          backgroundImage:
-            'linear-gradient(hsl(0 0% 100%) 1px, transparent 1px), linear-gradient(90deg, hsl(0 0% 100%) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
+          background: 'radial-gradient(circle, #f97316 0%, #fbbf24 50%, transparent 70%)',
         }}
       />
 
-      <div className="relative z-10 w-full max-w-3xl">
-        {/* Hero section */}
-        <div className="text-center mt-5 mb-10">
-          {/* Pill badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
-            className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-1.5"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-glow-pulse" />
-            <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-              CAD Vectorization &middot; AI-Powered
-            </span>
-          </motion.div>
-
-          {/* Giant headline */}
-          <motion.h1
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="text-display mb-4 text-5xl font-extrabold tracking-tight text-foreground md:text-6xl lg:text-7xl"
-          >
-            Photo to{' '}
-            <span className="text-primary">Vector.</span>
-          </motion.h1>
-
-          {/* Subheadline */}
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="mx-auto max-w-lg text-base leading-relaxed text-muted-foreground md:text-lg"
-          >
-            Upload any photograph. Extract subjects. Export precision CAD files.
-          </motion.p>
-
-          {/* Thin divider */}
-          <motion.div
-            initial={{ opacity: 0, scaleX: 0 }}
-            animate={{ opacity: 1, scaleX: 1 }}
-            transition={{ duration: 0.6, delay: 0.35 }}
-            className="mx-auto mt-8 h-px w-24 bg-gradient-to-r from-transparent via-border to-transparent"
-          />
-        </div>
-
-        {/* Flow Cards */}
+      {/* Main content */}
+      <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6">
+        {/* Large editorial headline */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, delay: 0.3 }}
-          className="grid gap-4 md:grid-cols-2"
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center"
         >
-          <FlowCard
-            title="Photo to Vector"
-            description="AI detects subjects, converts to architectural linework, and exports as vector files."
-            icon={Sparkles}
-            steps={[{ label: 'Photo' }, { label: 'AI' }, { label: 'Vector' }]}
-            delay={0.35}
-            cardNumber="01"
-            onClick={() => handleFlow('full')}
-          />
-          <FlowCard
-            title="Vectorize Linework"
-            description="Already have a line drawing? Convert it directly to SVG or DXF format."
-            icon={PenTool}
-            steps={[{ label: 'Drawing' }, { label: 'Vector' }]}
-            delay={0.45}
-            cardNumber="02"
-            onClick={() => handleFlow('vectorize_only')}
-          />
+          <h1
+            className="text-[12vw] md:text-[10vw] lg:text-[8vw] font-light uppercase tracking-[-0.02em] leading-[0.85] text-neutral-900"
+            style={{ fontFamily: 'system-ui, sans-serif' }}
+          >
+            Photo to
+            <br />
+            <span className="text-orange-500">Vector.</span>
+          </h1>
         </motion.div>
 
-        {/* Supported exports strip */}
+        {/* Subtitle */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3, duration: 0.6 }}
+          className="mt-8 max-w-md text-center font-mono text-xs uppercase tracking-[0.15em] text-neutral-500"
+        >
+          Upload any photograph. Extract subjects. Export precision CAD files.
+        </motion.p>
+
+        {/* Horizontal rule */}
+        <motion.div
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ delay: 0.5, duration: 0.6 }}
+          className="mt-12 h-px w-24 bg-neutral-300"
+        />
+
+        {/* Flow selection */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.6 }}
+          className="mt-12 flex flex-col gap-4 sm:flex-row sm:gap-6"
+        >
+          {/* Photo to Vector */}
+          <button
+            onClick={() => handleFlow('full')}
+            className="group relative flex flex-col items-center gap-3 rounded-none border border-neutral-300 bg-transparent px-10 py-8 transition-all hover:border-orange-500 hover:bg-orange-500/5"
+          >
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-400">01</span>
+            <span className="text-sm font-medium uppercase tracking-[0.1em] text-neutral-900">Photo to Vector</span>
+            <span className="max-w-[180px] text-center font-mono text-[10px] text-neutral-500">
+              AI detects subjects, converts to architectural linework
+            </span>
+          </button>
+
+          {/* Vectorize Linework */}
+          <button
+            onClick={() => handleFlow('vectorize_only')}
+            className="group relative flex flex-col items-center gap-3 rounded-none border border-neutral-300 bg-transparent px-10 py-8 transition-all hover:border-orange-500 hover:bg-orange-500/5"
+          >
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-400">02</span>
+            <span className="text-sm font-medium uppercase tracking-[0.1em] text-neutral-900">Vectorize Linework</span>
+            <span className="max-w-[180px] text-center font-mono text-[10px] text-neutral-500">
+              Convert line drawings directly to SVG or DXF
+            </span>
+          </button>
+        </motion.div>
+
+        {/* Bottom formats strip */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.65, duration: 0.5 }}
-          className="mt-10 flex items-center justify-center gap-5"
+          transition={{ delay: 0.8, duration: 0.6 }}
+          className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-6"
         >
-          <div className="h-px flex-1 bg-border/40" />
-          <div className="flex items-center gap-5">
-            <div className="flex items-center gap-2 text-muted-foreground/60">
-              <FileCode className="h-3.5 w-3.5" />
-              <span className="font-mono text-xs tracking-wider">SVG</span>
-            </div>
-            <span className="font-mono text-[10px] text-muted-foreground/30">·</span>
-            <div className="flex items-center gap-2 text-muted-foreground/60">
-              <FileType className="h-3.5 w-3.5" />
-              <span className="font-mono text-xs tracking-wider">DXF</span>
-            </div>
-            <span className="font-mono text-[10px] text-muted-foreground/30">·</span>
-            <div className="flex items-center gap-2 text-muted-foreground/60">
-              <FileImage className="h-3.5 w-3.5" />
-              <span className="font-mono text-xs tracking-wider">PNG</span>
-            </div>
-          </div>
-          <div className="h-px flex-1 bg-border/40" />
+          <div className="h-px w-16 bg-neutral-200" />
+          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-neutral-400">
+            SVG · DXF · PNG
+          </span>
+          <div className="h-px w-16 bg-neutral-200" />
         </motion.div>
       </div>
-      <Footer />
     </div>
   );
 };

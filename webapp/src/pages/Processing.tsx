@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
 import { useImageStore } from '@/lib/store';
 import { api, ApiError } from '@/lib/api';
 import type { CreateConversionResponse } from '../../../backend/src/types';
@@ -45,14 +43,12 @@ const Processing = () => {
 
   const imageBase64 = imageUri?.split(',')[1] ?? '';
 
-  // Redirect guard
   useEffect(() => {
     if (!flowType || !imageUri) {
       navigate('/', { replace: true });
     }
   }, [flowType, imageUri, navigate]);
 
-  // Main processing effect
   useEffect(() => {
     if (!flowType || !imageUri || startedRef.current) return;
     startedRef.current = true;
@@ -61,27 +57,22 @@ const Processing = () => {
       setStatus('analyzing');
       setProgress(15);
 
-      const selectedSubjects =
-        detectedSubjects?.filter((s) => s.selected) ?? [];
+      const selectedSubjects = detectedSubjects?.filter((s) => s.selected) ?? [];
       const selectedIds = selectedSubjects.map((s) => s.id);
       const allSubjects = (detectedSubjects ?? []).map(({ id, description }) => ({ id, description }));
 
       setStatus('generating');
       setProgress(30);
 
-      const result = await api.post<LineworkResult>(
-        '/api/ai/generate-linework',
-        {
-          imageBase64,
-          subjects: allSubjects,
-          selectedSubjects: selectedIds,
-          processingMode,
-          outputMode: 'vectorworks_centerline',
-          viewAngle,
-          customViewDescription:
-            viewAngle === 'custom' ? customViewDescription : undefined,
-        }
-      );
+      const result = await api.post<LineworkResult>('/api/ai/generate-linework', {
+        imageBase64,
+        subjects: allSubjects,
+        selectedSubjects: selectedIds,
+        processingMode,
+        outputMode: 'vectorworks_centerline',
+        viewAngle,
+        customViewDescription: viewAngle === 'custom' ? customViewDescription : undefined,
+      });
 
       setProgress(85);
       setStatus('complete');
@@ -132,21 +123,14 @@ const Processing = () => {
         throw new Error(errJson?.error?.message ?? 'Upload failed');
       }
 
-      const uploadData = (await uploadRes.json()) as {
-        data: TraceUploadResult;
-      };
+      const uploadData = (await uploadRes.json()) as { data: TraceUploadResult };
       const uploadedBase64 = uploadData.data.imageBase64;
 
-      // Step 1: AI vectorization → DXF
       setStatus('vectorizing');
       setProgress(30);
 
-      const imageBytes = Uint8Array.from(atob(uploadedBase64), (c) =>
-        c.charCodeAt(0)
-      );
-      const imageBlob = new File([imageBytes], 'image.png', {
-        type: 'image/png',
-      });
+      const imageBytes = Uint8Array.from(atob(uploadedBase64), (c) => c.charCodeAt(0));
+      const imageBlob = new File([imageBytes], 'image.png', { type: 'image/png' });
 
       const vectorForm = new FormData();
       vectorForm.append('image', imageBlob);
@@ -159,24 +143,16 @@ const Processing = () => {
 
       if (!vectorRes.ok) {
         const errJson = await vectorRes.json().catch(() => null);
-        throw new Error(
-          errJson?.error?.message ?? 'Vectorization failed'
-        );
+        throw new Error(errJson?.error?.message ?? 'Vectorization failed');
       }
 
-      const vectorData = (await vectorRes.json()) as {
-        data: { dxf: string };
-      };
+      const vectorData = (await vectorRes.json()) as { data: { dxf: string } };
       const dxfContent = vectorData.data.dxf;
 
-      // Step 2: Convert DXF → SVG for display
       setStatus('converting');
       setProgress(70);
 
-      const { svg: svgContent } = await api.post<{ svg: string }>(
-        '/api/convert/dxf-to-svg',
-        { dxf: dxfContent }
-      );
+      const { svg: svgContent } = await api.post<{ svg: string }>('/api/convert/dxf-to-svg', { dxf: dxfContent });
 
       setProgress(95);
       setStatus('complete');
@@ -184,7 +160,6 @@ const Processing = () => {
 
       setCachedDxf(0, dxfContent);
       setCachedSvg(0, svgContent);
-      // Pass the uploaded PNG base64 so the original image shows on the Result page
       setResultImages([{ subjectId: 0, imageBase64: uploadedBase64 }]);
 
       const store = useImageStore.getState();
@@ -227,7 +202,6 @@ const Processing = () => {
     };
 
     run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flowType, imageUri]);
 
   const handleRetry = () => {
@@ -243,118 +217,67 @@ const Processing = () => {
   }
 
   return (
-    <div className="relative min-h-screen bg-background overflow-hidden flex flex-col items-center justify-center">
-      {/* Subtle drifting particle dots */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {Array.from({ length: 12 }).map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute h-0.5 w-0.5 rounded-full bg-accent/20"
-            style={{
-              left: `${10 + (i * 7.5) % 85}%`,
-              top: `${15 + (i * 11) % 70}%`,
-            }}
-            animate={{
-              y: [0, -30, 0],
-              opacity: [0.2, 0.6, 0.2],
-            }}
-            transition={{
-              duration: 4 + (i % 3),
-              repeat: Infinity,
-              delay: i * 0.4,
-              ease: 'easeInOut',
-            }}
-          />
-        ))}
-      </div>
+    <div className="relative min-h-screen bg-[#f8f8f6] overflow-hidden flex flex-col items-center justify-center">
+      {/* Warm gradient blob */}
+      <div
+        className="pointer-events-none absolute -top-32 -right-32 h-[500px] w-[500px] rounded-full opacity-40 blur-3xl"
+        style={{
+          background: 'radial-gradient(circle, #f97316 0%, #fbbf24 50%, transparent 70%)',
+        }}
+      />
 
-      {/* Thin bottom progress bar */}
-      {!error ? (
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-border/40">
+      {/* Progress bar at bottom */}
+      {!error && (
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-neutral-200">
           <motion.div
-            className="h-full bg-accent shadow-[0_0_8px_hsl(160_84%_39%_/_0.6)]"
+            className="h-full bg-orange-500"
             style={{ width: `${progress}%` }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
           />
         </div>
-      ) : null}
+      )}
 
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="relative z-10 flex flex-col items-center gap-10 px-8 text-center"
+        className="relative z-10 flex flex-col items-center gap-12 px-8 text-center"
       >
         {error ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center gap-6"
+            className="flex flex-col items-center gap-8"
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-destructive/20 bg-destructive/10">
-              <AlertTriangle className="h-9 w-9 text-destructive" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-xl font-semibold tracking-tight text-foreground">
-                Processing Failed
-              </h2>
-              <p className="max-w-xs text-sm text-muted-foreground">{error}</p>
-            </div>
-            <Button
-              onClick={handleRetry}
-              className="group relative min-h-[44px] overflow-hidden rounded-xl bg-accent px-6 text-accent-foreground font-semibold hover:bg-accent/90 hover:shadow-[0_0_24px_hsl(160_84%_39%_/_0.3)]"
+            <h2
+              className="text-3xl font-light uppercase tracking-[-0.02em] text-neutral-900"
+              style={{ fontFamily: 'system-ui, sans-serif' }}
             >
-              <span className="pointer-events-none absolute inset-0 translate-x-[-200%] skew-x-12 bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover:translate-x-[200%]" />
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Try Again
-            </Button>
+              Processing failed.
+            </h2>
+            <p className="max-w-xs font-mono text-xs text-neutral-500">{error}</p>
+            <button
+              onClick={handleRetry}
+              className="flex items-center justify-center gap-3 border border-neutral-900 bg-neutral-900 px-8 py-4 text-white transition-all hover:bg-neutral-800"
+            >
+              <span className="font-mono text-xs uppercase tracking-[0.15em]">Try Again</span>
+            </button>
           </motion.div>
         ) : (
           <>
-            {/* Concentric rotating rings */}
-            <div className="relative flex h-28 w-28 items-center justify-center">
-              {/* Outer ring — slowest */}
+            {/* Minimal spinning indicator */}
+            <div className="relative flex h-20 w-20 items-center justify-center">
               <motion.div
-                className="absolute inset-0 rounded-full border border-accent/20"
+                className="absolute inset-0 rounded-full border border-neutral-200"
+                style={{ borderTopColor: '#f97316' }}
                 animate={{ rotate: 360 }}
-                transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-                style={{
-                  borderTopColor: 'hsl(160 84% 39% / 0.6)',
-                  borderRightColor: 'transparent',
-                  borderBottomColor: 'transparent',
-                  borderLeftColor: 'transparent',
-                }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
               />
-              {/* Mid ring — medium */}
-              <motion.div
-                className="absolute inset-3 rounded-full border border-accent/15"
-                animate={{ rotate: -360 }}
-                transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
-                style={{
-                  borderTopColor: 'transparent',
-                  borderRightColor: 'hsl(160 84% 39% / 0.5)',
-                  borderBottomColor: 'transparent',
-                  borderLeftColor: 'transparent',
-                }}
-              />
-              {/* Inner ring — fastest */}
-              <motion.div
-                className="absolute inset-6 rounded-full border border-accent/10"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
-                style={{
-                  borderTopColor: 'hsl(160 84% 39% / 0.8)',
-                  borderRightColor: 'transparent',
-                  borderBottomColor: 'transparent',
-                  borderLeftColor: 'transparent',
-                }}
-              />
-              {/* Center dot */}
-              <div className="h-2 w-2 rounded-full bg-accent shadow-[0_0_8px_hsl(160_84%_39%_/_0.8)] animate-glow-pulse" />
+              <div className="h-2 w-2 rounded-full bg-orange-500" />
             </div>
 
-            {/* Animated status text — slides up on change */}
-            <div className="flex flex-col items-center gap-3">
+            {/* Status text */}
+            <div className="flex flex-col items-center gap-4">
               <AnimatePresence mode="wait">
                 <motion.p
                   key={status}
@@ -362,19 +285,15 @@ const Processing = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
                   transition={{ duration: 0.3, ease: 'easeOut' }}
-                  className="font-mono text-sm tracking-wide text-muted-foreground"
+                  className="font-mono text-xs uppercase tracking-[0.15em] text-neutral-500"
                 >
                   {statusMessages[status] ?? 'Processing...'}
                 </motion.p>
               </AnimatePresence>
 
-              {/* Progress percentage */}
-              <motion.span
-                className="font-mono text-xs text-muted-foreground/50"
-                key={`pct-${Math.round(progress)}`}
-              >
+              <span className="font-mono text-[10px] text-neutral-400">
                 {Math.round(progress)}%
-              </motion.span>
+              </span>
             </div>
           </>
         )}
