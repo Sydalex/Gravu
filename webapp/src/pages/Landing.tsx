@@ -15,14 +15,17 @@ const Landing = () => {
 
       {/* Navigation */}
       <header className="relative z-20 flex items-center justify-between px-6 py-6 md:px-12 md:py-8">
-        {/* Logo - two dots */}
+        {/* Logo - two dots with text */}
         <motion.div 
           initial={{ opacity: 0 }} 
           animate={{ opacity: 1 }} 
-          className="flex items-center gap-1.5"
+          className="flex items-center gap-2"
         >
-          <span className="h-2 w-2 rounded-full bg-foreground" />
-          <span className="h-2 w-2 rounded-full bg-foreground" />
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-foreground" />
+            <span className="h-2 w-2 rounded-full bg-foreground" />
+          </div>
+          <span className="font-light uppercase tracking-[0.15em] text-sm text-foreground">Gravu</span>
         </motion.div>
 
         {/* Nav items */}
@@ -58,7 +61,7 @@ const Landing = () => {
             transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
             className="text-[clamp(3rem,12vw,6rem)] font-light leading-[0.95] tracking-tight text-foreground uppercase"
           >
-            Photos
+            <span>Photos</span>
             <br />
             become
             <br />

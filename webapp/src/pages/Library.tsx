@@ -95,7 +95,7 @@ const Library = () => {
               className="text-4xl md:text-5xl font-light uppercase tracking-[-0.02em] leading-[1.1] text-neutral-900"
               style={{ fontFamily: 'system-ui, sans-serif' }}
             >
-              Library.
+              <span data-bird-perch="library">Library.</span>
             </h1>
             {!isLoading && list.length > 0 && (
               <p className="mt-2 font-mono text-[10px] text-neutral-400">

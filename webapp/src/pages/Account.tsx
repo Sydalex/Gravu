@@ -268,7 +268,7 @@ const Account = () => {
             className="text-4xl md:text-5xl font-light uppercase tracking-[-0.02em] leading-[1.1] text-neutral-900"
             style={{ fontFamily: 'system-ui, sans-serif' }}
           >
-            Account.
+            <span data-bird-perch="account">Account.</span>
           </h1>
         </motion.div>
 

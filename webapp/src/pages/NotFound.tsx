@@ -1,5 +1,7 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
+import { motion } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
 
 const NotFound = () => {
   const location = useLocation();
@@ -9,14 +11,48 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">404</h1>
-        <p className="mb-4 text-xl text-muted-foreground">Oops! Page not found</p>
-        <a href="/" className="text-primary underline hover:text-primary/90">
-          Return to Home
-        </a>
-      </div>
+    <div className="relative flex min-h-screen items-center justify-center bg-[#f8f8f6] overflow-hidden">
+      {/* Bouncing orb placeholder - inherits from app context */}
+      <div
+        className="pointer-events-none absolute top-1/4 right-1/4 h-[500px] w-[500px] rounded-full opacity-30 blur-3xl"
+        style={{
+          background: 'radial-gradient(circle, #f97316 0%, #fbbf24 50%, transparent 70%)',
+        }}
+      />
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative z-10 text-center px-4"
+      >
+        {/* Large 404 */}
+        <h1 className="text-[120px] md:text-[180px] font-extralight tracking-tight text-foreground/10 leading-none">
+          404
+        </h1>
+        
+        {/* Message */}
+        <div className="mt-[-20px] md:mt-[-40px]">
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-4">
+            Page not found
+          </p>
+          <p className="text-sm text-muted-foreground max-w-[300px] mx-auto leading-relaxed">
+            The page you're looking for doesn't exist or has been moved.
+          </p>
+        </div>
+
+        {/* Back link */}
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 mt-8 font-mono text-xs uppercase tracking-[0.2em] text-foreground hover:text-primary transition-colors"
+        >
+          <ArrowLeft className="h-3 w-3" />
+          Return home
+        </Link>
+
+        {/* Decorative line */}
+        <div className="mt-12 mx-auto w-16 h-px bg-border" />
+      </motion.div>
     </div>
   );
 };

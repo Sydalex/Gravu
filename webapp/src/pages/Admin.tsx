@@ -522,6 +522,8 @@ export default function Admin() {
           : "This code will be available immediately in Stripe Checkout.";
 
   return (
+    <div className="min-h-screen bg-[#f8f8f6] pt-[52px]">
+      <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
     <div className="min-h-screen bg-background pt-[52px]">
       <main className="mx-auto flex w-full max-w-[1480px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
         <section className="overflow-hidden rounded-[28px] border border-[#e6ddcf] bg-gradient-to-br from-[#fbf7ef] via-[#f7f0e7] to-[#f4ece1]">

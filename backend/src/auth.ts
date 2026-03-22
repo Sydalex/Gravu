@@ -24,7 +24,7 @@ import { env } from "./env";
 //   async function sendOTPEmail(to: string, otp: string) {
 //     await transport.sendMail({
 //       from: env.SMTP_FROM ?? "noreply@example.com", to,
-//       subject: "Your AssetCreator login code",
+//       subject: "Your Gravu login code",
 //       text: `Your login code is: ${otp}\n\nThis code expires in 10 minutes.`,
 //     });
 //   }

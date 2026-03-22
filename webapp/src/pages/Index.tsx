@@ -36,7 +36,7 @@ const Index = () => {
             className="text-[12vw] md:text-[10vw] lg:text-[8vw] font-light uppercase tracking-[-0.02em] leading-[0.85] text-neutral-900"
             style={{ fontFamily: 'system-ui, sans-serif' }}
           >
-            Photo to
+            <span>Photo</span> to
             <br />
             <span className="text-orange-500">Vector.</span>
           </h1>
