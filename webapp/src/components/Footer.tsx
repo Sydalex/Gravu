@@ -2,9 +2,12 @@ import { Link } from 'react-router-dom';
 
 const footerLinks = [
   { label: 'Contact', href: 'mailto:info@asset-creator.com' },
-  { label: 'Distance Sales Agreement', href: '/policy/distance-sales' },
+  { label: 'Terms of Use', href: '/policy/terms' },
+  { label: 'Copyright & Illegal Content', href: '/policy/content' },
+  { label: 'Distance Sales & Consumer Info', href: '/policy/distance-sales' },
   { label: 'Refund & Cancellation', href: '/policy/refunds' },
   { label: 'Privacy Policy', href: '/policy/privacy' },
+  { label: 'Legal Notice', href: '/policy/legal-notice' },
 ];
 
 export const Footer = () => (
