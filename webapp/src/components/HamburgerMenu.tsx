@@ -3,20 +3,20 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from '@/lib/auth-client';
 
-const menuLinks = [
-  { label: 'Home', href: '/', auth: false },
-  { label: 'Upload', href: '/upload', auth: true },
-  { label: 'Library', href: '/library', auth: true },
-  { label: 'Account', href: '/account', auth: true },
-  { label: 'Refund Policy', href: '/policy', auth: false },
-  { label: 'Privacy Policy', href: '/privacy-policy', auth: false },
-];
-
 export function HamburgerMenu() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { data: session } = useSession();
+
+  const menuLinks = [
+    { label: 'Home', href: session?.user ? '/app' : '/', auth: false },
+    { label: 'Upload', href: '/upload', auth: true },
+    { label: 'Library', href: '/library', auth: true },
+    { label: 'Account', href: '/account', auth: true },
+    { label: 'Terms', href: '/policy/terms', auth: false },
+    { label: 'Privacy', href: '/policy/privacy', auth: false },
+  ];
 
   const handleSignOut = async () => {
     setOpen(false);
@@ -30,60 +30,44 @@ export function HamburgerMenu() {
 
   return (
     <>
-      {/* Trigger button — two horizontal lines */}
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? 'Close menu' : 'Open menu'}
-        className="group relative z-[60] flex flex-col items-end gap-[6px] p-2"
+        className="group relative z-[60] flex h-10 w-10 items-center justify-center rounded-full border border-neutral-300/80 bg-[#f8f8f6]/98 text-neutral-900 transition-colors hover:border-neutral-500"
       >
         <motion.span
-          animate={open ? { rotate: 45, y: 7, width: '20px' } : { rotate: 0, y: 0, width: '20px' }}
+          animate={open ? { rotate: 45, y: 0 } : { rotate: 0, y: -4 }}
           transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="block h-px bg-neutral-900 origin-center"
-          style={{ width: 20 }}
+          className="absolute block h-0.5 w-5 rounded-full bg-current"
         />
         <motion.span
-          animate={open ? { rotate: -45, y: -7, width: '20px' } : { rotate: 0, y: 0, width: '14px' }}
+          animate={open ? { rotate: -45, y: 0 } : { rotate: 0, y: 4 }}
           transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="block h-px bg-neutral-900 origin-center"
-          style={{ width: 14 }}
+          className="absolute block h-0.5 w-5 rounded-full bg-current"
         />
       </button>
 
-      {/* Overlay */}
       <AnimatePresence>
         {open && (
           <>
-            {/* Backdrop */}
             <motion.div
               key="backdrop"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="fixed inset-0 z-[55] bg-neutral-900/10 backdrop-blur-sm"
+              className="fixed inset-0 z-[55] bg-neutral-900/16"
               onClick={() => setOpen(false)}
             />
 
-            {/* Menu panel — slides in from right */}
             <motion.div
               key="panel"
               initial={{ x: '100%', opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: '100%', opacity: 0 }}
               transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
-              className="fixed top-0 right-0 bottom-0 z-50 flex w-full max-w-sm flex-col bg-[#f8f8f6]"
+              className="fixed top-0 right-0 bottom-0 z-50 flex w-full max-w-sm flex-col border-l border-neutral-200 bg-[#f8f8f6]"
             >
-              {/* Warm gradient blob inside menu */}
-              <div
-                className="pointer-events-none absolute top-0 right-0 h-64 w-64 opacity-50 blur-3xl"
-                style={{
-                  background:
-                    'radial-gradient(circle, hsl(30 80% 70% / 0.4) 0%, hsl(15 70% 60% / 0.2) 60%, transparent 100%)',
-                }}
-              />
-
-              {/* Top bar inside panel */}
               <div className="relative flex items-center justify-between px-8 pt-8 pb-6">
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-neutral-900" />
@@ -95,17 +79,15 @@ export function HamburgerMenu() {
                 <button
                   onClick={() => setOpen(false)}
                   aria-label="Close menu"
-                  className="flex flex-col items-end gap-[6px] p-2"
+                  className="relative flex h-10 w-10 items-center justify-center rounded-full border border-neutral-300/80 bg-[#f8f8f6] text-neutral-900 transition-colors hover:border-neutral-500"
                 >
-                  <span className="block h-px w-5 rotate-45 translate-y-[3.5px] bg-neutral-900" />
-                  <span className="block h-px w-5 -rotate-45 -translate-y-[3.5px] bg-neutral-900" />
+                  <span className="absolute block h-0.5 w-5 rotate-45 rounded-full bg-current" />
+                  <span className="absolute block h-0.5 w-5 -rotate-45 rounded-full bg-current" />
                 </button>
               </div>
 
-              {/* Divider */}
               <div className="mx-8 h-px bg-neutral-200" />
 
-              {/* Nav links */}
               <nav className="relative flex-1 flex flex-col justify-center px-8 gap-1">
                 {visibleLinks.map((link, i) => {
                   const isActive = location.pathname === link.href;
