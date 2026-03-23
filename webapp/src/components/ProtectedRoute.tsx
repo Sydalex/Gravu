@@ -3,21 +3,8 @@ import { useSession } from "@/lib/auth-client";
 import { Loader2 } from "lucide-react";
 import { NavBar } from "@/components/NavBar";
 
-// Design review mode - set to true to bypass auth
-const DESIGN_REVIEW_MODE = true;
-
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { data: session, isPending } = useSession();
-
-  // Allow all users in design review mode
-  if (DESIGN_REVIEW_MODE) {
-    return (
-      <>
-        <NavBar />
-        {children}
-      </>
-    );
-  }
 
   if (isPending) {
     return (
