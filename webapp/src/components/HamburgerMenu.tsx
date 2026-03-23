@@ -76,14 +76,6 @@ export function HamburgerMenu() {
                     Gravu
                   </span>
                 </div>
-                <button
-                  onClick={() => setOpen(false)}
-                  aria-label="Close menu"
-                  className="relative flex h-10 w-10 items-center justify-center rounded-full border border-neutral-300/80 bg-[#f8f8f6] text-neutral-900 transition-colors hover:border-neutral-500"
-                >
-                  <span className="absolute block h-0.5 w-5 rotate-45 rounded-full bg-current" />
-                  <span className="absolute block h-0.5 w-5 -rotate-45 rounded-full bg-current" />
-                </button>
               </div>
 
               <div className="mx-8 h-px bg-neutral-200" />
