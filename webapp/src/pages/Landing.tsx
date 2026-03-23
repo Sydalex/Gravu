@@ -1,17 +1,12 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Footer } from '@/components/Footer';
+import { HamburgerMenu } from '@/components/HamburgerMenu';
 
 const Landing = () => {
   return (
     <div className="relative min-h-screen bg-[#f8f8f6] overflow-hidden flex flex-col">
-      {/* Decorative gradient blob */}
-      <div 
-        className="pointer-events-none absolute top-12 right-0 w-[500px] h-[500px] opacity-60 blur-3xl animate-pulse"
-        style={{
-          background: 'radial-gradient(circle, hsl(30 80% 70% / 0.4) 0%, hsl(15 70% 60% / 0.3) 40%, hsl(45 90% 75% / 0.2) 70%, transparent 100%)',
-        }}
-      />
+
 
       {/* Navigation */}
       <header className="relative z-20 flex items-center justify-between px-6 py-6 md:px-12 md:py-8">
@@ -22,10 +17,10 @@ const Landing = () => {
           className="flex items-center gap-2"
         >
           <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-foreground" />
-            <span className="h-2 w-2 rounded-full bg-foreground" />
+            <span className="h-2 w-2 rounded-full bg-neutral-900" />
+            <span className="h-2 w-2 rounded-full bg-neutral-900" />
           </div>
-          <span className="font-light uppercase tracking-[0.15em] text-sm text-foreground">Gravu</span>
+          <span className="font-mono text-sm uppercase tracking-[0.2em] text-neutral-500">Gravu</span>
         </motion.div>
 
         {/* Nav items */}
@@ -42,11 +37,7 @@ const Landing = () => {
           >
             Get Started
           </Link>
-          {/* Hamburger menu */}
-          <button className="flex flex-col gap-1.5 p-1">
-            <span className="h-px w-5 bg-foreground" />
-            <span className="h-px w-5 bg-foreground" />
-          </button>
+          <HamburgerMenu />
         </nav>
       </header>
 
