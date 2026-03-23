@@ -3,22 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Input } from '@/components/ui/input';
 import { PageWrapper } from '@/components/PageWrapper';
 import { SubjectList } from '@/components/SubjectList';
-import { ViewAngleSelector } from '@/components/ViewAngleSelector';
-import { useImageStore, type SimplificationLevel, type Subject } from '@/lib/store';
+import { useImageStore, type Subject } from '@/lib/store';
 import { api } from '@/lib/api';
 
 interface DetectResponse {
   subjects: Array<{ id: number; description: string }>;
 }
-
-const simplificationOptions: Array<{ value: SimplificationLevel; label: string }> = [
-  { value: 'low', label: 'Low' },
-  { value: 'mid', label: 'Mid' },
-  { value: 'high', label: 'High' },
-];
 
 const Selection = () => {
   const navigate = useNavigate();
@@ -29,13 +21,6 @@ const Selection = () => {
   const toggleSubject = useImageStore((s) => s.toggleSubject);
   const mergeSubjects = useImageStore((s) => s.mergeSubjects);
   const unmergeSubject = useImageStore((s) => s.unmergeSubject);
-  const viewAngle = useImageStore((s) => s.viewAngle);
-  const setViewAngle = useImageStore((s) => s.setViewAngle);
-  const customViewDescription = useImageStore((s) => s.customViewDescription);
-  const setCustomViewDescription = useImageStore((s) => s.setCustomViewDescription);
-  const setProcessingMode = useImageStore((s) => s.setProcessingMode);
-  const simplificationLevel = useImageStore((s) => s.simplificationLevel);
-  const setSimplificationLevel = useImageStore((s) => s.setSimplificationLevel);
   const [description, setDescription] = useState('');
 
   const imageBase64 = imageUri?.split(',')[1] ?? '';
@@ -58,8 +43,7 @@ const Selection = () => {
 
   const selectedCount = detectedSubjects?.filter((s) => s.selected).length ?? 0;
 
-  const handleProcess = (mode: 'keep_together' | 'extract_all') => {
-    setProcessingMode(mode);
+  const handleProcess = () => {
     navigate('/processing');
   };
 
@@ -86,7 +70,7 @@ const Selection = () => {
           className="mb-10"
         >
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-400 mb-3">
-            02 — Detect Subjects
+            02 — Select Subjects
           </p>
           <h1
             className="text-4xl md:text-5xl font-light uppercase tracking-[-0.02em] leading-[1.1] text-neutral-900"
@@ -175,57 +159,13 @@ const Selection = () => {
                   onUnmerge={unmergeSubject}
                 />
 
-                {/* View Angle */}
-                <ViewAngleSelector
-                  value={viewAngle}
-                  onChange={setViewAngle}
-                  customDescription={customViewDescription}
-                  onCustomChange={setCustomViewDescription}
-                />
-
-                {/* Simplification */}
-                <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400 mb-3">
-                    Simplification
-                  </p>
-                  <div className="flex gap-2">
-                    {simplificationOptions.map((option) => {
-                      const active = simplificationLevel === option.value;
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => setSimplificationLevel(option.value)}
-                          className={`flex-1 border px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] transition-all ${
-                            active
-                              ? 'border-orange-500 bg-orange-500/10 text-orange-600'
-                              : 'border-neutral-300 text-neutral-500 hover:border-neutral-400'
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex flex-col gap-3 pt-4 border-t border-neutral-200">
+                <div className="border-t border-neutral-200 pt-4">
                   <button
-                    onClick={() => handleProcess('keep_together')}
+                    onClick={handleProcess}
                     disabled={selectedCount === 0}
-                    className="flex items-center justify-center gap-3 border border-neutral-300 bg-transparent px-6 py-4 text-neutral-900 transition-all hover:border-neutral-400 disabled:opacity-50"
+                    className="flex w-full items-center justify-center gap-3 border border-orange-500 bg-orange-500 px-6 py-4 text-white transition-all hover:bg-orange-600 disabled:opacity-50"
                   >
-                    <span className="font-mono text-xs uppercase tracking-[0.15em]">Process Combined</span>
-                  </button>
-                  <button
-                    onClick={() => handleProcess('extract_all')}
-                    disabled={selectedCount === 0}
-                    className="flex items-center justify-center gap-3 border border-orange-500 bg-orange-500 px-6 py-4 text-white transition-all hover:bg-orange-600 disabled:opacity-50"
-                  >
-                    <span className="font-mono text-xs uppercase tracking-[0.15em]">
-                      Process Separately ({selectedCount})
-                    </span>
+                    <span className="font-mono text-xs uppercase tracking-[0.15em]">Process Selected ({selectedCount})</span>
                   </button>
                 </div>
               </motion.div>

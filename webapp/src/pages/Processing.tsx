@@ -28,9 +28,6 @@ const Processing = () => {
   const imageUri = useImageStore((s) => s.imageUri);
   const imageFile = useImageStore((s) => s.imageFile);
   const detectedSubjects = useImageStore((s) => s.detectedSubjects);
-  const viewAngle = useImageStore((s) => s.viewAngle);
-  const customViewDescription = useImageStore((s) => s.customViewDescription);
-  const processingMode = useImageStore((s) => s.processingMode);
   const simplificationLevel = useImageStore((s) => s.simplificationLevel);
   const setResultImages = useImageStore((s) => s.setResultImages);
   const setCachedSvg = useImageStore((s) => s.setCachedSvg);
@@ -68,10 +65,9 @@ const Processing = () => {
         imageBase64,
         subjects: allSubjects,
         selectedSubjects: selectedIds,
-        processingMode,
+        processingMode: 'extract_all',
         outputMode: 'vectorworks_centerline',
-        viewAngle,
-        customViewDescription: viewAngle === 'custom' ? customViewDescription : undefined,
+        viewAngle: 'perspective',
       });
 
       setProgress(85);
