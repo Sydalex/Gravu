@@ -68,7 +68,7 @@ export function HamburgerMenu() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: '100%', opacity: 0 }}
               transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
-              className="fixed top-0 right-0 bottom-0 z-50 flex w-full max-w-sm flex-col border-l border-neutral-200 bg-[#f8f8f6]"
+              className="fixed top-0 right-0 bottom-0 z-[56] flex w-full max-w-sm flex-col border-l border-neutral-200 bg-[#f8f8f6]"
             >
               <div className="relative flex items-center justify-between px-8 pt-8 pb-6">
                 <div className="flex items-center gap-2">
