@@ -29,7 +29,7 @@ const Register = () => {
     if (result.error) {
       setError(result.error.message || 'Failed to create account');
     } else {
-      navigate('/');
+      navigate('/app');
     }
   };
 

@@ -104,7 +104,7 @@ const Library = () => {
             )}
           </div>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/app')}
             className="group flex items-center gap-3 border border-neutral-900 bg-neutral-900 px-6 py-3 text-white transition-all hover:bg-neutral-800 self-start sm:self-auto"
           >
             <span className="font-mono text-xs uppercase tracking-[0.15em]">New Conversion</span>
@@ -137,7 +137,7 @@ const Library = () => {
               </p>
             </div>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/app')}
               className="flex items-center gap-3 border border-orange-500 bg-orange-500 px-6 py-3 text-white transition-all hover:bg-orange-600"
             >
               <span className="font-mono text-xs uppercase tracking-[0.15em]">Start Converting</span>

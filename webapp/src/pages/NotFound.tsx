@@ -35,7 +35,7 @@ const NotFound = () => {
 
         {/* Back link */}
         <Link
-          to="/"
+          to="/welcome"
           className="inline-flex items-center gap-2 mt-8 font-mono text-xs uppercase tracking-[0.2em] text-foreground hover:text-primary transition-colors"
         >
           <ArrowLeft className="h-3 w-3" />

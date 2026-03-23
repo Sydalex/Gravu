@@ -376,7 +376,7 @@ const Result = () => {
           <button
             onClick={() => {
               reset();
-              navigate('/');
+              navigate('/app');
             }}
             className="flex w-full items-center justify-center gap-3 border border-neutral-300 bg-transparent px-6 py-4 text-neutral-700 transition-all hover:border-neutral-400"
           >

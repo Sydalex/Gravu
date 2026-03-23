@@ -14,7 +14,7 @@ export function GuestRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (session?.user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/app" replace />;
   }
 
   return <>{children}</>;

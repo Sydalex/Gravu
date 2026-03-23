@@ -38,11 +38,12 @@ const App = () => (
       <BrowserRouter>
         <BouncingOrb />
         <Routes>
+          <Route path="/" element={<Landing />} />
           <Route path="/welcome" element={<Landing />} />
           <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
           <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
           <Route path="/verify-otp" element={<GuestRoute><VerifyOtp /></GuestRoute>} />
-          <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+          <Route path="/app" element={<ProtectedRoute><Index /></ProtectedRoute>} />
           <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
           <Route path="/selection" element={<ProtectedRoute><Selection /></ProtectedRoute>} />
           <Route path="/processing" element={<ProtectedRoute><Processing /></ProtectedRoute>} />

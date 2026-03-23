@@ -32,7 +32,7 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!subscription?.isAdmin) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/app" replace />;
   }
 
   return (

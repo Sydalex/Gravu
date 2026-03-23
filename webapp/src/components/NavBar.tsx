@@ -23,7 +23,7 @@ export function NavBar() {
       className="fixed top-0 left-0 right-0 z-50 h-14 bg-transparent flex items-center justify-between px-6 md:px-10"
     >
       {/* Two-dot logo */}
-      <Link to="/" className="flex items-center gap-3">
+      <Link to="/app" className="flex items-center gap-3">
         <div className="flex items-center gap-1">
           <div className="h-2 w-2 rounded-full bg-neutral-900" />
           <div className="h-2 w-2 rounded-full bg-neutral-900" />

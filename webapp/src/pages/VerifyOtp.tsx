@@ -39,7 +39,7 @@ const VerifyOtp = () => {
     if (result.error) {
       setError(result.error.message || "Invalid verification code");
     } else {
-      navigate("/");
+      navigate("/app");
     }
   };
 
