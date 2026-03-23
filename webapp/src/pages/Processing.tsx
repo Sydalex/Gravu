@@ -218,14 +218,6 @@ const Processing = () => {
 
   return (
     <div className="relative min-h-screen bg-[#f8f8f6] overflow-hidden flex flex-col items-center justify-center">
-      {/* Warm gradient blob */}
-      <div
-        className="pointer-events-none absolute -top-32 -right-32 h-[500px] w-[500px] rounded-full opacity-40 blur-3xl"
-        style={{
-          background: 'radial-gradient(circle, #f97316 0%, #fbbf24 50%, transparent 70%)',
-        }}
-      />
-
       {/* Progress bar at bottom */}
       {!error && (
         <div className="absolute bottom-0 left-0 right-0 h-px bg-neutral-200">
