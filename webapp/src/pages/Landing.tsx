@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Footer } from '@/components/Footer';
+import { HamburgerMenu } from '@/components/HamburgerMenu';
 
 const Landing = () => {
   return (
@@ -42,11 +43,7 @@ const Landing = () => {
           >
             Get Started
           </Link>
-          {/* Hamburger menu */}
-          <button className="flex flex-col gap-1.5 p-1">
-            <span className="h-px w-5 bg-foreground" />
-            <span className="h-px w-5 bg-foreground" />
-          </button>
+          <HamburgerMenu />
         </nav>
       </header>
 

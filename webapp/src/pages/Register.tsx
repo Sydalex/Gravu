@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { authClient } from '@/lib/auth-client';
+import { HamburgerMenu } from '@/components/HamburgerMenu';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -58,6 +59,7 @@ const Register = () => {
           <Link to="/login" className="text-sm uppercase tracking-widest text-foreground/70 hover:text-foreground transition-colors hover:underline underline-offset-4">
             Sign In
           </Link>
+          <HamburgerMenu />
         </nav>
       </header>
 

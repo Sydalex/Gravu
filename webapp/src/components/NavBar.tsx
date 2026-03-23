@@ -1,8 +1,8 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, User, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { signOut } from '@/lib/auth-client';
+import { HamburgerMenu } from '@/components/HamburgerMenu';
 
 export function NavBar() {
   const location = useLocation();
@@ -33,12 +33,12 @@ export function NavBar() {
         </span>
       </Link>
 
-      {/* Nav links */}
+      {/* Nav right side */}
       <div className="flex items-center gap-6">
         <Link
           to="/library"
           className={cn(
-            'font-mono text-[10px] uppercase tracking-[0.15em] transition-colors',
+            'hidden sm:block font-mono text-[10px] uppercase tracking-[0.15em] transition-colors',
             isActive('/library')
               ? 'text-neutral-900'
               : 'text-neutral-400 hover:text-neutral-700'
@@ -50,7 +50,7 @@ export function NavBar() {
         <Link
           to="/account"
           className={cn(
-            'font-mono text-[10px] uppercase tracking-[0.15em] transition-colors',
+            'hidden sm:block font-mono text-[10px] uppercase tracking-[0.15em] transition-colors',
             isActive('/account')
               ? 'text-neutral-900'
               : 'text-neutral-400 hover:text-neutral-700'
@@ -59,12 +59,7 @@ export function NavBar() {
           Account
         </Link>
 
-        <button
-          onClick={handleSignOut}
-          className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400 hover:text-neutral-700 transition-colors"
-        >
-          Sign out
-        </button>
+        <HamburgerMenu />
       </div>
     </motion.nav>
   );
