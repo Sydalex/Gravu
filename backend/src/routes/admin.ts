@@ -136,6 +136,39 @@ function mapPrice(price: any) {
   };
 }
 
+async function clearArchivedPricesFromBillingConfig(priceIds: string[]) {
+  if (!priceIds.length) return;
+
+  const config = await prisma.billingConfig.findUnique({
+    where: { id: "default" },
+  });
+
+  if (!config) return;
+
+  const update: {
+    activeProPriceId?: string | null;
+    activeCreditsPackPriceId?: string | null;
+  } = {};
+
+  if (config.activeProPriceId && priceIds.includes(config.activeProPriceId)) {
+    update.activeProPriceId = null;
+  }
+
+  if (
+    config.activeCreditsPackPriceId &&
+    priceIds.includes(config.activeCreditsPackPriceId)
+  ) {
+    update.activeCreditsPackPriceId = null;
+  }
+
+  if (Object.keys(update).length > 0) {
+    await prisma.billingConfig.update({
+      where: { id: "default" },
+      data: update,
+    });
+  }
+}
+
 async function getUserBillingDetails(userId: string) {
   const dbUser = await prisma.user.findUnique({
     where: { id: userId },
@@ -302,16 +335,14 @@ adminRouter.get("/billing", async (c) => {
 
   const [promotionCodes, products, prices] = await Promise.all([
     stripe!.promotionCodes.list({
-      limit: 10,
+      limit: 20,
       expand: ["data.promotion.coupon"],
     }),
     stripe!.products.list({
-      active: true,
-      limit: 20,
+      limit: 50,
     }),
     stripe!.prices.list({
-      active: true,
-      limit: 30,
+      limit: 50,
       expand: ["data.product"],
     }),
   ]);
@@ -368,6 +399,48 @@ adminRouter.post(
   }
 );
 
+// POST /api/admin/billing/products/:id/archive — archive a Stripe product
+adminRouter.post("/billing/products/:id/archive", async (c) => {
+  if (!requireStripeConfigured()) {
+    return c.json(
+      {
+        error: {
+          message: "Stripe is not configured for this environment",
+          code: "BILLING_NOT_CONFIGURED",
+        },
+      },
+      503
+    );
+  }
+
+  const { id } = c.req.param();
+
+  try {
+    const productPrices = await stripe!.prices.list({
+      product: id,
+      limit: 100,
+    });
+
+    await clearArchivedPricesFromBillingConfig(productPrices.data.map((price) => price.id));
+
+    const product = await stripe!.products.update(id, {
+      active: false,
+    });
+
+    return c.json({ data: mapProduct(product) });
+  } catch (error) {
+    return c.json(
+      {
+        error: {
+          message: formatStripeError(error),
+          code: "STRIPE_ERROR",
+        },
+      },
+      400
+    );
+  }
+});
+
 // POST /api/admin/billing/prices — create a Stripe price
 adminRouter.post(
   "/billing/prices",
@@ -414,6 +487,44 @@ adminRouter.post(
   }
 );
 
+// POST /api/admin/billing/prices/:id/archive — archive a Stripe price
+adminRouter.post("/billing/prices/:id/archive", async (c) => {
+  if (!requireStripeConfigured()) {
+    return c.json(
+      {
+        error: {
+          message: "Stripe is not configured for this environment",
+          code: "BILLING_NOT_CONFIGURED",
+        },
+      },
+      503
+    );
+  }
+
+  const { id } = c.req.param();
+
+  try {
+    const price = await stripe!.prices.update(id, {
+      active: false,
+    });
+
+    await clearArchivedPricesFromBillingConfig([id]);
+
+    const hydrated = await stripe!.prices.retrieve(price.id, { expand: ["product"] });
+    return c.json({ data: mapPrice(hydrated) });
+  } catch (error) {
+    return c.json(
+      {
+        error: {
+          message: formatStripeError(error),
+          code: "STRIPE_ERROR",
+        },
+      },
+      400
+    );
+  }
+});
+
 // POST /api/admin/billing/config — set active app billing prices
 adminRouter.post(
   "/billing/config",
@@ -444,6 +555,48 @@ adminRouter.post(
     return c.json({ data: updated });
   }
 );
+
+// POST /api/admin/billing/promo-codes/:id/deactivate — deactivate a promotion code
+adminRouter.post("/billing/promo-codes/:id/deactivate", async (c) => {
+  if (!requireStripeConfigured()) {
+    return c.json(
+      {
+        error: {
+          message: "Stripe is not configured for this environment",
+          code: "BILLING_NOT_CONFIGURED",
+        },
+      },
+      503
+    );
+  }
+
+  const { id } = c.req.param();
+
+  try {
+    const promotionCode = await stripe!.promotionCodes.update(id, {
+      active: false,
+    });
+
+    const expandedPromotionCode = await stripe!.promotionCodes.retrieve(
+      promotionCode.id,
+      {
+        expand: ["promotion.coupon"],
+      }
+    );
+
+    return c.json({ data: mapPromotionCode(expandedPromotionCode) });
+  } catch (error) {
+    return c.json(
+      {
+        error: {
+          message: formatStripeError(error),
+          code: "STRIPE_ERROR",
+        },
+      },
+      400
+    );
+  }
+});
 
 // POST /api/admin/billing/promo-codes — create a new Stripe promotion code
 adminRouter.post(

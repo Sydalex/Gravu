@@ -306,16 +306,38 @@ export default function Admin() {
     setConfigCreditsAmount(String(billing.activeConfig.activeCreditsPackAmount ?? 10));
   }, [billing]);
 
+  const billingProducts = [...(billing?.products ?? [])].sort((a, b) => {
+    if (a.active !== b.active) return Number(b.active) - Number(a.active);
+    return a.name.localeCompare(b.name);
+  });
+  const selectableProducts = billingProducts.filter((product) => product.active);
+  const billingPrices = [...(billing?.prices ?? [])].sort((a, b) => {
+    if (a.active !== b.active) return Number(b.active) - Number(a.active);
+    return (a.productName ?? a.nickname ?? a.id).localeCompare(
+      b.productName ?? b.nickname ?? b.id
+    );
+  });
+  const billingPromotions = [...(billing?.recentPromotionCodes ?? [])].sort((a, b) => {
+    if (a.active !== b.active) return Number(b.active) - Number(a.active);
+    return a.code.localeCompare(b.code);
+  });
+
   useEffect(() => {
-    if (!priceProductId && billing?.products.length) {
-      setPriceProductId(billing.products[0].id);
+    if (!priceProductId && selectableProducts.length) {
+      setPriceProductId(selectableProducts[0].id);
     }
-  }, [billing?.products, priceProductId]);
+  }, [selectableProducts, priceProductId]);
+
+  useEffect(() => {
+    if (priceProductId && !selectableProducts.some((product) => product.id === priceProductId)) {
+      setPriceProductId(selectableProducts[0]?.id ?? "");
+    }
+  }, [selectableProducts, priceProductId]);
 
   const recurringPrices =
-    billing?.prices.filter((price) => price.type === "recurring") ?? [];
+    billingPrices.filter((price) => price.active && price.type === "recurring");
   const oneTimePrices =
-    billing?.prices.filter((price) => price.type === "one_time") ?? [];
+    billingPrices.filter((price) => price.active && price.type === "one_time");
 
   const lowCreditCount = allUsers.filter((user) => !user.isAdmin && user.credits <= 3).length;
   const adminCount = allUsers.filter((user) => user.isAdmin).length;
@@ -429,6 +451,48 @@ export default function Admin() {
     },
   });
 
+  const deactivatePromoMutation = useMutation({
+    mutationFn: (promoId: string) =>
+      api.post<PromoCode>(`/api/admin/billing/promo-codes/${promoId}/deactivate`, {}),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "billing"] });
+      toast.success("Promo code deactivated");
+    },
+    onError: (error) => {
+      toast.error(formatMutationError(error));
+    },
+  });
+
+  const archiveProductMutation = useMutation({
+    mutationFn: (productId: string) =>
+      api.post<BillingProduct>(`/api/admin/billing/products/${productId}/archive`, {}),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin", "billing"] }),
+        queryClient.invalidateQueries({ queryKey: ["subscription"] }),
+      ]);
+      toast.success("Product archived");
+    },
+    onError: (error) => {
+      toast.error(formatMutationError(error));
+    },
+  });
+
+  const archivePriceMutation = useMutation({
+    mutationFn: (priceId: string) =>
+      api.post<BillingPrice>(`/api/admin/billing/prices/${priceId}/archive`, {}),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin", "billing"] }),
+        queryClient.invalidateQueries({ queryKey: ["subscription"] }),
+      ]);
+      toast.success("Price archived");
+    },
+    onError: (error) => {
+      toast.error(formatMutationError(error));
+    },
+  });
+
   const portalMutation = useMutation({
     mutationFn: (userId: string) =>
       api.post<{ url: string }>(`/api/admin/billing/users/${userId}/portal`, {
@@ -520,6 +584,39 @@ export default function Admin() {
         : promoDuration === "repeating" && Number(promoDurationMonths) <= 0
           ? "Repeating promo codes need a duration in months."
           : "This code will be available immediately in Stripe Checkout.";
+
+  const handleDeactivatePromo = (promo: PromoCode) => {
+    if (
+      !window.confirm(
+        `Deactivate promo code ${promo.code}? It will stop working in future checkouts.`
+      )
+    ) {
+      return;
+    }
+    deactivatePromoMutation.mutate(promo.id);
+  };
+
+  const handleArchiveProduct = (product: BillingProduct) => {
+    if (
+      !window.confirm(
+        `Archive product ${product.name}? It will be removed from new billing configuration options.`
+      )
+    ) {
+      return;
+    }
+    archiveProductMutation.mutate(product.id);
+  };
+
+  const handleArchivePrice = (price: BillingPrice) => {
+    if (
+      !window.confirm(
+        `Archive price ${price.id}? It will stop being available for new checkout sessions.`
+      )
+    ) {
+      return;
+    }
+    archivePriceMutation.mutate(price.id);
+  };
 
   return (
     <div className="min-h-screen bg-[#f8f8f6] pt-[52px]">
@@ -1052,7 +1149,7 @@ export default function Admin() {
                   className="h-11 w-full rounded-2xl border border-[#d8d0c5] bg-background px-4 text-[13px] text-[#332e24]"
                 >
                   <option value="">Select product</option>
-                  {billing?.products.map((product) => (
+                  {selectableProducts.map((product) => (
                     <option key={product.id} value={product.id}>
                       {product.name}
                     </option>
@@ -1234,9 +1331,9 @@ export default function Admin() {
 
             <div className="mt-6 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-[13px] font-semibold text-[#332e24]">Recent promotion codes</p>
+                <p className="text-[13px] font-semibold text-[#332e24]">Promotion codes</p>
                 <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-muted-foreground">
-                  {billing?.recentPromotionCodes.length ?? 0} codes
+                  {billingPromotions.length} codes
                 </span>
               </div>
 
@@ -1245,8 +1342,8 @@ export default function Admin() {
                   <div className="flex h-24 items-center justify-center">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
-                ) : billing?.recentPromotionCodes.length ? (
-                  billing.recentPromotionCodes.map((promo) => (
+                ) : billingPromotions.length ? (
+                  billingPromotions.map((promo) => (
                     <div
                       key={promo.id}
                       className="rounded-[18px] border border-[#e5dbc9] bg-background/80 p-4"
@@ -1259,16 +1356,31 @@ export default function Admin() {
                             {formatPromoDuration(promo.duration, promo.durationInMonths)}
                           </p>
                         </div>
-                        <span
-                          className={cn(
-                            "rounded-full border px-2.5 py-1 text-[10px] font-semibold",
-                            promo.active
-                              ? "border-[#edcbbd] bg-[#fcf2ee] text-[#c96240]"
-                              : "border-[#d9d8d3] bg-background text-[#82817d]"
-                          )}
-                        >
-                          {promo.active ? "Active" : "Inactive"}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "rounded-full border px-2.5 py-1 text-[10px] font-semibold",
+                              promo.active
+                                ? "border-[#edcbbd] bg-[#fcf2ee] text-[#c96240]"
+                                : "border-[#d9d8d3] bg-background text-[#82817d]"
+                            )}
+                          >
+                            {promo.active ? "Active" : "Inactive"}
+                          </span>
+                          {promo.active ? (
+                            <Button
+                              variant="outline"
+                              className="h-8 rounded-xl border-[#d8d0c5] bg-background px-3 text-[11px]"
+                              disabled={deactivatePromoMutation.isPending}
+                              onClick={() => handleDeactivatePromo(promo)}
+                            >
+                              {deactivatePromoMutation.isPending ? (
+                                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                              ) : null}
+                              Deactivate
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[#6f695f]">
                         <span>Redeemed: {promo.timesRedeemed}</span>
@@ -1299,16 +1411,45 @@ export default function Admin() {
             <div className="mt-6 space-y-4">
               <div className="rounded-[18px] border border-[#e5dbc9] bg-background/80 p-4">
                 <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
-                  Active products
+                  Catalog products
                 </p>
                 <div className="mt-3 space-y-3">
-                  {billing?.products.length ? (
-                    billing.products.slice(0, 6).map((product) => (
+                  {billingProducts.length ? (
+                    billingProducts.map((product) => (
                       <div key={product.id} className="rounded-[14px] border border-[#ece5d8] bg-[#fcfaf6] p-3">
-                        <p className="text-[13px] font-semibold text-[#332e24]">{product.name}</p>
-                        <p className="mt-1 text-[11px] text-muted-foreground">
-                          {product.description || "No description"}
-                        </p>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-[13px] font-semibold text-[#332e24]">{product.name}</p>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              {product.description || "No description"}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                "rounded-full border px-2.5 py-1 text-[10px] font-semibold",
+                                product.active
+                                  ? "border-[#edcbbd] bg-[#fcf2ee] text-[#c96240]"
+                                  : "border-[#d9d8d3] bg-background text-[#82817d]"
+                              )}
+                            >
+                              {product.active ? "Active" : "Archived"}
+                            </span>
+                            {product.active ? (
+                              <Button
+                                variant="outline"
+                                className="h-8 rounded-xl border-[#d8d0c5] bg-background px-3 text-[11px]"
+                                disabled={archiveProductMutation.isPending}
+                                onClick={() => handleArchiveProduct(product)}
+                              >
+                                {archiveProductMutation.isPending ? (
+                                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                                ) : null}
+                                Archive
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
                         <p className="mt-2 font-mono text-[10px] text-muted-foreground">
                           {product.id}
                         </p>
@@ -1316,7 +1457,7 @@ export default function Admin() {
                     ))
                   ) : (
                     <div className="rounded-[14px] border border-dashed border-[#d9d0c2] px-4 py-4 text-[12px] text-muted-foreground">
-                      No active Stripe products found.
+                      No Stripe products found.
                     </div>
                   )}
                 </div>
@@ -1324,11 +1465,11 @@ export default function Admin() {
 
               <div className="rounded-[18px] border border-[#e5dbc9] bg-background/80 p-4">
                 <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
-                  Available prices
+                  Catalog prices
                 </p>
                 <div className="mt-3 space-y-3">
-                  {billing?.prices.length ? (
-                    billing.prices.slice(0, 8).map((price) => (
+                  {billingPrices.length ? (
+                    billingPrices.map((price) => (
                       <div key={price.id} className="rounded-[14px] border border-[#ece5d8] bg-[#fcfaf6] p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div>
@@ -1341,9 +1482,34 @@ export default function Admin() {
                               {price.creditsAmount ? ` · ${price.creditsAmount} credits` : ""}
                             </p>
                           </div>
-                          <span className="rounded-full border border-[#d9d0c2] bg-background px-2.5 py-1 text-[10px] font-semibold text-[#6f695f]">
-                            {price.type === "recurring" ? "Recurring" : "One-time"}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-full border border-[#d9d0c2] bg-background px-2.5 py-1 text-[10px] font-semibold text-[#6f695f]">
+                              {price.type === "recurring" ? "Recurring" : "One-time"}
+                            </span>
+                            <span
+                              className={cn(
+                                "rounded-full border px-2.5 py-1 text-[10px] font-semibold",
+                                price.active
+                                  ? "border-[#edcbbd] bg-[#fcf2ee] text-[#c96240]"
+                                  : "border-[#d9d8d3] bg-background text-[#82817d]"
+                              )}
+                            >
+                              {price.active ? "Active" : "Archived"}
+                            </span>
+                            {price.active ? (
+                              <Button
+                                variant="outline"
+                                className="h-8 rounded-xl border-[#d8d0c5] bg-background px-3 text-[11px]"
+                                disabled={archivePriceMutation.isPending}
+                                onClick={() => handleArchivePrice(price)}
+                              >
+                                {archivePriceMutation.isPending ? (
+                                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                                ) : null}
+                                Archive
+                              </Button>
+                            ) : null}
+                          </div>
                         </div>
                         <p className="mt-2 font-mono text-[10px] text-muted-foreground">
                           {price.id}
@@ -1352,7 +1518,7 @@ export default function Admin() {
                     ))
                   ) : (
                     <div className="rounded-[14px] border border-dashed border-[#d9d0c2] px-4 py-4 text-[12px] text-muted-foreground">
-                      No active Stripe prices found.
+                      No Stripe prices found.
                     </div>
                   )}
                 </div>
