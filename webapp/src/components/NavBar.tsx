@@ -20,7 +20,7 @@ export function NavBar() {
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="fixed top-0 left-0 right-0 z-50 h-14 bg-[#f8f8f6]/80 backdrop-blur-xl flex items-center justify-between px-6 md:px-10"
+      className="fixed top-0 left-0 right-0 z-50 h-14 bg-transparent flex items-center justify-between px-6 md:px-10"
     >
       {/* Two-dot logo */}
       <Link to="/" className="flex items-center gap-3">

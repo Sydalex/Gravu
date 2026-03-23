@@ -26,6 +26,7 @@ import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import Landing from "./pages/Landing";
 import { AdminRoute } from "@/components/AdminRoute";
+import { BouncingOrb } from "@/components/BouncingOrb";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <BouncingOrb />
         <Routes>
           <Route path="/welcome" element={<Landing />} />
           <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
