@@ -26,9 +26,9 @@ export function NavBar() {
       <Link to="/" className="flex items-center gap-3">
         <div className="flex items-center gap-1">
           <div className="h-2 w-2 rounded-full bg-neutral-900" />
-          <div className="h-2 w-2 rounded-full bg-orange-500" />
+          <div className="h-2 w-2 rounded-full bg-neutral-900" />
         </div>
-        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500">
+        <span className="font-mono text-sm uppercase tracking-[0.2em] text-neutral-500">
           Gravu
         </span>
       </Link>

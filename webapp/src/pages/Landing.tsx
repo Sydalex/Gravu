@@ -18,9 +18,9 @@ const Landing = () => {
         >
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-neutral-900" />
-            <span className="h-2 w-2 rounded-full bg-orange-500" />
+            <span className="h-2 w-2 rounded-full bg-neutral-900" />
           </div>
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500">Gravu</span>
+          <span className="font-mono text-sm uppercase tracking-[0.2em] text-neutral-500">Gravu</span>
         </motion.div>
 
         {/* Nav items */}

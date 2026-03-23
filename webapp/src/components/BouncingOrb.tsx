@@ -38,7 +38,7 @@ export function BouncingOrb() {
         background: 'radial-gradient(circle, #f97316 0%, #fbbf24 45%, transparent 70%)',
         transform: `translate(${position.x}px, ${position.y}px)`,
         willChange: 'transform',
-        zIndex: 0,
+        zIndex: 5,
       }}
     />
   );

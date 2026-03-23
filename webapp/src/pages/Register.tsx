@@ -42,9 +42,9 @@ const Register = () => {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
           <Link to="/welcome" className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-neutral-900" />
-            <span className="h-2 w-2 rounded-full bg-orange-500" />
+            <span className="h-2 w-2 rounded-full bg-neutral-900" />
           </Link>
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500">Gravu</span>
+          <span className="font-mono text-sm uppercase tracking-[0.2em] text-neutral-500">Gravu</span>
         </motion.div>
         <nav className="flex items-center gap-6">
           <Link to="/welcome" className="text-sm uppercase tracking-widest text-foreground/50 hover:text-foreground transition-colors">
