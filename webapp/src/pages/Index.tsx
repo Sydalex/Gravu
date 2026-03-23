@@ -15,14 +15,6 @@ const Index = () => {
 
   return (
     <div className="relative min-h-screen bg-[#f8f8f6] overflow-hidden">
-      {/* Warm gradient blob */}
-      <div
-        className="pointer-events-none absolute -top-32 -right-32 h-[500px] w-[500px] rounded-full opacity-40 blur-3xl"
-        style={{
-          background: 'radial-gradient(circle, #f97316 0%, #fbbf24 50%, transparent 70%)',
-        }}
-      />
-
       {/* Main content */}
       <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6">
         {/* Large editorial headline */}

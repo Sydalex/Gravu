@@ -12,14 +12,6 @@ const NotFound = () => {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-[#f8f8f6] overflow-hidden">
-      {/* Bouncing orb placeholder - inherits from app context */}
-      <div
-        className="pointer-events-none absolute top-1/4 right-1/4 h-[500px] w-[500px] rounded-full opacity-30 blur-3xl"
-        style={{
-          background: 'radial-gradient(circle, #f97316 0%, #fbbf24 50%, transparent 70%)',
-        }}
-      />
-
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
