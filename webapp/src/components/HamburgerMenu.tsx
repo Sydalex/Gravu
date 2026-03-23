@@ -8,14 +8,16 @@ export function HamburgerMenu() {
   const navigate = useNavigate();
   const location = useLocation();
   const { data: session } = useSession();
+  const isAuthed = !!session?.user;
 
   const menuLinks = [
-    { label: 'Home', href: session?.user ? '/app' : '/', auth: false },
-    { label: 'Upload', href: '/upload', auth: true },
-    { label: 'Library', href: '/library', auth: true },
-    { label: 'Account', href: '/account', auth: true },
-    { label: 'Terms', href: '/policy/terms', auth: false },
-    { label: 'Privacy', href: '/policy/privacy', auth: false },
+    { label: 'Home', href: isAuthed ? '/app' : '/', match: isAuthed ? '/app' : '/', auth: false },
+    { label: 'Upload', href: '/upload', match: '/upload', auth: true },
+    { label: 'Library', href: '/library', match: '/library', auth: true },
+    { label: 'Account', href: '/account', match: '/account', auth: true },
+    { label: 'Terms', href: '/policy/terms', match: '/policy/terms', auth: false },
+    { label: 'Privacy', href: '/policy/privacy', match: '/policy/privacy', auth: false },
+    { label: 'Refunds', href: '/policy/refunds', match: '/policy/refunds', auth: false },
   ];
 
   const handleSignOut = async () => {
@@ -82,7 +84,9 @@ export function HamburgerMenu() {
 
               <nav className="relative flex-1 flex flex-col justify-center px-8 gap-1">
                 {visibleLinks.map((link, i) => {
-                  const isActive = location.pathname === link.href;
+                  const isActive =
+                    location.pathname === link.match ||
+                    location.pathname.startsWith(`${link.match}/`);
                   return (
                     <motion.div
                       key={link.href}
