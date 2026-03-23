@@ -87,7 +87,12 @@ function formatStripeError(error: unknown) {
 }
 
 function mapPromotionCode(promo: any) {
-  const coupon = typeof promo.coupon === "string" ? null : promo.coupon;
+  const legacyCoupon = typeof promo.coupon === "string" ? null : promo.coupon;
+  const promotionCoupon =
+    typeof promo.promotion?.coupon === "string"
+      ? null
+      : promo.promotion?.coupon ?? null;
+  const coupon = promotionCoupon ?? legacyCoupon;
   return {
     id: promo.id,
     code: promo.code,
@@ -298,7 +303,7 @@ adminRouter.get("/billing", async (c) => {
   const [promotionCodes, products, prices] = await Promise.all([
     stripe!.promotionCodes.list({
       limit: 10,
-      expand: ["data.coupon"],
+      expand: ["data.promotion.coupon"],
     }),
     stripe!.products.list({
       active: true,
@@ -470,7 +475,10 @@ adminRouter.post(
       });
 
       const promotionCode = await stripe!.promotionCodes.create({
-        coupon: coupon.id,
+        promotion: {
+          type: "coupon",
+          coupon: coupon.id,
+        },
         code: code.toUpperCase(),
         max_redemptions: maxRedemptions,
       });
@@ -478,7 +486,7 @@ adminRouter.post(
       const expandedPromotionCode = await stripe!.promotionCodes.retrieve(
         promotionCode.id,
         {
-          expand: ["coupon"],
+          expand: ["promotion.coupon"],
         }
       );
 
