@@ -1,9 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowRight, Crown, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageWrapper } from '@/components/PageWrapper';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { api } from '@/lib/api';
 import { useImageStore, type SimplificationLevel } from '@/lib/store';
+import type { SubscriptionStatus } from '../../../backend/src/types';
 
 const formatSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`;
@@ -27,7 +38,17 @@ const Upload = () => {
   const setSimplificationLevel = useImageStore((s) => s.setSimplificationLevel);
   const [dragActive, setDragActive] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const { data: subscription } = useQuery({
+    queryKey: ['subscription'],
+    queryFn: () => api.get<SubscriptionStatus>('/api/payments/subscription'),
+    staleTime: 30_000,
+  });
+
+  const shouldBlockPaidAction =
+    !subscription?.isAdmin && !!subscription?.freeTrialUsed && (subscription?.credits ?? 0) <= 0;
 
   const handleFile = useCallback(
     (file: File) => {
@@ -66,6 +87,11 @@ const Upload = () => {
   };
 
   const handleContinue = () => {
+    if (flowType === 'vectorize_only' && shouldBlockPaidAction) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+
     if (flowType === 'full') {
       navigate('/selection');
     } else {
@@ -85,6 +111,37 @@ const Upload = () => {
 
   return (
     <PageWrapper className="flex flex-col items-center justify-center px-6 pt-20 pb-12">
+      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <DialogContent className="border-[#dfd8cc] bg-[#fbf7ef] sm:max-w-md">
+          <DialogHeader className="text-left">
+            <div className="mb-2 flex h-10 w-10 items-center justify-center border border-orange-500/20 bg-orange-500/10">
+              <Crown className="h-4 w-4 text-orange-500" />
+            </div>
+            <DialogTitle className="text-[24px] font-black tracking-[-0.7px] text-[#332e24]">
+              Your free process has already been used.
+            </DialogTitle>
+            <DialogDescription className="font-mono text-[11px] leading-5 text-[#6c6354]">
+              Upgrade to Pro or buy credits before starting another vector conversion.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:justify-start">
+            <button
+              onClick={() => navigate('/account')}
+              className="flex items-center justify-center gap-2 border border-orange-500 bg-orange-500 px-4 py-3 text-white transition-all hover:bg-orange-600"
+            >
+              <Zap className="h-3.5 w-3.5" />
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Go to Billing</span>
+            </button>
+            <button
+              onClick={() => setShowUpgradeDialog(false)}
+              className="flex items-center justify-center gap-2 border border-neutral-300 bg-transparent px-4 py-3 text-neutral-700 transition-all hover:border-neutral-400"
+            >
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Later</span>
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="w-full max-w-xl">
         {/* Header */}
         <motion.div

@@ -1,12 +1,20 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { signOut } from '@/lib/auth-client';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
+import { api } from '@/lib/api';
+import type { SubscriptionStatus } from '../../../backend/src/types';
 
 export function NavBar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { data: subscription } = useQuery({
+    queryKey: ['subscription'],
+    queryFn: () => api.get<SubscriptionStatus>('/api/payments/subscription'),
+    staleTime: 30_000,
+  });
 
   const handleSignOut = async () => {
     await signOut();
@@ -14,6 +22,7 @@ export function NavBar() {
   };
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
+  const creditsLabel = subscription?.isAdmin ? '∞' : String(subscription?.credits ?? 0);
 
   return (
     <motion.nav
@@ -35,6 +44,14 @@ export function NavBar() {
 
       {/* Nav right side */}
       <div className="flex items-center gap-6">
+        <Link
+          to="/account"
+          className="flex items-center gap-2 border border-neutral-200 bg-[#f8f8f6]/95 px-3 py-1.5 text-neutral-700 transition-colors hover:border-neutral-300"
+        >
+          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-neutral-400">Credits</span>
+          <span className="font-mono text-[10px] font-semibold text-neutral-900">{creditsLabel}</span>
+        </Link>
+
         <Link
           to="/library"
           className={cn(

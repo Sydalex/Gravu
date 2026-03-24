@@ -1,14 +1,24 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from '@/lib/auth-client';
+import { api } from '@/lib/api';
+import type { SubscriptionStatus } from '../../../backend/src/types';
 
 export function HamburgerMenu() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { data: session } = useSession();
+  const { data: subscription } = useQuery({
+    queryKey: ['subscription'],
+    queryFn: () => api.get<SubscriptionStatus>('/api/payments/subscription'),
+    staleTime: 30_000,
+    enabled: !!session?.user,
+  });
   const isAuthed = !!session?.user;
+  const creditsLabel = subscription?.isAdmin ? '∞' : String(subscription?.credits ?? 0);
 
   const menuLinks = [
     { label: 'Home', href: isAuthed ? '/app' : '/', match: isAuthed ? '/app' : '/', auth: false },
@@ -119,6 +129,12 @@ export function HamburgerMenu() {
               <div className="relative px-8 pb-10 pt-6 border-t border-neutral-100">
                 {session?.user ? (
                   <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between border border-neutral-200 bg-white px-3 py-2">
+                      <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400">
+                        Credits
+                      </span>
+                      <span className="font-mono text-[10px] text-neutral-900">{creditsLabel}</span>
+                    </div>
                     <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400">
                       {session.user.email}
                     </p>

@@ -240,6 +240,7 @@ export const SubscriptionStatusSchema = z.object({
   cancelAtPeriodEnd: z.boolean(),
   stripeCustomerId: z.string().nullable(),
   credits: z.number(),
+  freeTrialUsed: z.boolean(),
   isAdmin: z.boolean(),
   billingEnabled: z.boolean(),
   activeProPriceId: z.string().nullable(),

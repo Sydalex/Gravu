@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Crown, Loader2, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { PageWrapper } from '@/components/PageWrapper';
 import { SubjectList } from '@/components/SubjectList';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useImageStore, type Subject } from '@/lib/store';
 import { api } from '@/lib/api';
+import type { SubscriptionStatus } from '../../../backend/src/types';
 
 interface DetectResponse {
   subjects: Array<{ id: number; description: string }>;
@@ -22,8 +31,18 @@ const Selection = () => {
   const mergeSubjects = useImageStore((s) => s.mergeSubjects);
   const unmergeSubject = useImageStore((s) => s.unmergeSubject);
   const [description, setDescription] = useState('');
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
   const imageBase64 = imageUri?.split(',')[1] ?? '';
+
+  const { data: subscription } = useQuery({
+    queryKey: ['subscription'],
+    queryFn: () => api.get<SubscriptionStatus>('/api/payments/subscription'),
+    staleTime: 30_000,
+  });
+
+  const shouldBlockPaidAction =
+    !subscription?.isAdmin && !!subscription?.freeTrialUsed && (subscription?.credits ?? 0) <= 0;
 
   const detectMutation = useMutation({
     mutationFn: () =>
@@ -44,7 +63,21 @@ const Selection = () => {
   const selectedCount = detectedSubjects?.filter((s) => s.selected).length ?? 0;
 
   const handleProcess = () => {
+    if (shouldBlockPaidAction) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+
     navigate('/processing');
+  };
+
+  const handleDetect = () => {
+    if (shouldBlockPaidAction) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+
+    detectMutation.mutate();
   };
 
   useEffect(() => {
@@ -61,6 +94,37 @@ const Selection = () => {
 
   return (
     <PageWrapper className="px-6 pt-20 pb-12">
+      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <DialogContent className="border-[#dfd8cc] bg-[#fbf7ef] sm:max-w-md">
+          <DialogHeader className="text-left">
+            <div className="mb-2 flex h-10 w-10 items-center justify-center border border-orange-500/20 bg-orange-500/10">
+              <Crown className="h-4 w-4 text-orange-500" />
+            </div>
+            <DialogTitle className="text-[24px] font-black tracking-[-0.7px] text-[#332e24]">
+              Your free process has already been used.
+            </DialogTitle>
+            <DialogDescription className="font-mono text-[11px] leading-5 text-[#6c6354]">
+              Upgrade to Pro or buy credits before detecting subjects or starting another photo-to-vector conversion.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:justify-start">
+            <button
+              onClick={() => navigate('/account')}
+              className="flex items-center justify-center gap-2 border border-orange-500 bg-orange-500 px-4 py-3 text-white transition-all hover:bg-orange-600"
+            >
+              <Zap className="h-3.5 w-3.5" />
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Go to Billing</span>
+            </button>
+            <button
+              onClick={() => setShowUpgradeDialog(false)}
+              className="flex items-center justify-center gap-2 border border-neutral-300 bg-transparent px-4 py-3 text-neutral-700 transition-all hover:border-neutral-400"
+            >
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Later</span>
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="mx-auto max-w-5xl">
         {/* Header */}
         <motion.div
@@ -119,7 +183,7 @@ const Selection = () => {
 
             {/* Detect Button */}
             <button
-              onClick={() => detectMutation.mutate()}
+              onClick={handleDetect}
               disabled={detectMutation.isPending}
               className="flex items-center justify-center gap-3 border border-neutral-900 bg-neutral-900 px-6 py-4 text-white transition-all hover:bg-neutral-800 disabled:opacity-50"
             >
