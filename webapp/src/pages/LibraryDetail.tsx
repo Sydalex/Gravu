@@ -466,6 +466,24 @@ const LibraryDetail = () => {
                           >
                             Marketplace Listed
                           </Button>
+                        ) : asset.marketplaceStatus === 'pending_review' ? (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="gap-1.5 h-7 text-xs border border-amber-200 text-amber-700 hover:border-amber-300 hover:text-amber-800"
+                            disabled
+                          >
+                            Pending Review
+                          </Button>
+                        ) : asset.marketplaceStatus === 'rejected' ? (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="gap-1.5 h-7 text-xs border border-red-200 text-red-600 hover:border-red-300 hover:text-red-700"
+                            onClick={() => openListDialog(asset)}
+                          >
+                            Re-submit to Marketplace
+                          </Button>
                         ) : (
                           <Button
                             variant="secondary"

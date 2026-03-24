@@ -42,7 +42,7 @@ conversionsRouter.post(
               imageBase64: a.imageBase64 ?? null,
               svgContent: a.svgContent ?? null,
               dxfContent: a.dxfContent ?? null,
-              marketplaceStatus: autoListInMarketplace ? "listed" : "private",
+              marketplaceStatus: autoListInMarketplace ? "pending_review" : "private",
               marketplaceTitle: autoListInMarketplace
                 ? (name?.trim() || `Asset ${a.subjectId}`)
                 : null,

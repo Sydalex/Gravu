@@ -84,7 +84,7 @@ marketplaceRouter.post(
     const updated = await prisma.conversionAsset.update({
       where: { id: assetId },
       data: {
-        marketplaceStatus: "listed",
+        marketplaceStatus: "pending_review",
         marketplaceTitle: title.trim(),
         marketplaceCategory: category.trim(),
       },

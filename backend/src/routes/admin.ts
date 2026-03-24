@@ -78,6 +78,12 @@ const CreateRefundSchema = z.object({
   amount: z.number().int().positive().optional(),
 });
 
+const UpdateMarketplaceAssetSchema = z.object({
+  status: z.enum(["pending_review", "listed", "rejected", "private"]),
+  title: z.string().trim().min(2).max(120).optional(),
+  category: z.string().trim().min(2).max(80).optional(),
+});
+
 function requireStripeConfigured() {
   return !!stripe;
 }
@@ -791,5 +797,121 @@ adminRouter.post(
         400
       );
     }
+  }
+);
+
+// GET /api/admin/marketplace — moderation queue and live items
+adminRouter.get("/marketplace", async (c) => {
+  const assets = await prisma.conversionAsset.findMany({
+    where: {
+      marketplaceStatus: {
+        in: ["pending_review", "listed", "rejected"],
+      },
+    },
+    orderBy: [{ marketplaceStatus: "asc" }, { createdAt: "desc" }],
+    include: {
+      conversion: {
+        select: {
+          id: true,
+          flowType: true,
+          name: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return c.json({
+    data: assets.map((asset) => ({
+      id: asset.id,
+      conversionId: asset.conversionId,
+      subjectId: asset.subjectId,
+      marketplaceStatus: asset.marketplaceStatus,
+      title: asset.marketplaceTitle ?? asset.conversion.name ?? `Asset ${asset.subjectId}`,
+      category: asset.marketplaceCategory ?? "Uncategorized",
+      previewBase64: asset.imageBase64,
+      hasSvg: !!asset.svgContent,
+      hasDxf: !!asset.dxfContent,
+      createdAt: asset.createdAt.toISOString(),
+      flowType: asset.conversion.flowType,
+      owner: {
+        id: asset.conversion.user.id,
+        email: asset.conversion.user.email,
+        name: asset.conversion.user.name,
+      },
+    })),
+  });
+});
+
+// POST /api/admin/marketplace/assets/:id — moderate marketplace item
+adminRouter.post(
+  "/marketplace/assets/:id",
+  zValidator("json", UpdateMarketplaceAssetSchema),
+  async (c) => {
+    const { id } = c.req.param();
+    const { status, title, category } = c.req.valid("json");
+
+    const existing = await prisma.conversionAsset.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return c.json(
+        { error: { message: "Marketplace asset not found", code: "NOT_FOUND" } },
+        404
+      );
+    }
+
+    const updated = await prisma.conversionAsset.update({
+      where: { id },
+      data: {
+        marketplaceStatus: status,
+        ...(title !== undefined ? { marketplaceTitle: title } : {}),
+        ...(category !== undefined ? { marketplaceCategory: category } : {}),
+      },
+      include: {
+        conversion: {
+          select: {
+            flowType: true,
+            name: true,
+            user: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return c.json({
+      data: {
+        id: updated.id,
+        conversionId: updated.conversionId,
+        subjectId: updated.subjectId,
+        marketplaceStatus: updated.marketplaceStatus,
+        title: updated.marketplaceTitle ?? updated.conversion.name ?? `Asset ${updated.subjectId}`,
+        category: updated.marketplaceCategory ?? "Uncategorized",
+        previewBase64: updated.imageBase64,
+        hasSvg: !!updated.svgContent,
+        hasDxf: !!updated.dxfContent,
+        createdAt: updated.createdAt.toISOString(),
+        flowType: updated.conversion.flowType,
+        owner: {
+          id: updated.conversion.user.id,
+          email: updated.conversion.user.email,
+          name: updated.conversion.user.name,
+        },
+      },
+    });
   }
 );

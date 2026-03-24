@@ -12,7 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import {
+  Check,
   CreditCard,
+  EyeOff,
   ExternalLink,
   Loader2,
   RefreshCw,
@@ -20,6 +22,7 @@ import {
   Shield,
   Sparkles,
   Users,
+  X,
 } from "lucide-react";
 
 interface AdminStats {
@@ -111,6 +114,25 @@ interface UserBillingDetails {
     createdAt: string;
     receiptUrl: string | null;
   }>;
+}
+
+interface MarketplaceReviewAsset {
+  id: string;
+  conversionId: string;
+  subjectId: number;
+  marketplaceStatus: "pending_review" | "listed" | "rejected" | "private";
+  title: string;
+  category: string;
+  previewBase64: string | null;
+  hasSvg: boolean;
+  hasDxf: boolean;
+  createdAt: string;
+  flowType: string;
+  owner: {
+    id: string;
+    email: string;
+    name: string;
+  };
 }
 
 type FilterId = "all" | "admins" | "pro" | "low-credits";
@@ -246,6 +268,9 @@ export default function Admin() {
   const [configProPriceId, setConfigProPriceId] = useState("");
   const [configCreditsPriceId, setConfigCreditsPriceId] = useState("");
   const [configCreditsAmount, setConfigCreditsAmount] = useState("10");
+  const [marketplaceDrafts, setMarketplaceDrafts] = useState<
+    Record<string, { title: string; category: string }>
+  >({});
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["admin", "stats"],
@@ -260,6 +285,15 @@ export default function Admin() {
   const { data: billing, isLoading: billingLoading, refetch: refetchBilling } = useQuery({
     queryKey: ["admin", "billing"],
     queryFn: () => api.get<BillingOverview>("/api/admin/billing"),
+  });
+
+  const {
+    data: marketplaceAssets,
+    isLoading: marketplaceLoading,
+    refetch: refetchMarketplace,
+  } = useQuery({
+    queryKey: ["admin", "marketplace"],
+    queryFn: () => api.get<MarketplaceReviewAsset[]>("/api/admin/marketplace"),
   });
 
   const allUsers = users ?? [];
@@ -321,6 +355,10 @@ export default function Admin() {
     if (a.active !== b.active) return Number(b.active) - Number(a.active);
     return a.code.localeCompare(b.code);
   });
+  const moderationAssets = marketplaceAssets ?? [];
+  const pendingMarketplaceCount = moderationAssets.filter(
+    (asset) => asset.marketplaceStatus === "pending_review"
+  ).length;
 
   useEffect(() => {
     if (!priceProductId && selectableProducts.length) {
@@ -523,6 +561,45 @@ export default function Admin() {
     },
   });
 
+  const marketplaceMutation = useMutation({
+    mutationFn: (payload: {
+      assetId: string;
+      status: "pending_review" | "listed" | "rejected" | "private";
+      title?: string;
+      category?: string;
+    }) => api.post(`/api/admin/marketplace/assets/${payload.assetId}`, payload),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin", "marketplace"] }),
+        queryClient.invalidateQueries({ queryKey: ["marketplace"] }),
+        queryClient.invalidateQueries({ queryKey: ["conversion"] }),
+      ]);
+      toast.success("Marketplace moderation updated");
+    },
+    onError: (error) => {
+      toast.error(formatMutationError(error));
+    },
+  });
+
+  const setMarketplaceDraft = (
+    assetId: string,
+    patch: Partial<{ title: string; category: string }>
+  ) => {
+    setMarketplaceDrafts((current) => ({
+      ...current,
+      [assetId]: {
+        title: patch.title ?? current[assetId]?.title ?? "",
+        category: patch.category ?? current[assetId]?.category ?? "Objects",
+      },
+    }));
+  };
+
+  const getMarketplaceDraft = (asset: MarketplaceReviewAsset) =>
+    marketplaceDrafts[asset.id] ?? {
+      title: asset.title,
+      category: asset.category,
+    };
+
   const handleCredits = (operation: "add" | "set") => {
     if (!creditDialogUser || !creditAmount) return;
     creditsMutation.mutate({
@@ -650,6 +727,7 @@ export default function Admin() {
                 onClick={() => {
                   refetchUsers();
                   refetchBilling();
+                  refetchMarketplace();
                 }}
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
@@ -1531,6 +1609,182 @@ export default function Admin() {
               </div>
             </div>
           </div>
+        </section>
+
+        <section className="border border-[#e7e0d5] bg-[#fbfaf7] p-5 sm:p-6">
+          <div className="flex flex-col gap-4 border-b border-[#ece6db] pb-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+                Marketplace Moderation
+              </p>
+              <h2 className="mt-2 text-[26px] font-black tracking-[-0.9px] text-[#332e24]">
+                Review queue
+              </h2>
+              <p className="mt-2 max-w-[64ch] text-[13px] leading-6 text-[#6f695f]">
+                Free-tier submissions are sent here for review before they become visible in the
+                Marketplace.
+              </p>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#edcbbd] bg-[#fcf2ee] px-3 py-1 text-[11px] font-semibold text-[#c96240]">
+              <Sparkles className="h-3.5 w-3.5" />
+              {pendingMarketplaceCount} pending
+            </div>
+          </div>
+
+          {marketplaceLoading ? (
+            <div className="flex h-40 items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : moderationAssets.length === 0 ? (
+            <div className="mt-6 rounded-[18px] border border-dashed border-[#d9d0c2] px-4 py-8 text-center text-[13px] text-muted-foreground">
+              No marketplace submissions yet.
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-4 lg:grid-cols-2">
+              {moderationAssets.map((asset) => {
+                const draft = getMarketplaceDraft(asset);
+                return (
+                  <div key={asset.id} className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
+                    <div className="flex gap-4">
+                      <div className="h-28 w-28 shrink-0 overflow-hidden border border-[#ece5d8] bg-[#fcfaf6]">
+                        {asset.previewBase64 ? (
+                          <img
+                            src={`data:image/png;base64,${asset.previewBase64}`}
+                            alt={asset.title}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-[11px] text-muted-foreground">
+                            No preview
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1 space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={cn(
+                              "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]",
+                              asset.marketplaceStatus === "listed"
+                                ? "border-[#edcbbd] bg-[#fcf2ee] text-[#c96240]"
+                                : asset.marketplaceStatus === "rejected"
+                                  ? "border-[#efd4d4] bg-[#fbefef] text-[#b25959]"
+                                  : "border-[#e8dcc2] bg-[#f7f0e3] text-[#8f6a1d]"
+                            )}
+                          >
+                            {asset.marketplaceStatus === "pending_review"
+                              ? "Pending Review"
+                              : asset.marketplaceStatus === "listed"
+                                ? "Listed"
+                                : "Rejected"}
+                          </span>
+                          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                            {asset.flowType === "full" ? "Photo to Vector" : "Vectorize"}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="truncate text-[13px] font-semibold text-[#332e24]">
+                            {asset.owner.name || asset.owner.email}
+                          </p>
+                          <p className="truncate text-[11px] text-muted-foreground">
+                            {asset.owner.email}
+                          </p>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <Input
+                            value={draft.title}
+                            onChange={(e) =>
+                              setMarketplaceDraft(asset.id, { title: e.target.value })
+                            }
+                            className="h-10 rounded-2xl border-[#d8d0c5] bg-background"
+                          />
+                          <select
+                            value={draft.category}
+                            onChange={(e) =>
+                              setMarketplaceDraft(asset.id, { category: e.target.value })
+                            }
+                            className="h-10 w-full rounded-2xl border border-[#d8d0c5] bg-background px-4 text-[13px] text-[#332e24]"
+                          >
+                            {[
+                              "People",
+                              "Furniture",
+                              "Objects",
+                              "Plants",
+                              "Architecture",
+                              "Decor",
+                              "Uncategorized",
+                            ].map((category) => (
+                              <option key={category} value={category}>
+                                {category}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 text-[11px] text-[#6f695f]">
+                          <span>{asset.hasSvg ? "SVG ready" : "No SVG"}</span>
+                          <span>{asset.hasDxf ? "DXF ready" : "No DXF"}</span>
+                          <span>{formatDate(asset.createdAt)}</span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            className="h-9 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90"
+                            disabled={marketplaceMutation.isPending}
+                            onClick={() =>
+                              marketplaceMutation.mutate({
+                                assetId: asset.id,
+                                status: "listed",
+                                title: draft.title.trim(),
+                                category: draft.category,
+                              })
+                            }
+                          >
+                            <Check className="mr-2 h-4 w-4" />
+                            Approve
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="h-9 rounded-2xl border-[#d8d0c5] bg-background"
+                            disabled={marketplaceMutation.isPending}
+                            onClick={() =>
+                              marketplaceMutation.mutate({
+                                assetId: asset.id,
+                                status: "rejected",
+                                title: draft.title.trim(),
+                                category: draft.category,
+                              })
+                            }
+                          >
+                            <X className="mr-2 h-4 w-4" />
+                            Reject
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="h-9 rounded-2xl border-[#d8d0c5] bg-background"
+                            disabled={marketplaceMutation.isPending}
+                            onClick={() =>
+                              marketplaceMutation.mutate({
+                                assetId: asset.id,
+                                status: "private",
+                                title: draft.title.trim(),
+                                category: draft.category,
+                              })
+                            }
+                          >
+                            <EyeOff className="mr-2 h-4 w-4" />
+                            Hide
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
       </main>
 
