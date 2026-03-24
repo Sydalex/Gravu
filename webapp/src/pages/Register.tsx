@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
-import { authClient } from '@/lib/auth-client';
+import { authClient, signOut } from '@/lib/auth-client';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 
 const Register = () => {
@@ -29,7 +29,8 @@ const Register = () => {
     if (result.error) {
       setError(result.error.message || 'Failed to create account');
     } else {
-      navigate('/app');
+      await signOut().catch(() => undefined);
+      navigate(`/verify-otp?email=${encodeURIComponent(email.trim())}&mode=email-verification`);
     }
   };
 

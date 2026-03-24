@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { authClient } from '@/lib/auth-client';
@@ -13,6 +13,9 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = new URLSearchParams(window.location.search);
+  const verified = searchParams.get('verified') === '1';
+  const verifiedEmail = searchParams.get('email') ?? '';
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +40,7 @@ const Login = () => {
     if (result.error) {
       setError(result.error.message || 'Failed to send verification code');
     } else {
-      navigate('/verify-otp', { state: { email: email.trim() } });
+      navigate(`/verify-otp?email=${encodeURIComponent(email.trim())}&mode=sign-in`);
     }
   };
 
@@ -110,6 +113,15 @@ const Login = () => {
               <span className="h-px w-8 bg-foreground/20" />
               <span className="text-xs uppercase tracking-widest text-foreground/40">Sign in</span>
             </div>
+
+            {verified ? (
+              <div className="mb-6 flex items-start gap-3 border border-orange-500/20 bg-orange-500/5 px-4 py-3">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-orange-500" />
+                <p className="text-xs uppercase tracking-widest text-foreground/60">
+                  Email verified{verifiedEmail ? ` for ${verifiedEmail}` : ''}. You can sign in now.
+                </p>
+              </div>
+            ) : null}
 
             <form onSubmit={handleSignIn} className="space-y-5">
               {/* Email */}

@@ -4,13 +4,17 @@ import { ShieldCheck, ArrowLeft, Loader2, RotateCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { authClient } from '@/lib/auth-client';
+import { authClient, signOut } from '@/lib/auth-client';
+import { api } from '@/lib/api';
 import { PageWrapper } from '@/components/PageWrapper';
 
 const VerifyOtp = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const email = (location.state as { email?: string })?.email;
+  const searchParams = new URLSearchParams(location.search);
+  const state = location.state as { email?: string; mode?: 'sign-in' | 'email-verification' } | null;
+  const email = state?.email ?? searchParams.get('email') ?? undefined;
+  const mode = state?.mode ?? ((searchParams.get('mode') as 'sign-in' | 'email-verification' | null) ?? 'sign-in');
 
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,17 +33,44 @@ const VerifyOtp = () => {
     setLoading(true);
     setError(null);
 
-    const result = await authClient.signIn.emailOtp({
-      email: email.trim(),
-      otp: otp.trim(),
-    });
+    let errorMessage: string | null = null;
+
+    if (mode === 'email-verification') {
+      const response = await api.raw('/api/auth/email-otp/verify-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          otp: otp.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        errorMessage = payload?.message || payload?.error?.message || 'Invalid verification code';
+      } else {
+        await signOut().catch(() => undefined);
+        navigate(`/login?verified=1&email=${encodeURIComponent(email.trim())}`, { replace: true });
+      }
+    } else {
+      const result = await authClient.signIn.emailOtp({
+        email: email.trim(),
+        otp: otp.trim(),
+      });
+
+      if (result.error) {
+        errorMessage = result.error.message || 'Invalid verification code';
+      } else {
+        navigate('/app');
+      }
+    }
 
     setLoading(false);
 
-    if (result.error) {
-      setError(result.error.message || "Invalid verification code");
-    } else {
-      navigate("/app");
+    if (errorMessage) {
+      setError(errorMessage);
     }
   };
 
@@ -50,7 +81,7 @@ const VerifyOtp = () => {
 
     const result = await authClient.emailOtp.sendVerificationOtp({
       email: email.trim(),
-      type: "sign-in",
+      type: mode === 'email-verification' ? 'email-verification' : 'sign-in',
     });
 
     setResending(false);
@@ -96,10 +127,10 @@ const VerifyOtp = () => {
               <ShieldCheck className="h-6 w-6 text-accent" />
             </div>
             <h2 className="text-lg font-semibold text-foreground">
-              Check your email
+              {mode === 'email-verification' ? 'Verify your email' : 'Check your email'}
             </h2>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              We sent a 6-digit code to
+              {mode === 'email-verification' ? 'We sent a 6-digit verification code to' : 'We sent a 6-digit code to'}
             </p>
             <p className="mt-0.5 font-mono text-sm text-foreground">
               {email}
@@ -148,7 +179,7 @@ const VerifyOtp = () => {
               ) : (
                 <ShieldCheck className="mr-2 h-4 w-4" />
               )}
-              {loading ? "Verifying..." : "Verify & Sign In"}
+              {loading ? "Verifying..." : mode === 'email-verification' ? 'Verify Email' : 'Verify & Sign In'}
             </Button>
           </form>
 
