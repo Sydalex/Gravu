@@ -213,6 +213,39 @@ const LibraryDetail = () => {
     enabled: !!id,
   });
 
+  const listMutation = useMutation({
+    mutationFn: (payload: { assetId: string; title: string; category: string }) =>
+      api.post(`/api/marketplace/assets/${payload.assetId}/list`, {
+        title: payload.title,
+        category: payload.category,
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['conversion', id] }),
+        queryClient.invalidateQueries({ queryKey: ['marketplace'] }),
+      ]);
+      setListingAsset(null);
+      toast.success('Asset listed in Marketplace');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Failed to list asset');
+    },
+  });
+
+  const unlistMutation = useMutation({
+    mutationFn: (assetId: string) => api.post(`/api/marketplace/assets/${assetId}/unlist`, {}),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['conversion', id] }),
+        queryClient.invalidateQueries({ queryKey: ['marketplace'] }),
+      ]);
+      toast.success('Asset removed from Marketplace');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Failed to unlist asset');
+    },
+  });
+
   if (isLoading) {
     return (
       <PageWrapper className="pt-[72px]">
@@ -252,39 +285,6 @@ const LibraryDetail = () => {
   const vectorAssets = conversion.assets.filter(
     (a) => !!a.svgContent || !!a.dxfContent,
   );
-
-  const listMutation = useMutation({
-    mutationFn: (payload: { assetId: string; title: string; category: string }) =>
-      api.post(`/api/marketplace/assets/${payload.assetId}/list`, {
-        title: payload.title,
-        category: payload.category,
-      }),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['conversion', id] }),
-        queryClient.invalidateQueries({ queryKey: ['marketplace'] }),
-      ]);
-      setListingAsset(null);
-      toast.success('Asset listed in Marketplace');
-    },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Failed to list asset');
-    },
-  });
-
-  const unlistMutation = useMutation({
-    mutationFn: (assetId: string) => api.post(`/api/marketplace/assets/${assetId}/unlist`, {}),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['conversion', id] }),
-        queryClient.invalidateQueries({ queryKey: ['marketplace'] }),
-      ]);
-      toast.success('Asset removed from Marketplace');
-    },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Failed to unlist asset');
-    },
-  });
 
   const openListDialog = (asset: ConversionAsset) => {
     setListingAsset(asset);

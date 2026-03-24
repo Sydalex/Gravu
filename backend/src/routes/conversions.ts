@@ -22,6 +22,12 @@ conversionsRouter.post(
     }
 
     const { flowType, name, originalImageBase64, assets } = c.req.valid("json");
+    const activeSubscription = await prisma.subscription.findUnique({
+      where: { userId: user.id },
+      select: { status: true },
+    });
+    const autoListInMarketplace =
+      activeSubscription?.status !== "active" && activeSubscription?.status !== "trialing";
 
     const conversion = await prisma.$transaction(async (tx) => {
       const created = await tx.conversion.create({
@@ -36,6 +42,11 @@ conversionsRouter.post(
               imageBase64: a.imageBase64 ?? null,
               svgContent: a.svgContent ?? null,
               dxfContent: a.dxfContent ?? null,
+              marketplaceStatus: autoListInMarketplace ? "listed" : "private",
+              marketplaceTitle: autoListInMarketplace
+                ? (name?.trim() || `Asset ${a.subjectId}`)
+                : null,
+              marketplaceCategory: autoListInMarketplace ? "Uncategorized" : null,
             })),
           },
         },
