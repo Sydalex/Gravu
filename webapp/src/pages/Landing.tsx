@@ -66,18 +66,21 @@ const Landing = () => {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="mt-16 md:mt-20 flex flex-col items-start gap-6"
           >
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary/80">
+              Includes one free successful process
+            </p>
             {/* Pill button with spinning border */}
             <Link to="/register" className="group relative">
               {/* Spinning decorative border */}
               <span className="absolute -inset-1 rounded-full border border-dashed border-foreground/20 animate-spin-slow" style={{ animationDuration: '12s' }} />
               <span className="relative inline-flex items-center gap-3 rounded-full border-2 border-foreground px-8 py-4 text-sm uppercase tracking-widest text-foreground transition-all hover:bg-foreground hover:text-background">
-                Start Creating
+                Start With One Free Process
               </span>
             </Link>
 
             {/* Supporting text */}
             <p className="max-w-sm text-sm leading-relaxed text-foreground/60">
-              AI-powered vectorization for architects, designers, and creative professionals. Export to SVG, DXF, and PNG.
+              Try Gravu with one successful free process, then continue with Pro or credit purchases. Export clean linework to SVG, DXF, and PNG.
             </p>
           </motion.div>
 
@@ -93,7 +96,7 @@ const Landing = () => {
               <span className="text-sm uppercase tracking-widest text-foreground/70">What We Do</span>
             </div>
             <p className="max-w-xl text-sm leading-relaxed text-foreground/60">
-              Gravu transforms photographs into precision CAD-ready vectors. Upload any image, let AI detect and extract subjects, then export clean linework for Vectorworks, AutoCAD, SketchUp, and beyond. Two workflows: full photo-to-vector conversion, or direct linework vectorization.
+              Gravu transforms photographs into precision CAD-ready vectors. Upload any image, let AI detect and extract subjects, then export clean linework for Vectorworks, AutoCAD, SketchUp, and beyond. Every account includes one successful free process to test the workflow, then you can upgrade or buy credits to continue.
             </p>
           </motion.div>
         </section>
