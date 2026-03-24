@@ -245,13 +245,16 @@ SCALE-AWARE SIMPLIFICATION:
 
 THIN-STRUCTURE CENTERLINE RULES (strict):
 - Draw thin structural elements as single-stroke centerlines, not double-edge outlined shapes.
-- Chair frames, bars, support arms, skis, cables, and mechanical supports must be represented by one center stroke only.
+- Use single-stroke centerlines only for very thin wire-like members where thickness is barely visible in the source.
+- Cables, wires, and extremely thin supports may be represented by one center stroke.
+- Bars, rails, handles, tubular exercise frames, and other members with clearly visible thickness must keep only their outer contour and must NOT get an interior center line.
 - Do not draw tube/rail thickness for narrow members.
 - Do not use parallel contour lines to describe narrow objects.
 - Use a monoline schematic style for thin structures.
 - If a part is narrow, represent it with one line, not two borders.
 - When a narrow structural part bends, keep one continuous centerline through the bend (not two boundary contours).
 - For narrow closed shapes, prefer opening them into a single representative stroke when recognition is preserved.
+- Never add a longitudinal centerline inside a closed tubular contour.
 
 TOPOLOGY AND OBSERVATION RULES (strict):
 - Do not add guide lines, center axes, construction lines, or symbolic strokes that are not visibly present in the source image.
