@@ -1,25 +1,18 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { signOut } from '@/lib/auth-client';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { api } from '@/lib/api';
 import type { SubscriptionStatus } from '../../../backend/src/types';
 
 export function NavBar() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { data: subscription } = useQuery({
     queryKey: ['subscription'],
     queryFn: () => api.get<SubscriptionStatus>('/api/payments/subscription'),
     staleTime: 30_000,
   });
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
   const creditsLabel = subscription?.isAdmin ? '∞' : String(subscription?.credits ?? 0);

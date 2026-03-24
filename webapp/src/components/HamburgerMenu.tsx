@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { signOut, useSession } from '@/lib/auth-client';
+import { useSession } from '@/lib/auth-client';
 import { api } from '@/lib/api';
+import { useAppSignOut } from '@/hooks/use-app-sign-out';
 import type { SubscriptionStatus } from '../../../backend/src/types';
 
 export function HamburgerMenu() {
   const [open, setOpen] = useState(false);
-  const navigate = useNavigate();
   const location = useLocation();
   const { data: session } = useSession();
+  const { signOutUser, isSigningOut } = useAppSignOut();
   const { data: subscription } = useQuery({
     queryKey: ['subscription'],
     queryFn: () => api.get<SubscriptionStatus>('/api/payments/subscription'),
@@ -33,8 +34,7 @@ export function HamburgerMenu() {
 
   const handleSignOut = async () => {
     setOpen(false);
-    await signOut();
-    navigate('/login');
+    await signOutUser();
   };
 
   const visibleLinks = menuLinks.filter(
@@ -141,9 +141,10 @@ export function HamburgerMenu() {
                     </p>
                     <button
                       onClick={handleSignOut}
-                      className="text-left font-light uppercase tracking-widest text-sm text-neutral-500 hover:text-neutral-900 transition-colors"
+                      disabled={isSigningOut}
+                      className="text-left font-light uppercase tracking-widest text-sm text-neutral-500 hover:text-neutral-900 transition-colors disabled:opacity-50"
                     >
-                      Sign out
+                      {isSigningOut ? 'Signing out...' : 'Sign out'}
                     </button>
                   </div>
                 ) : (

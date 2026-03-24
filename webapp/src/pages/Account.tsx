@@ -4,8 +4,9 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { LogOut, Check, Zap, Pencil, Crown, CreditCard, Loader2, Plus, Shield, ArrowRight } from 'lucide-react';
 import { PageWrapper } from '@/components/PageWrapper';
-import { useSession, signOut } from '@/lib/auth-client';
+import { useSession } from '@/lib/auth-client';
 import { api } from '@/lib/api';
+import { useAppSignOut } from '@/hooks/use-app-sign-out';
 import type { SubscriptionStatus } from '../../../backend/src/types';
 
 function getInitials(name?: string | null, email?: string | null): string {
@@ -249,6 +250,7 @@ const Account = () => {
   const navigate = useNavigate();
   const { data: session } = useSession();
   const user = session?.user;
+  const { signOutUser, isSigningOut } = useAppSignOut();
 
   const [editingName, setEditingName] = useState(false);
   const [displayName, setDisplayName] = useState(user?.name ?? '');
@@ -258,11 +260,6 @@ const Account = () => {
     queryFn: () => api.get<SubscriptionStatus>('/api/payments/subscription'),
     staleTime: 30_000,
   });
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
   const upgraded = new URLSearchParams(window.location.search).get('upgraded') === '1';
   const creditsAdded = new URLSearchParams(window.location.search).get('credits') === '1';
@@ -426,11 +423,14 @@ const Account = () => {
                 </p>
               </div>
               <button
-                onClick={handleSignOut}
-                className="flex items-center justify-center gap-2 border border-red-200 bg-transparent px-4 py-2.5 text-red-500 transition-all hover:bg-red-50 hover:border-red-300 sm:flex-shrink-0"
+                onClick={signOutUser}
+                disabled={isSigningOut}
+                className="flex items-center justify-center gap-2 border border-red-200 bg-transparent px-4 py-2.5 text-red-500 transition-all hover:bg-red-50 hover:border-red-300 disabled:opacity-50 sm:flex-shrink-0"
               >
-                <LogOut className="h-3.5 w-3.5" />
-                <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Sign Out</span>
+                {isSigningOut ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
+                <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
+                  {isSigningOut ? 'Signing Out' : 'Sign Out'}
+                </span>
               </button>
             </div>
           </div>
