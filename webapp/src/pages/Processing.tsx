@@ -7,6 +7,7 @@ import type { CreateConversionResponse } from '../../../backend/src/types';
 
 interface LineworkResult {
   results: Array<{ subjectId: number; imageBase64: string }>;
+  trialConsumed?: boolean;
 }
 
 interface TraceUploadResult {
@@ -36,6 +37,7 @@ const Processing = () => {
   const [status, setStatus] = useState('uploading');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
   const startedRef = useRef(false);
 
   const imageBase64 = imageUri?.split(',')[1] ?? '';
@@ -97,7 +99,7 @@ const Processing = () => {
       }
 
       await new Promise((r) => setTimeout(r, 600));
-      navigate('/result', { replace: true });
+      navigate(result.trialConsumed ? '/result?upgrade=1' : '/result', { replace: true });
     };
 
     const processVectorizeFlow = async () => {
@@ -142,8 +144,9 @@ const Processing = () => {
         throw new Error(errJson?.error?.message ?? 'Vectorization failed');
       }
 
-      const vectorData = (await vectorRes.json()) as { data: { dxf: string } };
+      const vectorData = (await vectorRes.json()) as { data: { dxf: string; trialConsumed?: boolean } };
       const dxfContent = vectorData.data.dxf;
+      const trialConsumed = vectorData.data.trialConsumed === true;
 
       setStatus('converting');
       setProgress(70);
@@ -176,7 +179,7 @@ const Processing = () => {
       }
 
       await new Promise((r) => setTimeout(r, 600));
-      navigate('/result', { replace: true });
+      navigate(trialConsumed ? '/result?upgrade=1' : '/result', { replace: true });
     };
 
     const run = async () => {
@@ -187,6 +190,7 @@ const Processing = () => {
           await processVectorizeFlow();
         }
       } catch (err) {
+        setQuotaExceeded(err instanceof ApiError && err.status === 402);
         const message =
           err instanceof ApiError
             ? err.message
@@ -202,6 +206,7 @@ const Processing = () => {
 
   const handleRetry = () => {
     setError(null);
+    setQuotaExceeded(false);
     setProgress(0);
     startedRef.current = false;
     navigate('/processing', { replace: true });
@@ -244,12 +249,22 @@ const Processing = () => {
               Processing failed.
             </h2>
             <p className="max-w-xs font-mono text-xs text-neutral-500">{error}</p>
-            <button
-              onClick={handleRetry}
-              className="flex items-center justify-center gap-3 border border-neutral-900 bg-neutral-900 px-8 py-4 text-white transition-all hover:bg-neutral-800"
-            >
-              <span className="font-mono text-xs uppercase tracking-[0.15em]">Try Again</span>
-            </button>
+            <div className="flex flex-col items-center gap-3 sm:flex-row">
+              {quotaExceeded && (
+                <button
+                  onClick={() => navigate('/account')}
+                  className="flex items-center justify-center gap-3 border border-orange-500 bg-orange-500 px-8 py-4 text-white transition-all hover:bg-orange-600"
+                >
+                  <span className="font-mono text-xs uppercase tracking-[0.15em]">Upgrade or Buy Credits</span>
+                </button>
+              )}
+              <button
+                onClick={handleRetry}
+                className="flex items-center justify-center gap-3 border border-neutral-900 bg-neutral-900 px-8 py-4 text-white transition-all hover:bg-neutral-800"
+              >
+                <span className="font-mono text-xs uppercase tracking-[0.15em]">Try Again</span>
+              </button>
+            </div>
           </motion.div>
         ) : (
           <>

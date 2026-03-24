@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import sharp from "sharp";
+import type { auth } from "../auth";
 import {
   DetectSubjectsRequestSchema,
   GenerateLineworkRequestSchema,
@@ -9,8 +10,14 @@ import {
   type GenerateLineworkResponse,
   type LineworkResult,
 } from "../types";
+import { releaseProcessAccess, reserveProcessAccess } from "../services/processAccess";
 
-const aiRouter = new Hono();
+type Variables = {
+  user: typeof auth.$Infer.Session.user | null;
+  session: typeof auth.$Infer.Session.session | null;
+};
+
+const aiRouter = new Hono<{ Variables: Variables }>();
 
 // ─── Gemini API helpers ─────────────────────────────────────────────────────
 
@@ -387,7 +394,16 @@ Rules:
 // ─── POST /generate-linework ────────────────────────────────────────────────
 
 aiRouter.post("/generate-linework", async (c) => {
+  const user = c.get("user");
+  let reservedUserId: string | null = null;
+  let reservedMode: "admin" | "credit" | "free_trial" | null = null;
+  let trialConsumed = false;
+
   try {
+    if (!user) {
+      return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+    }
+
     const rawBody = await c.req.json();
     const parseResult = GenerateLineworkRequestSchema.safeParse(rawBody);
 
@@ -420,6 +436,15 @@ aiRouter.post("/generate-linework", async (c) => {
         500
       );
     }
+
+    const reservation = await reserveProcessAccess(user.id);
+    if (!reservation.allowed) {
+      return c.json({ error: reservation.error }, reservation.status as 401 | 402);
+    }
+
+    reservedUserId = user.id;
+    reservedMode = reservation.mode;
+    trialConsumed = reservation.trialConsumed;
 
     const viewDescription = customViewDescription || viewAngle;
 
@@ -573,15 +598,20 @@ aiRouter.post("/generate-linework", async (c) => {
     console.log(`[generate-linework] Returning ${results.length} results`);
 
     if (results.length === 0) {
-      return c.json(
-        { error: { message: "No image was generated. The model may not have returned an image output.", code: "NO_IMAGE_GENERATED" } },
-        500
-      );
+      throw new Error("No image was generated. The model may not have returned an image output.");
     }
 
-    const responseData: GenerateLineworkResponse = { results };
+    const responseData: GenerateLineworkResponse = { results, trialConsumed };
     return c.json({ data: responseData });
   } catch (err) {
+    if (reservedUserId && reservedMode) {
+      try {
+        await releaseProcessAccess(reservedUserId, reservedMode);
+      } catch (releaseErr) {
+        console.error("[generate-linework] Failed to release reserved access:", releaseErr);
+      }
+    }
+
     console.error("[generate-linework] Error:", err);
     const message =
       err instanceof Error ? err.message : "Failed to generate linework";

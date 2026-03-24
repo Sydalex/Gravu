@@ -19,6 +19,7 @@ import {
   vectorizeCenterline,
   type SimplificationLevel,
 } from "../services/centerlineVectorizer";
+import { releaseProcessAccess, reserveProcessAccess } from "../services/processAccess";
 
 type Variables = {
   user: typeof auth.$Infer.Session.user | null;
@@ -1337,9 +1338,12 @@ convertRouter.post("/vectorise-all", async (c) => {
 // Production DXF path backed by the raster-dxf-centerline service.
 
 convertRouter.post("/vectorise-ai", async (c) => {
+  const user = c.get("user");
+  let reservedUserId: string | null = null;
+  let reservedMode: "admin" | "credit" | "free_trial" | null = null;
+  let trialConsumed = false;
+
   try {
-    // Auth check only (no external per-call billing)
-    const user = c.get("user");
     if (!user) {
       return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
     }
@@ -1357,6 +1361,15 @@ convertRouter.post("/vectorise-ai", async (c) => {
       return c.json({ error: { message: "No image file provided.", code: "MISSING_FILE" } }, 400);
     }
 
+    const reservation = await reserveProcessAccess(user.id);
+    if (!reservation.allowed) {
+      return c.json({ error: reservation.error }, reservation.status as 401 | 402);
+    }
+
+    reservedUserId = user.id;
+    reservedMode = reservation.mode;
+    trialConsumed = reservation.trialConsumed;
+
     console.log(
       `[vectorise-ai] Processing ${imageFile.name}, size: ${imageFile.size} using centerline vectorizer service (${simplification})`
     );
@@ -1367,8 +1380,16 @@ convertRouter.post("/vectorise-ai", async (c) => {
     const result = await vectorizeCenterline(inputBuffer, { simplification });
 
     console.log(`[vectorise-ai] Success, DXF length: ${result.dxf.length}`);
-    return c.json({ data: { dxf: result.dxf } });
+    return c.json({ data: { dxf: result.dxf, trialConsumed } });
   } catch (err) {
+    if (reservedUserId && reservedMode) {
+      try {
+        await releaseProcessAccess(reservedUserId, reservedMode);
+      } catch (releaseErr) {
+        console.error("[vectorise-ai] Failed to release reserved access:", releaseErr);
+      }
+    }
+
     console.error("[vectorise-ai] Error:", err);
     const message = err instanceof Error ? err.message : "Failed to vectorise image";
     return c.json(

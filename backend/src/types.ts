@@ -106,6 +106,7 @@ export type LineworkResult = z.infer<typeof LineworkResultSchema>;
 /** Response data for POST /api/ai/generate-linework */
 export const GenerateLineworkResponseSchema = z.object({
   results: z.array(LineworkResultSchema),
+  trialConsumed: z.boolean().optional(),
 });
 export type GenerateLineworkResponse = z.infer<typeof GenerateLineworkResponseSchema>;
 

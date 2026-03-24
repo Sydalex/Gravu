@@ -1,9 +1,17 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, Eye, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Crown, Eye, Loader2, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageWrapper } from '@/components/PageWrapper';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useImageStore, type SimplificationLevel } from '@/lib/store';
 import { api } from '@/lib/api';
 
@@ -37,6 +45,7 @@ async function dxfToSvg(dxf: string): Promise<string> {
 
 const Result = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const flowType = useImageStore((s) => s.flowType);
   const imageUri = useImageStore((s) => s.imageUri);
   const resultImages = useImageStore((s) => s.resultImages);
@@ -51,6 +60,9 @@ const Result = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showOriginal, setShowOriginal] = useState(false);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+
+  const shouldPromptUpgrade = new URLSearchParams(location.search).get('upgrade') === '1';
 
   const patchAssetToDb = useCallback(
     async (subjectId: number, payload: UpdateAssetPayload) => {
@@ -123,6 +135,10 @@ const Result = () => {
   useEffect(() => {
     if (!resultImages || resultImages.length === 0) navigate('/', { replace: true });
   }, [resultImages, navigate]);
+
+  useEffect(() => {
+    setShowUpgradeDialog(shouldPromptUpgrade);
+  }, [shouldPromptUpgrade]);
 
   if (!resultImages || resultImages.length === 0) return null;
 
@@ -212,8 +228,52 @@ const Result = () => {
     );
   };
 
+  const closeUpgradeDialog = () => {
+    setShowUpgradeDialog(false);
+    if (shouldPromptUpgrade) {
+      navigate('/result', { replace: true });
+    }
+  };
+
   return (
     <PageWrapper className="flex flex-col items-center px-6 pt-20 pb-12">
+      <Dialog open={showUpgradeDialog} onOpenChange={(open) => (!open ? closeUpgradeDialog() : setShowUpgradeDialog(true))}>
+        <DialogContent className="border-[#dfd8cc] bg-[#fbf7ef] sm:max-w-md">
+          <DialogHeader className="text-left">
+            <div className="mb-2 flex h-10 w-10 items-center justify-center border border-orange-500/20 bg-orange-500/10">
+              <Crown className="h-4 w-4 text-orange-500" />
+            </div>
+            <DialogTitle className="text-[24px] font-black tracking-[-0.7px] text-[#332e24]">
+              Your free process is complete.
+            </DialogTitle>
+            <DialogDescription className="font-mono text-[11px] leading-5 text-[#6c6354]">
+              Upgrade to Pro or buy credits to keep converting new images. Your first result is ready below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="border border-[#e6dece] bg-white/80 px-4 py-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#a06b3a]">Next step</p>
+            <p className="mt-1 text-[13px] text-[#4a4237]">
+              Open billing to upgrade your plan before starting the next conversion.
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:justify-start">
+            <button
+              onClick={() => navigate('/account')}
+              className="flex items-center justify-center gap-2 border border-orange-500 bg-orange-500 px-4 py-3 text-white transition-all hover:bg-orange-600"
+            >
+              <Zap className="h-3.5 w-3.5" />
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Go to Billing</span>
+            </button>
+            <button
+              onClick={closeUpgradeDialog}
+              className="flex items-center justify-center gap-2 border border-neutral-300 bg-transparent px-4 py-3 text-neutral-700 transition-all hover:border-neutral-400"
+            >
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Later</span>
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="w-full max-w-2xl">
         {/* Header */}
         <motion.div
