@@ -29,15 +29,25 @@ function formatDate(dateStr: string | null): string {
 }
 
 const proFeatures = [
-  'Unlimited AI linework conversions',
-  'Priority processing queue',
-  'Batch export (all subjects at once)',
-  'DXF + SVG vector exports',
+  'Continue converting after your free process',
+  'Monthly plan access plus extra credit purchases',
+  'Photo to Vector and Vectorize Linework',
+  'DXF + SVG + PNG exports',
   'Full conversion history',
-  'Email support',
+  'Billing management via Stripe',
 ];
 
-const freeFeatures = ['Photo to Vector conversions', 'Vectorize Linework', 'PNG, SVG, DXF exports', 'Conversion history'];
+const freeFeatures = [
+  'One free successful process',
+  'Buy credits anytime after the free process',
+  'Photo to Vector and Vectorize Linework',
+  'PNG, SVG, DXF exports',
+  'Conversion history',
+];
+
+function formatPlanLabel(plan?: SubscriptionStatus['plan'] | null): string {
+  return plan === 'pro' ? 'Pro' : 'Free Trial';
+}
 
 interface SubscriptionCardProps {
   subscription: SubscriptionStatus | undefined;
@@ -106,7 +116,7 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
           </span>
         ) : (
           <span className="border border-neutral-200 bg-neutral-50 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.15em] text-neutral-500">
-            Free
+            Free Trial
           </span>
         )}
       </div>
@@ -131,14 +141,16 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1.5 font-mono text-[10px] text-neutral-400">
             <Zap className="h-3 w-3" />
-            Credits remaining
+            Credits available
           </span>
           <span className="font-mono text-[10px] font-semibold text-neutral-700">
             {subscription?.isAdmin ? '∞' : subscription?.credits ?? 0}
           </span>
         </div>
         {!subscription?.isAdmin && (subscription?.credits ?? 0) === 0 && (
-          <p className="mt-1 font-mono text-[9px] text-amber-600">No credits — purchase more to continue converting.</p>
+          <p className="mt-1 font-mono text-[9px] text-amber-600">
+            Free process used. Upgrade or buy credits to continue converting.
+          </p>
         )}
       </div>
 
@@ -204,7 +216,9 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
             <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Upgrade to Pro</span>
           </button>
           <p className="text-center font-mono text-[9px] text-neutral-400">
-            {activeProPriceId ? 'Secure checkout via Stripe.' : 'No active Pro price configured yet.'}
+            {activeProPriceId
+              ? 'Includes one free successful process before upgrade or credits are required.'
+              : 'No active Pro price configured yet.'}
           </p>
           {!subscription?.isAdmin && (
             <button
@@ -355,7 +369,7 @@ const Account = () => {
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[10px] text-neutral-400">Plan</span>
                 <span className="font-mono text-[10px] text-neutral-700 capitalize">
-                  {subLoading ? '...' : subscription?.plan ?? 'Free'}
+                  {subLoading ? '...' : formatPlanLabel(subscription?.plan)}
                 </span>
               </div>
             </div>
