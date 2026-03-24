@@ -241,6 +241,7 @@ export const SubscriptionStatusSchema = z.object({
   stripeCustomerId: z.string().nullable(),
   credits: z.number(),
   freeTrialUsed: z.boolean(),
+  deviceTrialUsed: z.boolean(),
   isAdmin: z.boolean(),
   billingEnabled: z.boolean(),
   activeProPriceId: z.string().nullable(),

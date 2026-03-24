@@ -11,6 +11,10 @@ import {
   type LineworkResult,
 } from "../types";
 import { releaseProcessAccess, reserveProcessAccess } from "../services/processAccess";
+import {
+  getOrCreateTrialDeviceToken,
+  hashTrialDeviceToken,
+} from "../services/trialDevice";
 
 type Variables = {
   user: typeof auth.$Infer.Session.user | null;
@@ -398,6 +402,7 @@ aiRouter.post("/generate-linework", async (c) => {
   let reservedUserId: string | null = null;
   let reservedMode: "admin" | "credit" | "free_trial" | null = null;
   let trialConsumed = false;
+  let reservedDeviceHash: string | undefined;
 
   try {
     if (!user) {
@@ -437,14 +442,17 @@ aiRouter.post("/generate-linework", async (c) => {
       );
     }
 
-    const reservation = await reserveProcessAccess(user.id);
+    const deviceToken = getOrCreateTrialDeviceToken(c);
+    const deviceHash = hashTrialDeviceToken(deviceToken);
+    const reservation = await reserveProcessAccess(user.id, deviceHash);
     if (!reservation.allowed) {
-      return c.json({ error: reservation.error }, reservation.status as 401 | 402);
+      return c.json({ error: reservation.error }, reservation.status as 401 | 402 | 403 | 500);
     }
 
     reservedUserId = user.id;
     reservedMode = reservation.mode;
     trialConsumed = reservation.trialConsumed;
+    reservedDeviceHash = deviceHash;
 
     const viewDescription = customViewDescription || viewAngle;
 
@@ -606,7 +614,7 @@ aiRouter.post("/generate-linework", async (c) => {
   } catch (err) {
     if (reservedUserId && reservedMode) {
       try {
-        await releaseProcessAccess(reservedUserId, reservedMode);
+        await releaseProcessAccess(reservedUserId, reservedMode, reservedDeviceHash);
       } catch (releaseErr) {
         console.error("[generate-linework] Failed to release reserved access:", releaseErr);
       }

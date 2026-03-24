@@ -23,6 +23,7 @@ model User {
   credits          Int     @default(0)
   isAdmin          Boolean @default(false)
   freeTrialUsed    Boolean @default(false)
+  trialDevices     TrialDevice[] @relation("TrialDeviceFirstUser")
 }
 
 model Conversion {
@@ -106,4 +107,14 @@ model BillingConfig {
   activeCreditsPackAmount Int     @default(10)
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
+}
+
+model TrialDevice {
+  id            String   @id @default(cuid())
+  deviceHash    String   @unique
+  firstUserId   String?
+  firstUser     User?    @relation("TrialDeviceFirstUser", fields: [firstUserId], references: [id], onDelete: SetNull)
+  freeTrialUsed Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  lastSeenAt    DateTime @updatedAt
 }

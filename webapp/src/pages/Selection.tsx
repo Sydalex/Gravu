@@ -42,7 +42,9 @@ const Selection = () => {
   });
 
   const shouldBlockPaidAction =
-    !subscription?.isAdmin && !!subscription?.freeTrialUsed && (subscription?.credits ?? 0) <= 0;
+    !subscription?.isAdmin &&
+    ((subscription?.freeTrialUsed ?? false) || (subscription?.deviceTrialUsed ?? false)) &&
+    (subscription?.credits ?? 0) <= 0;
 
   const detectMutation = useMutation({
     mutationFn: () =>
@@ -101,10 +103,10 @@ const Selection = () => {
               <Crown className="h-4 w-4 text-orange-500" />
             </div>
             <DialogTitle className="text-[24px] font-black tracking-[-0.7px] text-[#332e24]">
-              Your free process has already been used.
+              Free trial unavailable.
             </DialogTitle>
             <DialogDescription className="font-mono text-[11px] leading-5 text-[#6c6354]">
-              Upgrade to Pro or buy credits before detecting subjects or starting another photo-to-vector conversion.
+              This account or device has already used the free process. Upgrade to Pro or buy credits before detecting subjects or starting another photo-to-vector conversion.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:justify-start">

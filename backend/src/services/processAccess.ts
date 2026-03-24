@@ -17,10 +17,13 @@ export type ProcessReservation =
       };
     };
 
-export async function reserveProcessAccess(userId: string): Promise<ProcessReservation> {
+export async function reserveProcessAccess(
+  userId: string,
+  deviceHash?: string
+): Promise<ProcessReservation> {
   const dbUser = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, isAdmin: true, credits: true, freeTrialUsed: true },
+    select: { id: true, isAdmin: true, credits: true, freeTrialUsed: true, emailVerified: true },
   });
 
   if (!dbUser) {
@@ -56,17 +59,69 @@ export async function reserveProcessAccess(userId: string): Promise<ProcessReser
     };
   }
 
-  const consumedTrial = await prisma.user.updateMany({
-    where: {
-      id: userId,
-      isAdmin: false,
-      credits: { lte: 0 },
-      freeTrialUsed: false,
-    },
-    data: { freeTrialUsed: true },
+  if (!dbUser.emailVerified) {
+    return {
+      allowed: false,
+      status: 403,
+      error: {
+        message: "Verify your email before using the free process.",
+        code: "EMAIL_NOT_VERIFIED",
+      },
+    };
+  }
+
+  if (!deviceHash) {
+    return {
+      allowed: false,
+      status: 500,
+      error: {
+        message: "Missing trial device information.",
+        code: "MISSING_TRIAL_DEVICE",
+      },
+    };
+  }
+
+  const claimedTrial = await prisma.$transaction(async (tx) => {
+    const existingDevice = await tx.trialDevice.findUnique({
+      where: { deviceHash },
+    });
+
+    if (existingDevice?.freeTrialUsed) {
+      return false;
+    }
+
+    const consumedTrial = await tx.user.updateMany({
+      where: {
+        id: userId,
+        isAdmin: false,
+        credits: { lte: 0 },
+        freeTrialUsed: false,
+        emailVerified: true,
+      },
+      data: { freeTrialUsed: true },
+    });
+
+    if (consumedTrial.count === 0) {
+      return false;
+    }
+
+    await tx.trialDevice.upsert({
+      where: { deviceHash },
+      update: {
+        freeTrialUsed: true,
+        firstUserId: userId,
+      },
+      create: {
+        deviceHash,
+        firstUserId: userId,
+        freeTrialUsed: true,
+      },
+    });
+
+    return true;
   });
 
-  if (consumedTrial.count > 0) {
+  if (claimedTrial) {
     return {
       allowed: true,
       mode: "free_trial",
@@ -78,7 +133,7 @@ export async function reserveProcessAccess(userId: string): Promise<ProcessReser
     allowed: false,
     status: 402,
     error: {
-      message: "Your free process has been used. Upgrade or buy credits to continue.",
+      message: "Free trial unavailable for this account or device. Upgrade or buy credits to continue.",
       code: "FREE_TRIAL_EXHAUSTED",
     },
   };
@@ -86,7 +141,8 @@ export async function reserveProcessAccess(userId: string): Promise<ProcessReser
 
 export async function releaseProcessAccess(
   userId: string,
-  mode: ProcessReservationMode
+  mode: ProcessReservationMode,
+  deviceHash?: string
 ): Promise<void> {
   if (mode === "admin") return;
 
@@ -98,8 +154,17 @@ export async function releaseProcessAccess(
     return;
   }
 
-  await prisma.user.updateMany({
-    where: { id: userId, freeTrialUsed: true },
-    data: { freeTrialUsed: false },
+  await prisma.$transaction(async (tx) => {
+    await tx.user.updateMany({
+      where: { id: userId, freeTrialUsed: true },
+      data: { freeTrialUsed: false },
+    });
+
+    if (deviceHash) {
+      await tx.trialDevice.updateMany({
+        where: { deviceHash, firstUserId: userId, freeTrialUsed: true },
+        data: { freeTrialUsed: false },
+      });
+    }
   });
 }

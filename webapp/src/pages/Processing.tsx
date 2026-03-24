@@ -99,7 +99,7 @@ const Processing = () => {
       }
 
       await new Promise((r) => setTimeout(r, 600));
-      navigate(result.trialConsumed ? '/result?upgrade=1' : '/result', { replace: true });
+      navigate('/result', { replace: true });
     };
 
     const processVectorizeFlow = async () => {
@@ -146,7 +146,6 @@ const Processing = () => {
 
       const vectorData = (await vectorRes.json()) as { data: { dxf: string; trialConsumed?: boolean } };
       const dxfContent = vectorData.data.dxf;
-      const trialConsumed = vectorData.data.trialConsumed === true;
 
       setStatus('converting');
       setProgress(70);
@@ -179,7 +178,7 @@ const Processing = () => {
       }
 
       await new Promise((r) => setTimeout(r, 600));
-      navigate(trialConsumed ? '/result?upgrade=1' : '/result', { replace: true });
+      navigate('/result', { replace: true });
     };
 
     const run = async () => {

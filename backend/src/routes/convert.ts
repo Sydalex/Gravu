@@ -20,6 +20,10 @@ import {
   type SimplificationLevel,
 } from "../services/centerlineVectorizer";
 import { releaseProcessAccess, reserveProcessAccess } from "../services/processAccess";
+import {
+  getOrCreateTrialDeviceToken,
+  hashTrialDeviceToken,
+} from "../services/trialDevice";
 
 type Variables = {
   user: typeof auth.$Infer.Session.user | null;
@@ -1342,6 +1346,7 @@ convertRouter.post("/vectorise-ai", async (c) => {
   let reservedUserId: string | null = null;
   let reservedMode: "admin" | "credit" | "free_trial" | null = null;
   let trialConsumed = false;
+  let reservedDeviceHash: string | undefined;
 
   try {
     if (!user) {
@@ -1361,14 +1366,17 @@ convertRouter.post("/vectorise-ai", async (c) => {
       return c.json({ error: { message: "No image file provided.", code: "MISSING_FILE" } }, 400);
     }
 
-    const reservation = await reserveProcessAccess(user.id);
+    const deviceToken = getOrCreateTrialDeviceToken(c);
+    const deviceHash = hashTrialDeviceToken(deviceToken);
+    const reservation = await reserveProcessAccess(user.id, deviceHash);
     if (!reservation.allowed) {
-      return c.json({ error: reservation.error }, reservation.status as 401 | 402);
+      return c.json({ error: reservation.error }, reservation.status as 401 | 402 | 403 | 500);
     }
 
     reservedUserId = user.id;
     reservedMode = reservation.mode;
     trialConsumed = reservation.trialConsumed;
+    reservedDeviceHash = deviceHash;
 
     console.log(
       `[vectorise-ai] Processing ${imageFile.name}, size: ${imageFile.size} using centerline vectorizer service (${simplification})`
@@ -1384,7 +1392,7 @@ convertRouter.post("/vectorise-ai", async (c) => {
   } catch (err) {
     if (reservedUserId && reservedMode) {
       try {
-        await releaseProcessAccess(reservedUserId, reservedMode);
+        await releaseProcessAccess(reservedUserId, reservedMode, reservedDeviceHash);
       } catch (releaseErr) {
         console.error("[vectorise-ai] Failed to release reserved access:", releaseErr);
       }

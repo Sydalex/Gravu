@@ -7,6 +7,11 @@ import { env } from "../env";
 import { getBillingConfig } from "../billingConfig";
 import type { auth } from "../auth";
 import {
+  getDeviceTrialUsed,
+  getOrCreateTrialDeviceToken,
+  hashTrialDeviceToken,
+} from "../services/trialDevice";
+import {
   CreateCheckoutSessionRequestSchema,
   BuyCreditsRequestSchema,
   type SubscriptionStatus,
@@ -51,6 +56,8 @@ paymentsRouter.use("/webhook", requireStripe);
 paymentsRouter.get("/subscription", async (c) => {
   const user = c.get("user")!;
   const billingConfig = await getBillingConfig();
+  const deviceToken = getOrCreateTrialDeviceToken(c);
+  const deviceHash = hashTrialDeviceToken(deviceToken);
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
@@ -60,6 +67,7 @@ paymentsRouter.get("/subscription", async (c) => {
   const subscription = await prisma.subscription.findUnique({
     where: { userId: user.id },
   });
+  const deviceTrialUsed = await getDeviceTrialUsed(deviceHash);
 
   const status: SubscriptionStatus = {
     plan: subscription?.status === "active" || subscription?.status === "trialing" ? "pro" : "free",
@@ -69,6 +77,7 @@ paymentsRouter.get("/subscription", async (c) => {
     stripeCustomerId: dbUser?.stripeCustomerId ?? null,
     credits: dbUser?.credits ?? 0,
     freeTrialUsed: dbUser?.freeTrialUsed ?? false,
+    deviceTrialUsed,
     isAdmin: dbUser?.isAdmin ?? false,
     billingEnabled: !!stripe,
     activeProPriceId: billingConfig.activeProPriceId ?? null,
