@@ -1,4 +1,4 @@
-# AssetCreator — CAD Vector Generator
+# Gravu — CAD Vector Generator
 
 A web application for converting photos into CAD-ready vector assets. Convert photos into clean architectural line drawings and export as DXF/SVG for AutoCAD, SketchUp, and Illustrator.
 
@@ -319,4 +319,3 @@ docker compose --env-file .env.staging up -d --build
 - [ ] Decide: keep SQLite or migrate to PostgreSQL (update `DATABASE_URL` and `prisma/schema.prisma` provider)
 - [ ] Serve behind a TLS-terminating reverse proxy (nginx, Caddy, or Coolify's Traefik) — auth cookies require HTTPS in production
 - [ ] Confirm `DATABASE_URL` points to a persistent path (not a container tmpfs)
-

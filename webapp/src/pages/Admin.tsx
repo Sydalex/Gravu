@@ -199,21 +199,21 @@ function StatCard({
   meta: string;
 }) {
   return (
-    <div className="rounded-[22px] border border-[#dfd8cc] bg-[#f8f4ec] p-5">
-      <div className="flex items-start justify-between gap-4">
+    <div className="border border-[#e7e0d5] bg-[#fbfaf7] p-5">
+      <div className="flex items-start justify-between gap-4 border-b border-[#ece6db] pb-4">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+          <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-[#8a8378]">
             {label}
           </p>
-          <p className="mt-3 text-[34px] font-black leading-none tracking-[-1.2px] text-[#332e24]">
+          <p className="mt-4 text-[34px] font-semibold leading-none tracking-[-0.08em] text-[#26231f]">
             {value}
           </p>
         </div>
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[#eadfce] bg-background text-[#c96240]">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#eadfce] bg-[#fffdf9] text-primary">
           <Icon className="h-4 w-4" />
         </span>
       </div>
-      <p className="mt-3 text-[12px] text-muted-foreground">{meta}</p>
+      <p className="mt-4 text-[12px] leading-5 text-[#6f695f]">{meta}</p>
     </div>
   );
 }
@@ -619,21 +619,27 @@ export default function Admin() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f8f6] pt-[52px]">
+    <div className="min-h-screen bg-[#f8f8f6] pt-[52px] text-[#302d29]">
       <main className="mx-auto flex w-full max-w-[1480px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="overflow-hidden rounded-[28px] border border-[#e6ddcf] bg-gradient-to-br from-[#fbf7ef] via-[#f7f0e7] to-[#f4ece1]">
-          <div className="flex flex-col gap-6 px-6 py-7 md:px-8 lg:flex-row lg:items-end lg:justify-between">
+        <section className="border-b border-[#e7e0d5] pb-8">
+          <div className="flex flex-col gap-6 px-1 py-3 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-[720px]">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#edcbbd] bg-[#fcf2ee] px-3 py-1 text-[10px] font-semibold uppercase tracking-[1.6px] text-[#c96240]">
-                <Sparkles className="h-3.5 w-3.5" />
-                Admin Control
+              <div className="mb-4 inline-flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-[#8a8378]">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#1f1f1f]" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+                </span>
+                Admin control
               </div>
-              <h1 className="max-w-[10ch] text-[38px] font-black leading-[0.95] tracking-[-1.8px] text-[#332e24] sm:text-[52px]">
-                Run users, billing, and support from one screen.
+              <h1
+                className="max-w-[10ch] text-[40px] font-light uppercase leading-[0.92] tracking-[-0.05em] text-[#26231f] sm:text-[56px]"
+                style={{ fontFamily: "'Syne', sans-serif" }}
+              >
+                Users, billing, and support in one workspace.
               </h1>
               <p className="mt-4 max-w-[62ch] text-[14px] leading-6 text-[#6f695f] sm:text-[15px]">
-                This is the operator view for staging. Filter accounts, set live Stripe prices,
-                create promo codes, and handle customer billing issues without leaving the app.
+                Review accounts, manage credits, tune live Stripe pricing, and resolve billing issues
+                without leaving Gravu.
               </p>
             </div>
 
@@ -654,7 +660,7 @@ export default function Admin() {
         </section>
 
         {statsLoading ? (
-          <div className="flex h-28 items-center justify-center rounded-[22px] border border-[#dfd8cc] bg-[#f8f4ec]">
+          <div className="flex h-28 items-center justify-center border border-[#e7e0d5] bg-[#fbfaf7]">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
@@ -687,7 +693,7 @@ export default function Admin() {
         )}
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_400px]">
-          <div className="overflow-hidden rounded-[24px] border border-[#dfd8cc] bg-[#f8f4ec]">
+          <div className="overflow-hidden border border-[#e7e0d5] bg-[#fbfaf7]">
             <div className="border-b border-[#dfd8cc] px-5 py-4 sm:px-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
@@ -717,13 +723,13 @@ export default function Admin() {
                         type="button"
                         onClick={() => setActiveFilter(filter.id)}
                         className={cn(
-                          "rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
-                          activeFilter === filter.id
-                            ? "border-[#c96240] bg-[#fcf2ee] text-[#c96240]"
-                            : "border-[#d9d0c2] bg-background text-[#6f695f] hover:bg-[#f4ede4]"
-                        )}
-                      >
-                        {filter.label}
+                        "rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
+                        activeFilter === filter.id
+                          ? "border-[#c96240] bg-[#fcf2ee] text-[#c96240]"
+                          : "border-[#d9d0c2] bg-[#fffdf9] text-[#6f695f] hover:bg-[#f4ede4]"
+                      )}
+                    >
+                      {filter.label}
                       </button>
                     ))}
                   </div>
@@ -761,12 +767,12 @@ export default function Admin() {
                       onClick={() => setSelectedUserId(user.id)}
                       className={cn(
                         "grid w-full grid-cols-[minmax(0,1.6fr)_110px_90px_110px] gap-3 px-5 py-4 text-left transition-colors sm:px-6",
-                        isSelected ? "bg-[#f2e8db]" : "hover:bg-[#f4ede4]"
+                        isSelected ? "bg-[#f6efe5]" : "hover:bg-[#f8f3ea]"
                       )}
                     >
                       <div className="min-w-0">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[#eadfce] bg-background text-[13px] font-bold text-[#332e24]">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#eadfce] bg-[#fffdf9] text-[13px] font-bold text-[#332e24]">
                             {(user.name || user.email).slice(0, 1).toUpperCase()}
                           </div>
                           <div className="min-w-0">
@@ -793,7 +799,7 @@ export default function Admin() {
             )}
           </div>
 
-          <aside className="rounded-[24px] border border-[#dfd8cc] bg-[#f8f4ec] p-5 sm:p-6 xl:sticky xl:top-[84px] xl:h-fit">
+          <aside className="border border-[#e7e0d5] bg-[#fbfaf7] p-5 sm:p-6 xl:sticky xl:top-[84px] xl:h-fit">
             {selectedUser ? (
               <>
                 <div className="flex items-start justify-between gap-3">
@@ -808,7 +814,7 @@ export default function Admin() {
                   <PlanBadge plan={selectedUser.plan} isAdmin={selectedUser.isAdmin} />
                 </div>
 
-                <div className="mt-5 rounded-[20px] border border-[#e5dbc9] bg-background/90 p-4">
+                <div className="mt-5 border border-[#e5dbc9] bg-[#fffdf9] p-4">
                   <p className="truncate text-[14px] font-medium text-[#332e24]">{selectedUser.email}</p>
                   <p className="mt-1 text-[12px] text-muted-foreground">
                     {formatRelativeJoinDate(selectedUser.createdAt)}
@@ -816,7 +822,7 @@ export default function Admin() {
                 </div>
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-                  <div className="rounded-[18px] border border-[#e5dbc9] bg-background/80 p-4">
+                  <div className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
                     <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
                       Credits
                     </p>
@@ -824,7 +830,7 @@ export default function Admin() {
                       {selectedUser.isAdmin ? "∞" : selectedUser.credits}
                     </p>
                   </div>
-                  <div className="rounded-[18px] border border-[#e5dbc9] bg-background/80 p-4">
+                  <div className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
                     <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
                       Conversions
                     </p>
@@ -832,7 +838,7 @@ export default function Admin() {
                       {selectedUser.conversionCount}
                     </p>
                   </div>
-                  <div className="rounded-[18px] border border-[#e5dbc9] bg-background/80 p-4">
+                  <div className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
                     <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
                       Joined
                     </p>
@@ -842,7 +848,7 @@ export default function Admin() {
                   </div>
                 </div>
 
-                <div className="mt-5 rounded-[18px] border border-[#e5dbc9] bg-background/80 p-4">
+                <div className="mt-5 border border-[#e5dbc9] bg-[#fffdf9] p-4">
                   <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
                     Stripe
                   </p>
@@ -894,7 +900,7 @@ export default function Admin() {
                   </Button>
                 </div>
 
-                <div className="mt-5 rounded-[18px] border border-[#e5dbc9] bg-background/80 p-4">
+                <div className="mt-5 border border-[#e5dbc9] bg-[#fffdf9] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
                       Recent Charges
@@ -909,7 +915,7 @@ export default function Admin() {
                       selectedUserBilling.charges.slice(0, 4).map((charge) => (
                         <div
                           key={charge.id}
-                          className="rounded-[14px] border border-[#ece5d8] bg-[#fcfaf6] p-3"
+                          className="border border-[#ece5d8] bg-[#fcfaf6] p-3"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>
@@ -955,7 +961,7 @@ export default function Admin() {
                 </div>
               </>
             ) : (
-              <div className="flex min-h-[320px] items-center justify-center rounded-[20px] border border-dashed border-[#d9d0c2] bg-background/70 p-6 text-center">
+              <div className="flex min-h-[320px] items-center justify-center border border-dashed border-[#d9d0c2] bg-[#fffdf9] p-6 text-center">
                 <div>
                   <p className="text-[15px] font-medium text-[#332e24]">Select a user</p>
                   <p className="mt-2 text-[13px] text-muted-foreground">
@@ -968,7 +974,7 @@ export default function Admin() {
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-          <div className="rounded-[24px] border border-[#dfd8cc] bg-[#f8f4ec] p-5 sm:p-6">
+          <div className="border border-[#e7e0d5] bg-[#fbfaf7] p-5 sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
@@ -1090,7 +1096,7 @@ export default function Admin() {
             )}
           </div>
 
-          <div className="rounded-[24px] border border-[#dfd8cc] bg-[#f8f4ec] p-5 sm:p-6">
+          <div className="border border-[#e7e0d5] bg-[#fbfaf7] p-5 sm:p-6">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
                 Catalog Builder
@@ -1101,7 +1107,7 @@ export default function Admin() {
             </div>
 
             <div className="mt-6 grid gap-6 lg:grid-cols-2">
-              <div className="space-y-3 rounded-[18px] border border-[#e5dbc9] bg-background/80 p-4">
+              <div className="space-y-3 border border-[#e5dbc9] bg-[#fffdf9] p-4">
                 <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
                   New Product
                 </p>
@@ -1139,7 +1145,7 @@ export default function Admin() {
                 </p>
               </div>
 
-              <div className="space-y-3 rounded-[18px] border border-[#e5dbc9] bg-background/80 p-4">
+              <div className="space-y-3 border border-[#e5dbc9] bg-[#fffdf9] p-4">
                 <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
                   New Price
                 </p>
@@ -1180,7 +1186,7 @@ export default function Admin() {
                         "rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
                         priceMode === value
                           ? "border-[#c96240] bg-[#fcf2ee] text-[#c96240]"
-                          : "border-[#d9d0c2] bg-background text-[#6f695f] hover:bg-[#f4ede4]"
+                          : "border-[#d9d0c2] bg-[#fffdf9] text-[#6f695f] hover:bg-[#f4ede4]"
                       )}
                     >
                       {value === "recurring" ? "Recurring" : "One-time"}
@@ -1239,7 +1245,7 @@ export default function Admin() {
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-          <div className="rounded-[24px] border border-[#dfd8cc] bg-[#f8f4ec] p-5 sm:p-6">
+          <div className="border border-[#e7e0d5] bg-[#fbfaf7] p-5 sm:p-6">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
                 Promotions
@@ -1275,7 +1281,7 @@ export default function Admin() {
                     "rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
                     promoDuration === value
                       ? "border-[#c96240] bg-[#fcf2ee] text-[#c96240]"
-                      : "border-[#d9d0c2] bg-background text-[#6f695f] hover:bg-[#f4ede4]"
+                      : "border-[#d9d0c2] bg-[#fffdf9] text-[#6f695f] hover:bg-[#f4ede4]"
                   )}
                 >
                   {value}
@@ -1398,7 +1404,7 @@ export default function Admin() {
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-[#dfd8cc] bg-[#f8f4ec] p-5 sm:p-6">
+          <div className="border border-[#e7e0d5] bg-[#fbfaf7] p-5 sm:p-6">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
                 Stripe Catalog
@@ -1409,14 +1415,14 @@ export default function Admin() {
             </div>
 
             <div className="mt-6 space-y-4">
-              <div className="rounded-[18px] border border-[#e5dbc9] bg-background/80 p-4">
+              <div className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
                 <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
                   Catalog products
                 </p>
                 <div className="mt-3 space-y-3">
                   {billingProducts.length ? (
                     billingProducts.map((product) => (
-                      <div key={product.id} className="rounded-[14px] border border-[#ece5d8] bg-[#fcfaf6] p-3">
+                      <div key={product.id} className="border border-[#ece5d8] bg-[#fcfaf6] p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="text-[13px] font-semibold text-[#332e24]">{product.name}</p>
@@ -1463,14 +1469,14 @@ export default function Admin() {
                 </div>
               </div>
 
-              <div className="rounded-[18px] border border-[#e5dbc9] bg-background/80 p-4">
+              <div className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
                 <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
                   Catalog prices
                 </p>
                 <div className="mt-3 space-y-3">
                   {billingPrices.length ? (
                     billingPrices.map((price) => (
-                      <div key={price.id} className="rounded-[14px] border border-[#ece5d8] bg-[#fcfaf6] p-3">
+                      <div key={price.id} className="border border-[#ece5d8] bg-[#fcfaf6] p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="text-[13px] font-semibold text-[#332e24]">
@@ -1537,7 +1543,7 @@ export default function Admin() {
           }
         }}
       >
-        <DialogContent className="border-[#dfd8cc] bg-[#fbf7ef]">
+        <DialogContent className="border-[#e7e0d5] bg-[#fbfaf7]">
           <DialogHeader>
             <DialogTitle className="text-[22px] font-black tracking-[-0.7px] text-[#332e24]">
               Adjust credits
@@ -1545,7 +1551,7 @@ export default function Admin() {
           </DialogHeader>
 
           <div className="space-y-5 pt-2">
-            <div className="rounded-[18px] border border-[#e5dbc9] bg-background/90 p-4">
+            <div className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
               <p className="text-[13px] font-medium text-[#332e24]">{creditDialogUser?.email}</p>
               <p className="mt-1 text-[12px] text-muted-foreground">
                 Current balance:{" "}

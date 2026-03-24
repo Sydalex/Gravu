@@ -110,7 +110,8 @@ const ContentPolicy = () => (
     subtitle={
       <p>
         This page is your notice-and-action contact point for copyright complaints, illegal content reports,
-        and complaints about uploads involving other people without required permission.
+        and complaints about uploads involving other people or other protected material without required
+        permission.
       </p>
     }
     footerNote={
@@ -124,4 +125,3 @@ const ContentPolicy = () => (
 );
 
 export default ContentPolicy;
-

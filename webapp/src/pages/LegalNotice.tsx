@@ -12,6 +12,7 @@ const sections = [
           <li><strong>Address:</strong> {LEGAL_CONFIG.legalAddress}</li>
           <li><strong>Email:</strong> <a href={`mailto:${LEGAL_CONFIG.supportEmail}`}>{LEGAL_CONFIG.supportEmail}</a></li>
           <li><strong>VAT ID:</strong> {LEGAL_CONFIG.vatId}</li>
+          <li><strong>Tax note:</strong> {LEGAL_CONFIG.taxNote}</li>
           <li><strong>Register details:</strong> {LEGAL_CONFIG.commercialRegister}</li>
         </ul>
       </>
@@ -77,4 +78,3 @@ const LegalNotice = () => (
 );
 
 export default LegalNotice;
-

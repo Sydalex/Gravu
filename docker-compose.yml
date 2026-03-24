@@ -1,4 +1,4 @@
-# Staging docker-compose for Gravu / AssetCreator
+# Staging docker-compose for Gravu
 # Designed for self-hosted deployment on Coolify (or any Docker host).
 #
 # Services:

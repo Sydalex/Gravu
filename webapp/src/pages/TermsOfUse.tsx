@@ -34,12 +34,14 @@ const sections = [
     content: (
       <>
         <p>
-          The service allows you to upload files and generate vector-style outputs and related assets. Parts
-          of the service may use automated processing, AI-assisted workflows, and third-party providers.
+          The service allows you to upload files and generate vector-style outputs and related assets.
+          Parts of the service may use automated processing, AI-assisted workflows, local image
+          processing, and third-party providers.
         </p>
         <p>
-          Features, limits, file types, and prices may change over time. We may also introduce paid tiers,
-          quotas, and credits.
+          The service currently operates with one free successful process for eligible new users and paid
+          usage through subscriptions, credit packs, or other offers shown at checkout. Features, limits,
+          file types, and pricing may change over time.
         </p>
       </>
     ),
@@ -126,8 +128,8 @@ const sections = [
     content: (
       <>
         <p>
-          Paid plans, credits, and promotional offers are governed by the checkout terms shown at purchase and
-          our Refunds & Cancellation page.
+          Paid plans, credits, promotional offers, and anti-abuse limits for free usage are governed by
+          the checkout terms shown at purchase and our Refunds & Cancellation page.
         </p>
       </>
     ),
@@ -163,8 +165,9 @@ const TermsOfUse = () => (
     }
     footerNote={
       <p>
-        This is a first-pass terms draft. It should be reviewed against your final pricing model, moderation
-        process, and launch jurisdictions.
+        This draft now reflects the current Gravu flow more closely, including free-process limits,
+        subscriptions, credits, and moderation. It should still be reviewed against your final
+        launch-market requirements.
       </p>
     }
     sections={sections}
@@ -172,4 +175,3 @@ const TermsOfUse = () => (
 );
 
 export default TermsOfUse;
-

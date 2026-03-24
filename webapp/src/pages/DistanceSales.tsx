@@ -48,6 +48,10 @@ const sections = [
           correction is required. Payment processing is handled through Stripe or another provider shown during
           checkout.
         </p>
+        <p>
+          If you operate under the German small-business regime, state that no VAT is charged pursuant to
+          § 19 UStG. If your tax treatment changes, update this page and the checkout display accordingly.
+        </p>
       </>
     ),
   },
@@ -106,7 +110,8 @@ const DistanceSales = () => (
     footerNote={
       <p>
         Replace the trader identity fields before launch. If you operate as a sole proprietor in Germany, use
-        your real full name and service address.
+        your real full name and service address. Also update the tax wording to match whether you apply
+        § 19 UStG or charge VAT.
       </p>
     }
     sections={sections}
@@ -114,4 +119,3 @@ const DistanceSales = () => (
 );
 
 export default DistanceSales;
-
