@@ -43,9 +43,7 @@ conversionsRouter.post(
               svgContent: a.svgContent ?? null,
               dxfContent: a.dxfContent ?? null,
               marketplaceStatus: autoListInMarketplace ? "pending_review" : "private",
-              marketplaceTitle: autoListInMarketplace
-                ? (name?.trim() || `Asset ${a.subjectId}`)
-                : null,
+              marketplaceTitle: a.title?.trim() || name?.trim() || `Asset ${a.subjectId}`,
               marketplaceCategory: autoListInMarketplace ? "Uncategorized" : null,
             })),
           },
@@ -65,6 +63,7 @@ conversionsRouter.post(
           id: a.id,
           conversionId: a.conversionId,
           subjectId: a.subjectId,
+          title: a.marketplaceTitle,
           imageBase64: a.imageBase64,
           svgContent: a.svgContent,
           dxfContent: a.dxfContent,
@@ -95,6 +94,7 @@ conversionsRouter.get("/", async (c) => {
           id: true,
           conversionId: true,
           subjectId: true,
+          marketplaceTitle: true,
           createdAt: true,
           // Fetch imageBase64 only for the first asset thumbnail — handled below
           imageBase64: true,
@@ -118,6 +118,7 @@ conversionsRouter.get("/", async (c) => {
         id: a.id,
         conversionId: a.conversionId,
         subjectId: a.subjectId,
+        title: a.marketplaceTitle,
         createdAt: a.createdAt.toISOString(),
       })),
     };
@@ -156,6 +157,7 @@ conversionsRouter.get("/:id", async (c) => {
         id: a.id,
         conversionId: a.conversionId,
         subjectId: a.subjectId,
+        title: a.marketplaceTitle,
         imageBase64: a.imageBase64,
         svgContent: a.svgContent,
         dxfContent: a.dxfContent,

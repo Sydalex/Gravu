@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useImageStore } from '@/lib/store';
 import { api, ApiError } from '@/lib/api';
+import { buildCombinedSelectionTitle, normalizeAssetTitle, stripExtension } from '@/lib/asset-naming';
 import type { CreateConversionResponse } from '../../../backend/src/types';
 
 interface LineworkResult {
@@ -59,6 +60,7 @@ const Processing = () => {
       const selectedSubjects = detectedSubjects?.filter((s) => s.selected) ?? [];
       const selectedIds = selectedSubjects.map((s) => s.id);
       const allSubjects = (detectedSubjects ?? []).map(({ id, description }) => ({ id, description }));
+      const outputTitle = normalizeAssetTitle(buildCombinedSelectionTitle(detectedSubjects));
 
       setStatus('generating');
       setProgress(30);
@@ -76,17 +78,23 @@ const Processing = () => {
       setStatus('complete');
       setProgress(100);
 
-      setResultImages(result.results);
+      const titledResults = result.results.map((item) => ({
+        ...item,
+        title: outputTitle,
+      }));
+
+      setResultImages(titledResults);
 
       const store = useImageStore.getState();
       try {
         const saved = await api.post<CreateConversionResponse>('/api/conversions', {
           flowType: flowType,
-          name: store.imageName ?? undefined,
+          name: outputTitle,
           originalImageBase64: store.imageUri?.split(',')[1] ?? undefined,
-          assets: result.results.map((r) => ({
+          assets: titledResults.map((r) => ({
             subjectId: r.subjectId,
             imageBase64: r.imageBase64 || undefined,
+            title: r.title,
           })),
         });
         const assetIds: Record<number, string> = {};
@@ -123,6 +131,7 @@ const Processing = () => {
 
       const uploadData = (await uploadRes.json()) as { data: TraceUploadResult };
       const uploadedBase64 = uploadData.data.imageBase64;
+      const outputTitle = normalizeAssetTitle(stripExtension(useImageStore.getState().imageName) || 'vector asset');
 
       setStatus('vectorizing');
       setProgress(30);
@@ -162,15 +171,22 @@ const Processing = () => {
 
       setCachedDxf(0, dxfContent);
       setCachedSvg(0, svgContent);
-      setResultImages([{ subjectId: 0, imageBase64: uploadedBase64 }]);
+      setResultImages([{ subjectId: 0, imageBase64: uploadedBase64, title: outputTitle }]);
 
       const store = useImageStore.getState();
       try {
         const saved = await api.post<CreateConversionResponse>('/api/conversions', {
           flowType: flowType,
-          name: store.imageName ?? undefined,
+          name: outputTitle,
           originalImageBase64: store.imageUri?.split(',')[1] ?? undefined,
-          assets: [{ subjectId: 0, svgContent: svgContent || undefined, dxfContent: dxfContent || undefined }],
+          assets: [
+            {
+              subjectId: 0,
+              title: outputTitle,
+              svgContent: svgContent || undefined,
+              dxfContent: dxfContent || undefined,
+            },
+          ],
         });
         const assetIds: Record<number, string> = {};
         for (const asset of saved.assets) {

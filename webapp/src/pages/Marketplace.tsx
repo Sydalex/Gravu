@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Download, FileCode, FileImage, FileType, Layers, Search } from 'lucide-react';
 import { PageWrapper } from '@/components/PageWrapper';
 import { api } from '@/lib/api';
+import { buildDownloadFilename } from '@/lib/asset-naming';
 
 type MarketplaceAsset = {
   id: string;
@@ -219,7 +220,7 @@ const Marketplace = () => {
                           onClick={() =>
                             downloadBase64Image(
                               item.previewBase64!,
-                              `${item.title.toLowerCase().replace(/\s+/g, '-')}.png`,
+                              buildDownloadFilename(item.title, 'png'),
                               'image/png'
                             )
                           }
@@ -235,7 +236,7 @@ const Marketplace = () => {
                           className="inline-flex items-center gap-2 border border-neutral-200 px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-neutral-700 transition-colors hover:border-neutral-400"
                           onClick={() => {
                             if (item.svgContent) {
-                              downloadText(item.svgContent, `${item.title.toLowerCase().replace(/\s+/g, '-')}.svg`, 'image/svg+xml');
+                              downloadText(item.svgContent, buildDownloadFilename(item.title, 'svg'), 'image/svg+xml');
                             }
                           }}
                         >
@@ -249,7 +250,7 @@ const Marketplace = () => {
                           className="inline-flex items-center gap-2 border border-neutral-200 px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-neutral-700 transition-colors hover:border-neutral-400"
                           onClick={() => {
                             if (item.dxfContent) {
-                              downloadText(item.dxfContent, `${item.title.toLowerCase().replace(/\s+/g, '-')}.dxf`, 'application/dxf');
+                              downloadText(item.dxfContent, buildDownloadFilename(item.title, 'dxf'), 'application/dxf');
                             }
                           }}
                         >

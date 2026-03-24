@@ -153,6 +153,7 @@ export type ComposeResponse = z.infer<typeof ComposeResponseSchema>;
 /** A single asset included when creating a conversion */
 export const ConversionAssetInputSchema = z.object({
   subjectId: z.number(),
+  title: z.string().min(1).optional(),
   imageBase64: z.string().optional(),
   svgContent: z.string().optional(),
   dxfContent: z.string().optional(),
@@ -173,6 +174,7 @@ export const ConversionAssetSchema = z.object({
   id: z.string(),
   conversionId: z.string(),
   subjectId: z.number(),
+  title: z.string().nullable().optional(),
   imageBase64: z.string().nullable(),
   svgContent: z.string().nullable(),
   dxfContent: z.string().nullable(),
@@ -189,6 +191,7 @@ export const ConversionAssetSummarySchema = z.object({
   id: z.string(),
   conversionId: z.string(),
   subjectId: z.number(),
+  title: z.string().nullable().optional(),
   createdAt: z.string(),
 });
 export type ConversionAssetSummary = z.infer<typeof ConversionAssetSummarySchema>;

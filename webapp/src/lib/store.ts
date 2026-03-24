@@ -42,8 +42,8 @@ interface ImageStore {
   setSimplificationLevel: (level: SimplificationLevel) => void;
 
   // Results
-  resultImages: Array<{ subjectId: number; imageBase64: string }> | null;
-  setResultImages: (results: Array<{ subjectId: number; imageBase64: string }>) => void;
+  resultImages: Array<{ subjectId: number; imageBase64: string; title: string }> | null;
+  setResultImages: (results: Array<{ subjectId: number; imageBase64: string; title: string }>) => void;
 
   // Cached exports
   cachedSvg: Record<number, string>;
@@ -70,7 +70,7 @@ const initialState = {
   customViewDescription: null as string | null,
   processingMode: 'extract_all' as ProcessingMode,
   simplificationLevel: 'mid' as SimplificationLevel,
-  resultImages: null as Array<{ subjectId: number; imageBase64: string }> | null,
+  resultImages: null as Array<{ subjectId: number; imageBase64: string; title: string }> | null,
   cachedSvg: {} as Record<number, string>,
   cachedDxf: {} as Record<number, string>,
   savedConversionId: null as string | null,

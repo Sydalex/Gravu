@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { PageWrapper } from '@/components/PageWrapper';
 import { useImageStore } from '@/lib/store';
 import { api } from '@/lib/api';
+import { buildDownloadFilename } from '@/lib/asset-naming';
 import { toast } from '@/components/ui/sonner';
 import type { ConversionDetail, ConversionAsset } from '../../../backend/src/types';
 
@@ -59,6 +60,10 @@ function downloadBase64Image(base64: string, filename: string, mimeType: string)
   URL.revokeObjectURL(url);
 }
 
+function getAssetTitle(asset: ConversionAsset, conversionName?: string | null) {
+  return asset.title ?? asset.marketplaceTitle ?? conversionName ?? `Asset ${asset.subjectId}`;
+}
+
 function convertPngToWebp(base64: string, filename: string) {
   const img = new Image();
   img.onload = () => {
@@ -92,13 +97,15 @@ function convertPngToWebp(base64: string, filename: string) {
 interface VectoriseButtonsProps {
   asset: ConversionAsset;
   conversionId: string;
+  conversionName?: string | null;
 }
 
-const VectoriseButtons = ({ asset, conversionId }: VectoriseButtonsProps) => {
+const VectoriseButtons = ({ asset, conversionId, conversionName }: VectoriseButtonsProps) => {
   const queryClient = useQueryClient();
   const simplificationLevel = useImageStore((s) => s.simplificationLevel);
   const [convertingDxf, setConvertingDxf] = useState<boolean>(false);
   const [convertingSvg, setConvertingSvg] = useState<boolean>(false);
+  const assetTitle = getAssetTitle(asset, conversionName);
 
   const saveAsset = useMutation({
     mutationFn: (payload: { svgContent?: string; dxfContent?: string }) =>
@@ -115,7 +122,7 @@ const VectoriseButtons = ({ asset, conversionId }: VectoriseButtonsProps) => {
       const bytes = Uint8Array.from(atob(asset.imageBase64), (c) => c.charCodeAt(0));
       const blob = new Blob([bytes], { type: 'image/png' });
       const formData = new FormData();
-      formData.append('image', blob, `asset-${asset.subjectId}.png`);
+      formData.append('image', blob, buildDownloadFilename(assetTitle, 'png'));
       formData.append('simplification', simplificationLevel);
       const res = await api.raw('/api/convert/vectorise-ai', {
         method: 'POST',
@@ -139,7 +146,7 @@ const VectoriseButtons = ({ asset, conversionId }: VectoriseButtonsProps) => {
       const bytes = Uint8Array.from(atob(asset.imageBase64), (c) => c.charCodeAt(0));
       const blob = new Blob([bytes], { type: 'image/png' });
       const formData = new FormData();
-      formData.append('image', blob, `asset-${asset.subjectId}.png`);
+      formData.append('image', blob, buildDownloadFilename(assetTitle, 'png'));
       formData.append('simplification', simplificationLevel);
       const dxfRes = await api.raw('/api/convert/vectorise-ai', {
         method: 'POST',
@@ -288,7 +295,7 @@ const LibraryDetail = () => {
 
   const openListDialog = (asset: ConversionAsset) => {
     setListingAsset(asset);
-    setListingTitle(asset.marketplaceTitle ?? conversion.name ?? `Asset ${asset.subjectId}`);
+    setListingTitle(getAssetTitle(asset, conversion.name));
     setListingCategory(asset.marketplaceCategory ?? 'Objects');
   };
 
@@ -366,7 +373,7 @@ const LibraryDetail = () => {
                   onClick={() =>
                     downloadBase64Image(
                       conversion.originalImageBase64!,
-                      'original.png',
+                      buildDownloadFilename(conversion.name ?? 'original', 'png'),
                       'image/png',
                     )
                   }
@@ -399,6 +406,7 @@ const LibraryDetail = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {pngAssets.map((asset, index) => {
                 const isVectorised = !!asset.svgContent || !!asset.dxfContent;
+                const assetTitle = getAssetTitle(asset, conversion.name);
                 return (
                   <motion.div
                     key={asset.id}
@@ -420,7 +428,7 @@ const LibraryDetail = () => {
                     <div className="px-4 py-3 border-t border-border space-y-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-data text-xs text-muted-foreground mr-auto">
-                          Subject {asset.subjectId}
+                          {assetTitle}
                           {isVectorised ? (
                             <span className="ml-2 text-[10px] text-accent/70">
                               · vectorised
@@ -434,7 +442,7 @@ const LibraryDetail = () => {
                           onClick={() =>
                             downloadBase64Image(
                               asset.imageBase64!,
-                              `asset-${asset.subjectId}.png`,
+                              buildDownloadFilename(assetTitle, 'png'),
                               'image/png',
                             )
                           }
@@ -449,7 +457,7 @@ const LibraryDetail = () => {
                           onClick={() =>
                             convertPngToWebp(
                               asset.imageBase64!,
-                              `asset-${asset.subjectId}.webp`,
+                              buildDownloadFilename(assetTitle, 'webp'),
                             )
                           }
                         >
@@ -497,7 +505,11 @@ const LibraryDetail = () => {
                       </div>
 
                       {!isVectorised ? (
-                        <VectoriseButtons asset={asset} conversionId={conversion.id} />
+                        <VectoriseButtons
+                          asset={asset}
+                          conversionId={conversion.id}
+                          conversionName={conversion.name}
+                        />
                       ) : null}
                     </div>
                   </motion.div>
@@ -525,14 +537,17 @@ const LibraryDetail = () => {
               </span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {vectorAssets.map((asset, index) => (
-                <motion.div
-                  key={asset.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.2 + index * 0.06 }}
-                  className="rounded-xl border border-border bg-card overflow-hidden"
-                >
+              {vectorAssets.map((asset, index) => {
+                const assetTitle = getAssetTitle(asset, conversion.name);
+
+                return (
+                  <motion.div
+                    key={asset.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.2 + index * 0.06 }}
+                    className="rounded-xl border border-border bg-card overflow-hidden"
+                  >
                   {/* SVG preview */}
                   {asset.svgContent ? (
                     <div className="bg-white min-h-[200px] flex items-center justify-center p-4 overflow-hidden">
@@ -551,7 +566,7 @@ const LibraryDetail = () => {
                   {/* Download actions */}
                   <div className="px-4 py-3 flex flex-wrap items-center gap-2 border-t border-border">
                     <span className="font-data text-xs text-muted-foreground mr-auto">
-                      Subject {asset.subjectId}
+                      {assetTitle}
                     </span>
                     {asset.svgContent ? (
                       <Button
@@ -561,7 +576,7 @@ const LibraryDetail = () => {
                         onClick={() =>
                           downloadText(
                             asset.svgContent!,
-                            `asset-${asset.subjectId}.svg`,
+                            buildDownloadFilename(assetTitle, 'svg'),
                             'image/svg+xml',
                           )
                         }
@@ -578,7 +593,7 @@ const LibraryDetail = () => {
                         onClick={() =>
                           downloadText(
                             asset.dxfContent!,
-                            `asset-${asset.subjectId}.dxf`,
+                            buildDownloadFilename(assetTitle, 'dxf'),
                             'application/dxf',
                           )
                         }
@@ -588,8 +603,9 @@ const LibraryDetail = () => {
                       </Button>
                     ) : null}
                   </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </div>
           </motion.div>
         ) : null}

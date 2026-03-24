@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PageWrapper } from '@/components/PageWrapper';
 import { useImageStore, type SimplificationLevel } from '@/lib/store';
 import { api } from '@/lib/api';
+import { buildDownloadFilename } from '@/lib/asset-naming';
 
 interface UpdateAssetPayload {
   svgContent?: string;
@@ -52,6 +53,12 @@ const Result = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showOriginal, setShowOriginal] = useState(false);
 
+  const getResultTitle = useCallback(
+    (subjectId: number) =>
+      resultImages?.find((result) => result.subjectId === subjectId)?.title ?? `Asset ${subjectId}`,
+    [resultImages]
+  );
+
   const patchAssetToDb = useCallback(
     async (subjectId: number, payload: UpdateAssetPayload) => {
       const assetId = savedAssetIds[subjectId];
@@ -87,12 +94,15 @@ const Result = () => {
       if (existing) return { subjectId, dxf: existing };
       const item = resultImages?.find((r) => r.subjectId === subjectId);
       if (!item?.imageBase64) throw new Error('No image data for this subject');
-      const dxf = await vectoriseToDxf(base64ToFile(item.imageBase64, 'image.png'), simplificationLevel);
+      const dxf = await vectoriseToDxf(
+        base64ToFile(item.imageBase64, buildDownloadFilename(item.title, 'png')),
+        simplificationLevel
+      );
       return { subjectId, dxf };
     },
     onSuccess: ({ subjectId, dxf }) => {
       setCachedDxf(subjectId, dxf);
-      downloadText(dxf, `asset-${subjectId}.dxf`, 'application/dxf');
+      downloadText(dxf, buildDownloadFilename(getResultTitle(subjectId), 'dxf'), 'application/dxf');
       void patchAssetToDb(subjectId, { dxfContent: dxf });
     },
   });
@@ -105,7 +115,10 @@ const Result = () => {
       if (!dxf) {
         const item = resultImages?.find((r) => r.subjectId === subjectId);
         if (!item?.imageBase64) throw new Error('No image data for this subject');
-        dxf = await vectoriseToDxf(base64ToFile(item.imageBase64, 'image.png'), simplificationLevel);
+        dxf = await vectoriseToDxf(
+          base64ToFile(item.imageBase64, buildDownloadFilename(item.title, 'png')),
+          simplificationLevel
+        );
       }
       const svg = await dxfToSvg(dxf);
       return { subjectId, svg, dxf };
@@ -132,17 +145,17 @@ const Result = () => {
 
   const handleExportSvg = () => {
     if (cachedSvg[current.subjectId]) {
-      downloadText(cachedSvg[current.subjectId], `asset-${current.subjectId}.svg`, 'image/svg+xml');
+      downloadText(cachedSvg[current.subjectId], buildDownloadFilename(current.title, 'svg'), 'image/svg+xml');
     } else {
       svgMutation.mutate(current.subjectId, {
-        onSuccess: ({ svg }) => downloadText(svg, `asset-${current.subjectId}.svg`, 'image/svg+xml'),
+        onSuccess: ({ svg }) => downloadText(svg, buildDownloadFilename(current.title, 'svg'), 'image/svg+xml'),
       });
     }
   };
 
   const handleExportDxf = () => {
     if (cachedDxf[current.subjectId]) {
-      downloadText(cachedDxf[current.subjectId], `asset-${current.subjectId}.dxf`, 'application/dxf');
+      downloadText(cachedDxf[current.subjectId], buildDownloadFilename(current.title, 'dxf'), 'application/dxf');
     } else {
       dxfMutation.mutate(current.subjectId);
     }
@@ -164,7 +177,7 @@ const Result = () => {
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0);
           canvas.toBlob((blob) => {
-            if (blob) downloadBlob(blob, `asset-${current.subjectId}.png`);
+            if (blob) downloadBlob(blob, buildDownloadFilename(current.title, 'png'));
           });
         }
         URL.revokeObjectURL(url);
@@ -172,7 +185,7 @@ const Result = () => {
       img.src = url;
     } else if (current.imageBase64) {
       const bytes = Uint8Array.from(atob(current.imageBase64), (c) => c.charCodeAt(0));
-      downloadBlob(new Blob([bytes], { type: 'image/png' }), `asset-${current.subjectId}.png`);
+      downloadBlob(new Blob([bytes], { type: 'image/png' }), buildDownloadFilename(current.title, 'png'));
     }
   };
 
@@ -244,7 +257,7 @@ const Result = () => {
           </div>
           {hasMultiple && (
             <p className="mt-2 font-mono text-[10px] text-neutral-400">
-              Viewing {currentIndex + 1} of {resultImages.length}
+              Viewing {currentIndex + 1} of {resultImages.length} · {current.title}
             </p>
           )}
         </motion.div>
