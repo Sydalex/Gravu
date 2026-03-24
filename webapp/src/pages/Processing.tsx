@@ -65,7 +65,7 @@ const Processing = () => {
         imageBase64,
         subjects: allSubjects,
         selectedSubjects: selectedIds,
-        processingMode: 'extract_all',
+        processingMode: 'keep_together',
         outputMode: 'vectorworks_centerline',
         viewAngle: 'perspective',
       });
