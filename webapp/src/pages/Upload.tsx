@@ -41,16 +41,19 @@ const Upload = () => {
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { data: subscription } = useQuery({
+  const subscriptionQuery = useQuery({
     queryKey: ['subscription'],
     queryFn: () => api.get<SubscriptionStatus>('/api/payments/subscription'),
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
+  const subscription = subscriptionQuery.data;
 
-  const shouldBlockPaidAction =
-    !subscription?.isAdmin &&
-    ((subscription?.freeTrialUsed ?? false) || (subscription?.deviceTrialUsed ?? false)) &&
-    (subscription?.credits ?? 0) <= 0;
+  const shouldBlockPaidAction = (status?: SubscriptionStatus) =>
+    !status?.isAdmin &&
+    ((status?.freeTrialUsed ?? false) || (status?.deviceTrialUsed ?? false)) &&
+    (status?.credits ?? 0) <= 0;
 
   const handleFile = useCallback(
     (file: File) => {
@@ -89,16 +92,22 @@ const Upload = () => {
   };
 
   const handleContinue = () => {
-    if (flowType === 'vectorize_only' && shouldBlockPaidAction) {
-      setShowUpgradeDialog(true);
-      return;
-    }
+    const continueWithFreshStatus = async () => {
+      const latestSubscription = (await subscriptionQuery.refetch()).data ?? subscription;
 
-    if (flowType === 'full') {
-      navigate('/selection');
-    } else {
-      navigate('/processing');
-    }
+      if (flowType === 'vectorize_only' && shouldBlockPaidAction(latestSubscription)) {
+        setShowUpgradeDialog(true);
+        return;
+      }
+
+      if (flowType === 'full') {
+        navigate('/selection');
+      } else {
+        navigate('/processing');
+      }
+    };
+
+    void continueWithFreshStatus();
   };
 
   useEffect(() => {

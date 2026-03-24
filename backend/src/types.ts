@@ -261,7 +261,7 @@ export type MarketplaceAssetSummary = z.infer<typeof MarketplaceAssetSummarySche
 // ─── Payments API Schemas ────────────────────────────────────────────────────
 
 export const SubscriptionStatusSchema = z.object({
-  plan: z.enum(["free", "pro"]),
+  plan: z.enum(["free", "lite", "pro", "expert"]),
   status: z.string().nullable(),
   currentPeriodEnd: z.string().nullable(),
   cancelAtPeriodEnd: z.boolean(),

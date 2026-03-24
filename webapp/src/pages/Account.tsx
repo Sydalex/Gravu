@@ -47,7 +47,17 @@ const freeFeatures = [
 ];
 
 function formatPlanLabel(plan?: SubscriptionStatus['plan'] | null): string {
-  return plan === 'pro' ? 'Pro' : 'Free Trial';
+  switch (plan) {
+    case 'lite':
+      return 'Gravu Lite';
+    case 'pro':
+      return 'Gravu Pro';
+    case 'expert':
+      return 'Gravu Expert';
+    case 'free':
+    default:
+      return 'Free Trial';
+  }
 }
 
 interface SubscriptionCardProps {

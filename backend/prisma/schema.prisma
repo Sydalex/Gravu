@@ -22,6 +22,7 @@ model User {
   subscription     Subscription?
   credits          Int     @default(0)
   isAdmin          Boolean @default(false)
+  manualPlan       String?
   freeTrialUsed    Boolean @default(false)
   trialDevices     TrialDevice[] @relation("TrialDeviceFirstUser")
 }

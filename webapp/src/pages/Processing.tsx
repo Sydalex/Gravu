@@ -141,7 +141,11 @@ const Processing = () => {
 
       if (!vectorRes.ok) {
         const errJson = await vectorRes.json().catch(() => null);
-        throw new Error(errJson?.error?.message ?? 'Vectorization failed');
+        throw new ApiError(
+          errJson?.error?.message ?? 'Vectorization failed',
+          vectorRes.status,
+          errJson?.error ?? errJson
+        );
       }
 
       const vectorData = (await vectorRes.json()) as { data: { dxf: string; trialConsumed?: boolean } };

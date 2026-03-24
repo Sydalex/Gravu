@@ -13,10 +13,15 @@ type Variables = {
 };
 
 export const adminRouter = new Hono<{ Variables: Variables }>();
+const PlanEnum = z.enum(["free", "lite", "pro", "expert"]);
 
 const AdjustCreditsSchema = z.object({
   amount: z.number(),
   operation: z.enum(["add", "set"]),
+});
+
+const UpdateUserPlanSchema = z.object({
+  plan: PlanEnum,
 });
 
 const CreatePromoCodeSchema = z
@@ -289,13 +294,15 @@ adminRouter.get("/users", async (c) => {
     createdAt: u.createdAt.toISOString(),
     isAdmin: u.isAdmin,
     credits: u.credits,
+    manualPlan: u.manualPlan,
     stripeCustomerId: u.stripeCustomerId,
     subscriptionStatus: u.subscription?.status ?? null,
     currentPeriodEnd: u.subscription?.currentPeriodEnd?.toISOString() ?? null,
     plan:
-      u.subscription?.status === "active" || u.subscription?.status === "trialing"
+      u.manualPlan ??
+      (u.subscription?.status === "active" || u.subscription?.status === "trialing"
         ? "pro"
-        : "free",
+        : "free"),
     conversionCount: u._count.conversions,
   }));
 
@@ -316,6 +323,25 @@ adminRouter.post(
         credits: operation === "add" ? { increment: amount } : amount,
       },
       select: { id: true, credits: true },
+    });
+
+    return c.json({ data: updated });
+  }
+);
+
+adminRouter.post(
+  "/users/:id/plan",
+  zValidator("json", UpdateUserPlanSchema),
+  async (c) => {
+    const { id } = c.req.param();
+    const { plan } = c.req.valid("json");
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        manualPlan: plan,
+      },
+      select: { id: true, manualPlan: true },
     });
 
     return c.json({ data: updated });

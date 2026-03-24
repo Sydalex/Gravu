@@ -39,6 +39,7 @@ interface AdminUser {
   createdAt: string;
   isAdmin: boolean;
   credits: number;
+  manualPlan?: string | null;
   stripeCustomerId: string | null;
   subscriptionStatus: string | null;
   currentPeriodEnd: string | null;
@@ -138,6 +139,7 @@ interface MarketplaceReviewAsset {
 type FilterId = "all" | "admins" | "pro" | "low-credits";
 type PromoDuration = "once" | "forever" | "repeating";
 type PriceMode = "recurring" | "one_time";
+type AccountPlan = "free" | "lite" | "pro" | "expert";
 
 const filters: Array<{ id: FilterId; label: string }> = [
   { id: "all", label: "All Users" },
@@ -190,6 +192,22 @@ function PlanBadge({ plan, isAdmin }: { plan: string; isAdmin: boolean }) {
       <span className="inline-flex items-center gap-1 rounded-full border border-[#edcbbd] bg-[#fcf2ee] px-2.5 py-1 text-[11px] font-semibold text-[#c96240]">
         <Shield className="h-3 w-3" />
         Admin
+      </span>
+    );
+  }
+
+  if (plan === "expert") {
+    return (
+      <span className="inline-flex items-center rounded-full border border-[#d7cee9] bg-[#f3eefc] px-2.5 py-1 text-[11px] font-semibold text-[#6f4ab6]">
+        Expert
+      </span>
+    );
+  }
+
+  if (plan === "lite") {
+    return (
+      <span className="inline-flex items-center rounded-full border border-[#d7e4dc] bg-[#eef6f1] px-2.5 py-1 text-[11px] font-semibold text-[#4d7a61]">
+        Lite
       </span>
     );
   }
@@ -247,6 +265,7 @@ export default function Admin() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [creditDialogUser, setCreditDialogUser] = useState<AdminUser | null>(null);
   const [creditAmount, setCreditAmount] = useState("");
+  const [planDraft, setPlanDraft] = useState<AccountPlan>("free");
 
   const [promoCode, setPromoCode] = useState("");
   const [promoPercentOff, setPromoPercentOff] = useState("15");
@@ -327,6 +346,10 @@ export default function Admin() {
     allUsers.find((user) => user.id === selectedUserId) ??
     null;
 
+  useEffect(() => {
+    setPlanDraft((selectedUser?.plan as AccountPlan | undefined) ?? "free");
+  }, [selectedUser?.id, selectedUser?.plan]);
+
   const { data: selectedUserBilling, isLoading: selectedUserBillingLoading } = useQuery({
     queryKey: ["admin", "billing", "user", selectedUser?.id],
     queryFn: () => api.get<UserBillingDetails>(`/api/admin/billing/users/${selectedUser!.id}`),
@@ -394,6 +417,23 @@ export default function Admin() {
       setCreditDialogUser(null);
       setCreditAmount("");
       toast.success("Credits updated");
+    },
+    onError: (error) => {
+      toast.error(formatMutationError(error));
+    },
+  });
+
+  const planMutation = useMutation({
+    mutationFn: (params: { userId: string; plan: AccountPlan }) =>
+      api.post(`/api/admin/users/${params.userId}/plan`, {
+        plan: params.plan,
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
+        queryClient.invalidateQueries({ queryKey: ["subscription"] }),
+      ]);
+      toast.success("Account tier updated");
     },
     onError: (error) => {
       toast.error(formatMutationError(error));
@@ -953,6 +993,41 @@ export default function Admin() {
                 </div>
 
                 <div className="mt-6 space-y-3">
+                  <div className="space-y-2">
+                    <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+                      Account tier
+                    </p>
+                    <div className="flex gap-2">
+                      <select
+                        value={planDraft}
+                        onChange={(e) => setPlanDraft(e.target.value as AccountPlan)}
+                        className="h-11 flex-1 rounded-2xl border border-[#d8d0c5] bg-background px-4 text-[13px] text-[#332e24]"
+                      >
+                        <option value="free">Free</option>
+                        <option value="lite">Lite</option>
+                        <option value="pro">Pro</option>
+                        <option value="expert">Expert</option>
+                      </select>
+                      <Button
+                        variant="outline"
+                        className="h-11 rounded-2xl border-[#d8d0c5] bg-background"
+                        disabled={planMutation.isPending || planDraft === selectedUser.plan}
+                        onClick={() =>
+                          planMutation.mutate({
+                            userId: selectedUser.id,
+                            plan: planDraft,
+                          })
+                        }
+                      >
+                        {planMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "Save Tier"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
                   <Button
                     className="h-11 w-full rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90"
                     onClick={() => {

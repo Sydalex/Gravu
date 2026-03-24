@@ -61,7 +61,13 @@ paymentsRouter.get("/subscription", async (c) => {
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { stripeCustomerId: true, credits: true, freeTrialUsed: true, isAdmin: true },
+    select: {
+      stripeCustomerId: true,
+      credits: true,
+      freeTrialUsed: true,
+      isAdmin: true,
+      manualPlan: true,
+    },
   });
 
   const subscription = await prisma.subscription.findUnique({
@@ -70,7 +76,9 @@ paymentsRouter.get("/subscription", async (c) => {
   const deviceTrialUsed = await getDeviceTrialUsed(deviceHash);
 
   const status: SubscriptionStatus = {
-    plan: subscription?.status === "active" || subscription?.status === "trialing" ? "pro" : "free",
+    plan:
+      (dbUser?.manualPlan as SubscriptionStatus["plan"] | null | undefined) ??
+      (subscription?.status === "active" || subscription?.status === "trialing" ? "pro" : "free"),
     status: subscription?.status ?? null,
     currentPeriodEnd: subscription?.currentPeriodEnd?.toISOString() ?? null,
     cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,

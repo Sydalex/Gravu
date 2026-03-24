@@ -35,16 +35,19 @@ const Selection = () => {
 
   const imageBase64 = imageUri?.split(',')[1] ?? '';
 
-  const { data: subscription } = useQuery({
+  const subscriptionQuery = useQuery({
     queryKey: ['subscription'],
     queryFn: () => api.get<SubscriptionStatus>('/api/payments/subscription'),
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
+  const subscription = subscriptionQuery.data;
 
-  const shouldBlockPaidAction =
-    !subscription?.isAdmin &&
-    ((subscription?.freeTrialUsed ?? false) || (subscription?.deviceTrialUsed ?? false)) &&
-    (subscription?.credits ?? 0) <= 0;
+  const shouldBlockPaidAction = (status?: SubscriptionStatus) =>
+    !status?.isAdmin &&
+    ((status?.freeTrialUsed ?? false) || (status?.deviceTrialUsed ?? false)) &&
+    (status?.credits ?? 0) <= 0;
 
   const detectMutation = useMutation({
     mutationFn: () =>
@@ -65,21 +68,33 @@ const Selection = () => {
   const selectedCount = detectedSubjects?.filter((s) => s.selected).length ?? 0;
 
   const handleProcess = () => {
-    if (shouldBlockPaidAction) {
-      setShowUpgradeDialog(true);
-      return;
-    }
+    const processWithFreshStatus = async () => {
+      const latestSubscription = (await subscriptionQuery.refetch()).data ?? subscription;
 
-    navigate('/processing');
+      if (shouldBlockPaidAction(latestSubscription)) {
+        setShowUpgradeDialog(true);
+        return;
+      }
+
+      navigate('/processing');
+    };
+
+    void processWithFreshStatus();
   };
 
   const handleDetect = () => {
-    if (shouldBlockPaidAction) {
-      setShowUpgradeDialog(true);
-      return;
-    }
+    const detectWithFreshStatus = async () => {
+      const latestSubscription = (await subscriptionQuery.refetch()).data ?? subscription;
 
-    detectMutation.mutate();
+      if (shouldBlockPaidAction(latestSubscription)) {
+        setShowUpgradeDialog(true);
+        return;
+      }
+
+      detectMutation.mutate();
+    };
+
+    void detectWithFreshStatus();
   };
 
   useEffect(() => {
