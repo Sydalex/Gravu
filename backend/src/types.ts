@@ -176,6 +176,10 @@ export const ConversionAssetSchema = z.object({
   imageBase64: z.string().nullable(),
   svgContent: z.string().nullable(),
   dxfContent: z.string().nullable(),
+  marketplaceStatus: z.string(),
+  marketplaceTitle: z.string().nullable(),
+  marketplaceCategory: z.string().nullable(),
+  marketplaceDownloadCount: z.number(),
   createdAt: z.string(),
 });
 export type ConversionAsset = z.infer<typeof ConversionAssetSchema>;
@@ -230,6 +234,29 @@ export const UpdateAssetRequestSchema = z.object({
   dxfContent: z.string().optional(),
 });
 export type UpdateAssetRequest = z.infer<typeof UpdateAssetRequestSchema>;
+
+export const MarketplaceSubmissionRequestSchema = z.object({
+  title: z.string().min(2, "title is required"),
+  category: z.string().min(2, "category is required"),
+});
+export type MarketplaceSubmissionRequest = z.infer<typeof MarketplaceSubmissionRequestSchema>;
+
+export const MarketplaceAssetSummarySchema = z.object({
+  id: z.string(),
+  conversionId: z.string(),
+  subjectId: z.number(),
+  title: z.string(),
+  category: z.string(),
+  previewBase64: z.string().nullable(),
+  svgContent: z.string().nullable(),
+  dxfContent: z.string().nullable(),
+  flowType: z.string(),
+  createdAt: z.string(),
+  hasSvg: z.boolean(),
+  hasDxf: z.boolean(),
+  downloadCount: z.number(),
+});
+export type MarketplaceAssetSummary = z.infer<typeof MarketplaceAssetSummarySchema>;
 
 // ─── Payments API Schemas ────────────────────────────────────────────────────
 

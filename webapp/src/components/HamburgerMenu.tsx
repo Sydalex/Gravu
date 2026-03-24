@@ -23,7 +23,8 @@ export function HamburgerMenu() {
   const menuLinks = [
     { label: 'Home', href: isAuthed ? '/app' : '/', match: isAuthed ? '/app' : '/', auth: false },
     { label: 'Upload', href: '/upload', match: '/upload', auth: true },
-    { label: 'Library', href: '/library', match: '/library', auth: true },
+    { label: 'Marketplace', href: '/marketplace', match: '/marketplace', auth: true },
+    { label: 'Archive', href: '/archive', match: '/archive', auth: true },
     { label: 'Account', href: '/account', match: '/account', auth: true },
     { label: 'Terms', href: '/policy/terms', match: '/policy/terms', auth: false },
     { label: 'Privacy', href: '/policy/privacy', match: '/policy/privacy', auth: false },

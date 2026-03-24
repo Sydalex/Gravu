@@ -15,6 +15,7 @@ import Register from "./pages/Register";
 import VerifyOtp from "./pages/VerifyOtp";
 import Library from "./pages/Library";
 import LibraryDetail from "./pages/LibraryDetail";
+import Marketplace from "./pages/Marketplace";
 import Account from "./pages/Account";
 import Policy from "./pages/Policy";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -48,6 +49,9 @@ const App = () => (
           <Route path="/selection" element={<ProtectedRoute><Selection /></ProtectedRoute>} />
           <Route path="/processing" element={<ProtectedRoute><Processing /></ProtectedRoute>} />
           <Route path="/result" element={<ProtectedRoute><Result /></ProtectedRoute>} />
+          <Route path="/marketplace" element={<ProtectedRoute><Marketplace /></ProtectedRoute>} />
+          <Route path="/archive" element={<ProtectedRoute><Library /></ProtectedRoute>} />
+          <Route path="/archive/:id" element={<ProtectedRoute><LibraryDetail /></ProtectedRoute>} />
           <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
           <Route path="/library/:id" element={<ProtectedRoute><LibraryDetail /></ProtectedRoute>} />
           <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />

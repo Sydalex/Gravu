@@ -9,6 +9,7 @@ import { traceRouter } from "./routes/trace";
 import { aiRouter } from "./routes/ai";
 import { convertRouter } from "./routes/convert";
 import { conversionsRouter } from "./routes/conversions";
+import { marketplaceRouter } from "./routes/marketplace";
 import { paymentsRouter } from "./routes/payments";
 import { adminRouter } from "./routes/admin";
 import { logger } from "hono/logger";
@@ -71,6 +72,7 @@ app.route("/api/trace", traceRouter);
 app.route("/api/ai", aiRouter);
 app.route("/api/convert", convertRouter);
 app.route("/api/conversions", conversionsRouter);
+app.route("/api/marketplace", marketplaceRouter);
 app.route("/api/payments", paymentsRouter);
 app.route("/api/admin", adminRouter);
 

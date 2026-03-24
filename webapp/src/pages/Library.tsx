@@ -89,13 +89,13 @@ const Library = () => {
         >
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-400 mb-3">
-              Your Work
+              Private Archive
             </p>
             <h1
               className="text-4xl md:text-5xl font-light uppercase tracking-[-0.02em] leading-[1.1] text-neutral-900"
               style={{ fontFamily: 'system-ui, sans-serif' }}
             >
-              <span data-bird-perch="library">Library.</span>
+              <span data-bird-perch="library">Archive.</span>
             </h1>
             {!isLoading && list.length > 0 && (
               <p className="mt-2 font-mono text-[10px] text-neutral-400">
@@ -103,13 +103,22 @@ const Library = () => {
               </p>
             )}
           </div>
-          <button
-            onClick={() => navigate('/app')}
-            className="group flex items-center gap-3 border border-neutral-900 bg-neutral-900 px-6 py-3 text-white transition-all hover:bg-neutral-800 self-start sm:self-auto"
-          >
-            <span className="font-mono text-xs uppercase tracking-[0.15em]">New Conversion</span>
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </button>
+          <div className="flex flex-wrap gap-3 self-start sm:self-auto">
+            <button
+              onClick={() => navigate('/marketplace')}
+              className="group flex items-center gap-3 border border-neutral-200 bg-white px-5 py-3 text-neutral-700 transition-all hover:border-neutral-400 hover:text-neutral-900"
+            >
+              <span className="font-mono text-xs uppercase tracking-[0.15em]">Marketplace</span>
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </button>
+            <button
+              onClick={() => navigate('/app')}
+              className="group flex items-center gap-3 border border-neutral-900 bg-neutral-900 px-6 py-3 text-white transition-all hover:bg-neutral-800"
+            >
+              <span className="font-mono text-xs uppercase tracking-[0.15em]">New Conversion</span>
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </button>
+          </div>
         </motion.div>
 
         {/* Loading skeletons */}
@@ -133,7 +142,7 @@ const Library = () => {
             <div className="space-y-2">
               <p className="font-mono text-xs uppercase tracking-[0.1em] text-neutral-900">No conversions yet</p>
               <p className="font-mono text-[10px] text-neutral-400">
-                Your completed conversions will appear here.
+                Your private conversions and editable outputs will appear here.
               </p>
             </div>
             <button
@@ -158,7 +167,7 @@ const Library = () => {
                   variants={cardVariants}
                   transition={{ duration: 0.3, ease: 'easeOut' }}
                   layout
-                  onClick={() => navigate(`/library/${item.id}`)}
+                  onClick={() => navigate(`/archive/${item.id}`)}
                   className="group relative cursor-pointer border border-neutral-200 bg-white overflow-hidden transition-all hover:border-orange-500/50 hover:shadow-lg"
                 >
                   {/* Thumbnail */}

@@ -38,14 +38,18 @@ model Conversion {
 }
 
 model ConversionAsset {
-  id           String     @id @default(cuid())
-  conversionId String
-  conversion   Conversion @relation(fields: [conversionId], references: [id], onDelete: Cascade)
-  subjectId    Int
-  imageBase64  String?    // the generated linework PNG
-  svgContent   String?    // cached SVG string
-  dxfContent   String?    // cached DXF string
-  createdAt    DateTime   @default(now())
+  id                       String     @id @default(cuid())
+  conversionId             String
+  conversion               Conversion @relation(fields: [conversionId], references: [id], onDelete: Cascade)
+  subjectId                Int
+  imageBase64              String?    // the generated linework PNG
+  svgContent               String?    // cached SVG string
+  dxfContent               String?    // cached DXF string
+  marketplaceStatus        String     @default("private")
+  marketplaceTitle         String?
+  marketplaceCategory      String?
+  marketplaceDownloadCount Int        @default(0)
+  createdAt                DateTime   @default(now())
 }
 
 model Session {

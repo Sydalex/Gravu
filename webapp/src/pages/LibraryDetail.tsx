@@ -16,9 +16,12 @@ import {
   FileArchive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PageWrapper } from '@/components/PageWrapper';
 import { useImageStore } from '@/lib/store';
 import { api } from '@/lib/api';
+import { toast } from '@/components/ui/sonner';
 import type { ConversionDetail, ConversionAsset } from '../../../backend/src/types';
 
 function formatDate(dateStr: string) {
@@ -199,6 +202,10 @@ const VectoriseButtons = ({ asset, conversionId }: VectoriseButtonsProps) => {
 const LibraryDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [listingAsset, setListingAsset] = useState<ConversionAsset | null>(null);
+  const [listingTitle, setListingTitle] = useState('');
+  const [listingCategory, setListingCategory] = useState('Objects');
 
   const { data: conversion, isLoading, isError } = useQuery({
     queryKey: ['conversion', id],
@@ -230,9 +237,9 @@ const LibraryDetail = () => {
             <AlertCircle className="h-7 w-7 text-destructive" />
           </div>
           <p className="text-base font-semibold text-foreground">Conversion not found</p>
-          <Button variant="secondary" onClick={() => navigate('/library')}>
+          <Button variant="secondary" onClick={() => navigate('/archive')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Library
+            Back to Archive
           </Button>
         </div>
       </PageWrapper>
@@ -245,6 +252,45 @@ const LibraryDetail = () => {
   const vectorAssets = conversion.assets.filter(
     (a) => !!a.svgContent || !!a.dxfContent,
   );
+
+  const listMutation = useMutation({
+    mutationFn: (payload: { assetId: string; title: string; category: string }) =>
+      api.post(`/api/marketplace/assets/${payload.assetId}/list`, {
+        title: payload.title,
+        category: payload.category,
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['conversion', id] }),
+        queryClient.invalidateQueries({ queryKey: ['marketplace'] }),
+      ]);
+      setListingAsset(null);
+      toast.success('Asset listed in Marketplace');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Failed to list asset');
+    },
+  });
+
+  const unlistMutation = useMutation({
+    mutationFn: (assetId: string) => api.post(`/api/marketplace/assets/${assetId}/unlist`, {}),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['conversion', id] }),
+        queryClient.invalidateQueries({ queryKey: ['marketplace'] }),
+      ]);
+      toast.success('Asset removed from Marketplace');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Failed to unlist asset');
+    },
+  });
+
+  const openListDialog = (asset: ConversionAsset) => {
+    setListingAsset(asset);
+    setListingTitle(asset.marketplaceTitle ?? conversion.name ?? `Asset ${asset.subjectId}`);
+    setListingCategory(asset.marketplaceCategory ?? 'Objects');
+  };
 
   return (
     <PageWrapper className="pt-[72px]">
@@ -259,11 +305,11 @@ const LibraryDetail = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/library')}
+            onClick={() => navigate('/archive')}
             className="gap-2 text-muted-foreground hover:text-foreground -ml-2"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Library
+            Back to Archive
           </Button>
           <div>
             <h1 className="text-display text-2xl md:text-3xl text-foreground">
@@ -410,6 +456,26 @@ const LibraryDetail = () => {
                           <Sparkles className="h-3 w-3" />
                           Convert &rarr; WEBP
                         </Button>
+                        {asset.marketplaceStatus === 'listed' ? (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="gap-1.5 h-7 text-xs border border-orange-200 text-orange-600 hover:border-orange-300 hover:text-orange-700"
+                            disabled={unlistMutation.isPending}
+                            onClick={() => unlistMutation.mutate(asset.id)}
+                          >
+                            Marketplace Listed
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="gap-1.5 h-7 text-xs border border-neutral-200 hover:border-neutral-400"
+                            onClick={() => openListDialog(asset)}
+                          >
+                            List in Marketplace
+                          </Button>
+                        )}
                       </div>
 
                       {!isVectorised ? (
@@ -510,6 +576,67 @@ const LibraryDetail = () => {
           </motion.div>
         ) : null}
       </div>
+
+      <Dialog
+        open={!!listingAsset}
+        onOpenChange={(open) => {
+          if (!open) {
+            setListingAsset(null);
+          }
+        }}
+      >
+        <DialogContent className="border-[#e3dbcf] bg-[#faf7f0]">
+          <DialogHeader>
+            <DialogTitle className="text-[24px] font-light uppercase tracking-[-0.04em] text-neutral-900">
+              List In Marketplace
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <p className="text-sm leading-6 text-neutral-600">
+              Give this shared asset a clear title and category so it can live in the Marketplace as a
+              reusable public item.
+            </p>
+
+            <Input
+              value={listingTitle}
+              onChange={(e) => setListingTitle(e.target.value)}
+              placeholder="Title"
+              className="h-11 border-neutral-200 bg-white"
+            />
+
+            <select
+              value={listingCategory}
+              onChange={(e) => setListingCategory(e.target.value)}
+              className="h-11 w-full border border-neutral-200 bg-white px-4 text-sm text-neutral-900"
+            >
+              {['People', 'Furniture', 'Objects', 'Plants', 'Architecture', 'Decor'].map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+
+            <Button
+              className="h-11 w-full rounded-none bg-orange-500 text-white hover:bg-orange-600"
+              disabled={listMutation.isPending || listingTitle.trim().length < 2}
+              onClick={() => {
+                if (!listingAsset) return;
+                listMutation.mutate({
+                  assetId: listingAsset.id,
+                  title: listingTitle.trim(),
+                  category: listingCategory,
+                });
+              }}
+            >
+              {listMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Publish Asset
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageWrapper>
   );
 };

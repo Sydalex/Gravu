@@ -53,15 +53,15 @@ export function NavBar() {
         </Link>
 
         <Link
-          to="/library"
+          to="/marketplace"
           className={cn(
             'hidden sm:block font-mono text-[10px] uppercase tracking-[0.15em] transition-colors',
-            isActive('/library')
+            isActive('/marketplace')
               ? 'text-neutral-900'
               : 'text-neutral-400 hover:text-neutral-700'
           )}
         >
-          Library
+          Marketplace
         </Link>
 
         <Link
