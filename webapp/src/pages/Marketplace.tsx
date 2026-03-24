@@ -105,14 +105,8 @@ const Marketplace = () => {
             </div>
 
             <div className="space-y-4">
-              <p className="max-w-[58ch] text-sm leading-7 text-neutral-600">
-                Browse shared Gravu assets, organized into reusable categories. This is the public-facing
-                surface for work that has been intentionally listed for reuse, separate from each user’s
-                private archive.
-              </p>
-
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-                <label className="relative">
+              <div className="max-w-xl">
+                <label className="relative block">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
                   <input
                     value={search}
@@ -121,22 +115,23 @@ const Marketplace = () => {
                     className="h-11 w-full border border-neutral-200 bg-white pl-10 pr-4 text-sm text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 focus:border-neutral-400"
                   />
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {categories.map((category) => (
-                    <button
-                      key={category}
-                      type="button"
-                      onClick={() => setActiveCategory(category)}
-                      className={`border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors ${
-                        activeCategory === category
-                          ? 'border-orange-500 bg-orange-500 text-white'
-                          : 'border-neutral-200 bg-white text-neutral-500 hover:border-neutral-400 hover:text-neutral-900'
-                      }`}
-                    >
-                      {category}
-                    </button>
-                  ))}
-                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setActiveCategory(category)}
+                    className={`border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors ${
+                      activeCategory === category
+                        ? 'border-orange-500 bg-orange-500 text-white'
+                        : 'border-neutral-200 bg-white text-neutral-500 hover:border-neutral-400 hover:text-neutral-900'
+                    }`}
+                  >
+                    {category}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
