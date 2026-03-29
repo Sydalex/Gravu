@@ -66,6 +66,9 @@ export const auth = betterAuth({
   trustedOrigins,
   emailAndPassword: {
     enabled: true,
+    // Verification is a required step in this app, so do not create a logged-in
+    // browser session on signup before the user has entered their email code.
+    autoSignIn: false,
   },
   plugins: [
     emailOTP({

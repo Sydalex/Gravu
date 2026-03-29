@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
-import { authClient, signOut } from '@/lib/auth-client';
+import { authClient } from '@/lib/auth-client';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 
 const Register = () => {
@@ -34,7 +34,6 @@ const Register = () => {
         email: normalizedEmail,
         type: 'email-verification',
       });
-      await signOut().catch(() => undefined);
       setLoading(false);
       navigate(`/verify-otp?email=${encodeURIComponent(normalizedEmail)}&mode=email-verification`, {
         state: {
