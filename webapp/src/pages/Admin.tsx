@@ -186,6 +186,10 @@ function formatMutationError(error: unknown) {
   return error instanceof Error ? error.message : "Request failed";
 }
 
+function getStripeDashboardUrl(liveMode?: boolean) {
+  return liveMode ? "https://dashboard.stripe.com/" : "https://dashboard.stripe.com/test/dashboard";
+}
+
 function marketplaceStatusLabel(status: MarketplaceReviewAsset["marketplaceStatus"]) {
   if (status === "pending_review") return "Pending Review";
   if (status === "listed") return "Listed";
@@ -1175,6 +1179,24 @@ export default function Admin() {
                     : "Test Stripe"
                   : "Not Configured"}
               </span>
+            </div>
+
+            <div className="mt-4">
+              <Button
+                variant="outline"
+                className="h-10 rounded-2xl border-[#d8d0c5] bg-background px-4"
+                disabled={!billing?.stripeEnabled}
+                onClick={() =>
+                  window.open(
+                    getStripeDashboardUrl(billing?.liveMode),
+                    "_blank",
+                    "noopener,noreferrer"
+                  )
+                }
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Open Stripe Dashboard
+              </Button>
             </div>
 
             {billingLoading ? (
