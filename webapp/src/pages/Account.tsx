@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { LogOut, Check, Zap, Pencil, Crown, CreditCard, Loader2, Plus, Shield, ArrowRight, Trash2 } from 'lucide-react';
 import { PageWrapper } from '@/components/PageWrapper';
-import { useSession } from '@/lib/auth-client';
+import { signOut, useSession } from '@/lib/auth-client';
 import { api } from '@/lib/api';
 import { useAppSignOut } from '@/hooks/use-app-sign-out';
 import { toast } from '@/components/ui/sonner';
@@ -286,6 +286,7 @@ const Account = () => {
   const deleteAccountMutation = useMutation({
     mutationFn: () => api.delete('/api/account/me'),
     onSuccess: async () => {
+      await signOut().catch(() => undefined);
       await queryClient.cancelQueries();
       queryClient.clear();
       window.location.replace('/welcome');
