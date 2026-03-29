@@ -9,7 +9,14 @@ interface TransactionalEmailInput {
   idempotencyKey?: string;
 }
 
-const resend = new Resend(env.RESEND_API_KEY);
+function getResendClient() {
+  const apiKey = env.RESEND_API_KEY?.trim();
+  if (!apiKey) {
+    return null;
+  }
+
+  return new Resend(apiKey);
+}
 
 function getConfiguredFromAddress() {
   const from = env.SMTP_FROM?.trim();
@@ -27,7 +34,9 @@ export async function sendTransactionalEmail({
   html,
   idempotencyKey,
 }: TransactionalEmailInput) {
-  if (!env.RESEND_API_KEY) {
+  const resend = getResendClient();
+
+  if (!resend) {
     console.log(`\n[email] To: ${to}\nSubject: ${subject}\n\n${text}\n`);
     return;
   }
