@@ -312,10 +312,6 @@ const Processing = () => {
                   {statusMessages[status] ?? 'Processing...'}
                 </motion.p>
               </AnimatePresence>
-
-              <span className="font-mono text-[10px] text-neutral-400">
-                {Math.round(progress)}%
-              </span>
             </div>
           </>
         )}
