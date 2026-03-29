@@ -16,10 +16,112 @@ import { api } from '@/lib/api';
 import { useImageStore, type SimplificationLevel } from '@/lib/store';
 import type { SubscriptionStatus } from '../../../backend/src/types';
 
+const FULL_FLOW_MAX_DIMENSION = 1600;
+const VECTORIZE_FLOW_MAX_DIMENSION = 2048;
+const MAX_PROCESSED_UPLOAD_BYTES = 18 * 1024 * 1024;
+
 const formatSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const stripExtension = (name: string) => name.replace(/\.[^/.]+$/, '');
+
+const readFileAsDataUrl = (file: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('Failed to read image data.'));
+    reader.readAsDataURL(file);
+  });
+
+const loadImageElement = (file: File) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(img);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Failed to open the selected image.'));
+    };
+
+    img.src = objectUrl;
+  });
+
+const canvasToBlob = (canvas: HTMLCanvasElement, type: string, quality?: number) =>
+  new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error('Failed to prepare the upload image.'));
+          return;
+        }
+        resolve(blob);
+      },
+      type,
+      quality
+    );
+  });
+
+const optimizeUploadImage = async (file: File, flowType: 'full' | 'vectorize_only') => {
+  const image = await loadImageElement(file);
+  const maxDimension =
+    flowType === 'full' ? FULL_FLOW_MAX_DIMENSION : VECTORIZE_FLOW_MAX_DIMENSION;
+  const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+  const width = Math.max(1, Math.round(image.naturalWidth * scale));
+  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error('Failed to prepare the upload canvas.');
+  }
+
+  context.drawImage(image, 0, 0, width, height);
+
+  const originalBase = stripExtension(file.name) || 'upload';
+  const preferredType = flowType === 'full' ? 'image/jpeg' : 'image/png';
+  const preferredBlob = await canvasToBlob(
+    canvas,
+    preferredType,
+    preferredType === 'image/jpeg' ? 0.9 : undefined
+  );
+
+  let chosenBlob = preferredBlob;
+  let chosenType = preferredType;
+
+  if (preferredBlob.size > MAX_PROCESSED_UPLOAD_BYTES && flowType === 'vectorize_only') {
+    const jpegFallback = await canvasToBlob(canvas, 'image/jpeg', 0.92);
+    if (jpegFallback.size < preferredBlob.size) {
+      chosenBlob = jpegFallback;
+      chosenType = 'image/jpeg';
+    }
+  }
+
+  if (chosenBlob.size > MAX_PROCESSED_UPLOAD_BYTES) {
+    throw new Error('This image is still too large after optimization. Please use a smaller file.');
+  }
+
+  const optimizedFile = new File(
+    [chosenBlob],
+    `${originalBase}.${chosenType === 'image/png' ? 'png' : 'jpg'}`,
+    { type: chosenType, lastModified: Date.now() }
+  );
+
+  return {
+    uri: await readFileAsDataUrl(optimizedFile),
+    file: optimizedFile,
+    sizeLabel: formatSize(optimizedFile.size),
+  };
 };
 
 const simplificationOptions: Array<{ value: SimplificationLevel; label: string }> = [
@@ -38,6 +140,8 @@ const Upload = () => {
   const setSimplificationLevel = useImageStore((s) => s.setSimplificationLevel);
   const [dragActive, setDragActive] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [isPreparingFile, setIsPreparingFile] = useState(false);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -56,17 +160,29 @@ const Upload = () => {
     (status?.credits ?? 0) <= 0;
 
   const handleFile = useCallback(
-    (file: File) => {
-      if (!file.type.startsWith('image/')) return;
-      setFileSize(formatSize(file.size));
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const uri = e.target?.result as string;
-        setImage(uri, file, file.name);
-      };
-      reader.readAsDataURL(file);
+    async (file: File) => {
+      if (!file.type.startsWith('image/')) {
+        setFileError('Please choose a PNG, JPG, or WEBP image.');
+        return;
+      }
+
+      setIsPreparingFile(true);
+      setFileError(null);
+
+      try {
+        const optimized = await optimizeUploadImage(file, flowType);
+        setFileSize(optimized.sizeLabel);
+        setImage(optimized.uri, optimized.file, file.name);
+      } catch (error) {
+        setFileSize(null);
+        setFileError(
+          error instanceof Error ? error.message : 'Failed to prepare the selected image.'
+        );
+      } finally {
+        setIsPreparingFile(false);
+      }
     },
-    [setImage]
+    [flowType, setImage]
   );
 
   const onDrop = useCallback(
@@ -74,7 +190,9 @@ const Upload = () => {
       e.preventDefault();
       setDragActive(false);
       const file = e.dataTransfer.files[0];
-      if (file) handleFile(file);
+      if (file) {
+        void handleFile(file);
+      }
     },
     [handleFile]
   );
@@ -88,7 +206,9 @@ const Upload = () => {
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) handleFile(file);
+    if (file) {
+      void handleFile(file);
+    }
   };
 
   const handleContinue = () => {
@@ -294,10 +414,14 @@ const Upload = () => {
 
                 <div className="space-y-2 text-center">
                   <p className="font-mono text-xs uppercase tracking-[0.1em] text-neutral-900">
-                    {dragActive ? 'Release to upload' : 'Drop your file here'}
+                    {isPreparingFile
+                      ? 'Preparing file...'
+                      : dragActive
+                        ? 'Release to upload'
+                        : 'Drop your file here'}
                   </p>
                   <p className="font-mono text-[10px] text-neutral-400">
-                    or click to browse
+                    {isPreparingFile ? 'Optimizing image for upload' : 'or click to browse'}
                   </p>
                 </div>
 
@@ -311,6 +435,12 @@ const Upload = () => {
                     </span>
                   ))}
                 </div>
+
+                {fileError && (
+                  <div className="border border-red-200 bg-red-50 px-4 py-3 font-mono text-[10px] uppercase tracking-[0.1em] text-red-600">
+                    {fileError}
+                  </div>
+                )}
               </button>
             </motion.div>
           )}
