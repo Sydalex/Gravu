@@ -1,10 +1,15 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Download, FileCode, FileImage, FileType, Layers, Search } from 'lucide-react';
 import { PageWrapper } from '@/components/PageWrapper';
 import { api } from '@/lib/api';
 import { buildDownloadFilename } from '@/lib/asset-naming';
+import { toast } from '@/components/ui/sonner';
+import type {
+  MarketplaceDownloadResponse,
+  SubscriptionStatus,
+} from '../../../backend/src/types';
 
 type MarketplaceAsset = {
   id: string;
@@ -13,8 +18,6 @@ type MarketplaceAsset = {
   title: string;
   category: string;
   previewBase64: string | null;
-  svgContent: string | null;
-  dxfContent: string | null;
   flowType: string;
   createdAt: string;
   hasSvg: boolean;
@@ -57,13 +60,54 @@ function downloadBase64Image(base64: string, filename: string, mimeType: string)
   URL.revokeObjectURL(url);
 }
 
+function triggerMarketplaceDownload(payload: MarketplaceDownloadResponse) {
+  if (payload.format === 'png') {
+    downloadBase64Image(
+      payload.content,
+      buildDownloadFilename(payload.title, 'png'),
+      payload.mimeType
+    );
+    return;
+  }
+
+  downloadText(
+    payload.content,
+    buildDownloadFilename(payload.title, payload.format),
+    payload.mimeType
+  );
+}
+
 const Marketplace = () => {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ['marketplace'],
     queryFn: () => api.get<MarketplaceAsset[]>('/api/marketplace'),
+  });
+  const { data: subscription } = useQuery({
+    queryKey: ['subscription'],
+    queryFn: () => api.get<SubscriptionStatus>('/api/payments/subscription'),
+    staleTime: 30_000,
+  });
+
+  const downloadMutation = useMutation({
+    mutationFn: (params: { assetId: string; format: 'png' | 'svg' | 'dxf' }) =>
+      api.post<MarketplaceDownloadResponse>(
+        `/api/marketplace/assets/${params.assetId}/download`,
+        { format: params.format }
+      ),
+    onSuccess: async (payload) => {
+      triggerMarketplaceDownload(payload);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['marketplace'] }),
+        queryClient.invalidateQueries({ queryKey: ['subscription'] }),
+      ]);
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Download failed');
+    },
   });
 
   const items = data ?? [];
@@ -134,6 +178,14 @@ const Marketplace = () => {
                   </button>
                 ))}
               </div>
+
+              {subscription ? (
+                <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-400">
+                  {subscription.isAdmin || subscription.marketplaceDownloadsRemaining === null
+                    ? 'Marketplace downloads: unlimited'
+                    : `Marketplace downloads left this month: ${subscription.marketplaceDownloadsRemaining} / ${subscription.marketplaceDownloadsLimit ?? 0}`}
+                </div>
+              ) : null}
             </div>
           </div>
         </motion.section>
@@ -218,12 +270,12 @@ const Marketplace = () => {
                         <button
                           type="button"
                           onClick={() =>
-                            downloadBase64Image(
-                              item.previewBase64!,
-                              buildDownloadFilename(item.title, 'png'),
-                              'image/png'
-                            )
+                            downloadMutation.mutate({
+                              assetId: item.id,
+                              format: 'png',
+                            })
                           }
+                          disabled={downloadMutation.isPending}
                           className="inline-flex items-center gap-2 border border-neutral-200 px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-neutral-700 transition-colors hover:border-neutral-400"
                         >
                           <FileImage className="h-3.5 w-3.5" />
@@ -233,12 +285,14 @@ const Marketplace = () => {
                       {item.hasSvg ? (
                         <button
                           type="button"
+                          disabled={downloadMutation.isPending}
                           className="inline-flex items-center gap-2 border border-neutral-200 px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-neutral-700 transition-colors hover:border-neutral-400"
-                          onClick={() => {
-                            if (item.svgContent) {
-                              downloadText(item.svgContent, buildDownloadFilename(item.title, 'svg'), 'image/svg+xml');
-                            }
-                          }}
+                          onClick={() =>
+                            downloadMutation.mutate({
+                              assetId: item.id,
+                              format: 'svg',
+                            })
+                          }
                         >
                           <FileCode className="h-3.5 w-3.5" />
                           SVG
@@ -247,12 +301,14 @@ const Marketplace = () => {
                       {item.hasDxf ? (
                         <button
                           type="button"
+                          disabled={downloadMutation.isPending}
                           className="inline-flex items-center gap-2 border border-neutral-200 px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-neutral-700 transition-colors hover:border-neutral-400"
-                          onClick={() => {
-                            if (item.dxfContent) {
-                              downloadText(item.dxfContent, buildDownloadFilename(item.title, 'dxf'), 'application/dxf');
-                            }
-                          }}
+                          onClick={() =>
+                            downloadMutation.mutate({
+                              assetId: item.id,
+                              format: 'dxf',
+                            })
+                          }
                         >
                           <FileType className="h-3.5 w-3.5" />
                           DXF

@@ -451,7 +451,7 @@ aiRouter.post("/generate-linework", async (c) => {
 
     const deviceToken = getOrCreateTrialDeviceToken(c);
     const deviceHash = hashTrialDeviceToken(deviceToken);
-    const reservation = await reserveProcessAccess(user.id, deviceHash);
+    const reservation = await reserveProcessAccess(user.id, "ai", deviceHash);
     if (!reservation.allowed) {
       return c.json({ error: reservation.error }, reservation.status as 401 | 402 | 403 | 500);
     }

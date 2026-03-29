@@ -1,6 +1,11 @@
 import { prisma } from "../prisma";
 
-export type ProcessReservationMode = "admin" | "credit" | "free_trial";
+export type ProcessKind = "ai" | "vectorize";
+export type ProcessReservationMode =
+  | "admin"
+  | "ai_credit"
+  | "vectorize_credit"
+  | "free_trial";
 
 export type ProcessReservation =
   | {
@@ -19,11 +24,19 @@ export type ProcessReservation =
 
 export async function reserveProcessAccess(
   userId: string,
+  processKind: ProcessKind,
   deviceHash?: string
 ): Promise<ProcessReservation> {
   const dbUser = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, isAdmin: true, credits: true, freeTrialUsed: true, emailVerified: true },
+    select: {
+      id: true,
+      isAdmin: true,
+      credits: true,
+      vectorizeCredits: true,
+      freeTrialUsed: true,
+      emailVerified: true,
+    },
   });
 
   if (!dbUser) {
@@ -42,7 +55,26 @@ export async function reserveProcessAccess(
     };
   }
 
-  const usedCredit = await prisma.user.updateMany({
+  if (processKind === "vectorize") {
+    const usedVectorizeCredit = await prisma.user.updateMany({
+      where: {
+        id: userId,
+        isAdmin: false,
+        vectorizeCredits: { gt: 0 },
+      },
+      data: { vectorizeCredits: { decrement: 1 } },
+    });
+
+    if (usedVectorizeCredit.count > 0) {
+      return {
+        allowed: true,
+        mode: "vectorize_credit",
+        trialConsumed: false,
+      };
+    }
+  }
+
+  const usedAiCredit = await prisma.user.updateMany({
     where: {
       id: userId,
       isAdmin: false,
@@ -51,10 +83,10 @@ export async function reserveProcessAccess(
     data: { credits: { decrement: 1 } },
   });
 
-  if (usedCredit.count > 0) {
+  if (usedAiCredit.count > 0) {
     return {
       allowed: true,
-      mode: "credit",
+      mode: "ai_credit",
       trialConsumed: false,
     };
   }
@@ -146,10 +178,18 @@ export async function releaseProcessAccess(
 ): Promise<void> {
   if (mode === "admin") return;
 
-  if (mode === "credit") {
+  if (mode === "ai_credit") {
     await prisma.user.update({
       where: { id: userId },
       data: { credits: { increment: 1 } },
+    });
+    return;
+  }
+
+  if (mode === "vectorize_credit") {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { vectorizeCredits: { increment: 1 } },
     });
     return;
   }

@@ -251,8 +251,6 @@ export const MarketplaceAssetSummarySchema = z.object({
   title: z.string(),
   category: z.string(),
   previewBase64: z.string().nullable(),
-  svgContent: z.string().nullable(),
-  dxfContent: z.string().nullable(),
   flowType: z.string(),
   createdAt: z.string(),
   hasSvg: z.boolean(),
@@ -270,15 +268,34 @@ export const SubscriptionStatusSchema = z.object({
   cancelAtPeriodEnd: z.boolean(),
   stripeCustomerId: z.string().nullable(),
   credits: z.number(),
+  aiCredits: z.number(),
+  vectorizeCredits: z.number(),
+  marketplaceDownloadsUsed: z.number(),
+  marketplaceDownloadsRemaining: z.number().nullable(),
+  marketplaceDownloadsLimit: z.number().nullable(),
   freeTrialUsed: z.boolean(),
   deviceTrialUsed: z.boolean(),
   isAdmin: z.boolean(),
   billingEnabled: z.boolean(),
   activeProPriceId: z.string().nullable(),
+  activeExpertPriceId: z.string().nullable(),
   activeCreditsPackPriceId: z.string().nullable(),
   activeCreditsPackAmount: z.number().nullable(),
 });
 export type SubscriptionStatus = z.infer<typeof SubscriptionStatusSchema>;
+
+export const MarketplaceDownloadRequestSchema = z.object({
+  format: z.enum(["png", "svg", "dxf"]),
+});
+export type MarketplaceDownloadRequest = z.infer<typeof MarketplaceDownloadRequestSchema>;
+
+export const MarketplaceDownloadResponseSchema = z.object({
+  title: z.string(),
+  format: z.enum(["png", "svg", "dxf"]),
+  mimeType: z.string(),
+  content: z.string(),
+});
+export type MarketplaceDownloadResponse = z.infer<typeof MarketplaceDownloadResponseSchema>;
 
 export const BuyCreditsRequestSchema = z.object({
   credits: z.number().int().positive(),

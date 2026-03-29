@@ -40,6 +40,8 @@ interface AdminUser {
   createdAt: string;
   isAdmin: boolean;
   credits: number;
+  vectorizeCredits: number;
+  marketplaceDownloadsUsed: number;
   manualPlan?: string | null;
   stripeCustomerId: string | null;
   subscriptionStatus: string | null;
@@ -87,6 +89,7 @@ interface BillingOverview {
   liveMode: boolean;
   activeConfig: {
     activeProPriceId: string | null;
+    activeExpertPriceId: string | null;
     activeCreditsPackPriceId: string | null;
     activeCreditsPackAmount: number;
   };
@@ -137,7 +140,7 @@ interface MarketplaceReviewAsset {
   };
 }
 
-type FilterId = "all" | "admins" | "pro" | "low-credits";
+type FilterId = "all" | "admins" | "paid" | "low-credits";
 type PromoDuration = "once" | "forever" | "repeating";
 type PriceMode = "recurring" | "one_time";
 type AccountPlan = "free" | "lite" | "pro" | "expert";
@@ -145,8 +148,8 @@ type AccountPlan = "free" | "lite" | "pro" | "expert";
 const filters: Array<{ id: FilterId; label: string }> = [
   { id: "all", label: "All Users" },
   { id: "admins", label: "Admins" },
-  { id: "pro", label: "Pro" },
-  { id: "low-credits", label: "Low Credits" },
+  { id: "paid", label: "Paid Tiers" },
+  { id: "low-credits", label: "Low AI Credits" },
 ];
 
 function formatDate(iso: string | null) {
@@ -311,6 +314,7 @@ export default function Admin() {
   const [priceCreditsAmount, setPriceCreditsAmount] = useState("");
 
   const [configProPriceId, setConfigProPriceId] = useState("");
+  const [configExpertPriceId, setConfigExpertPriceId] = useState("");
   const [configCreditsPriceId, setConfigCreditsPriceId] = useState("");
   const [configCreditsAmount, setConfigCreditsAmount] = useState("10");
   const [marketplaceDrafts, setMarketplaceDrafts] = useState<
@@ -350,7 +354,9 @@ export default function Admin() {
 
     if (!matchesSearch) return false;
     if (activeFilter === "admins") return user.isAdmin;
-    if (activeFilter === "pro") return !user.isAdmin && user.plan === "pro";
+    if (activeFilter === "paid") {
+      return !user.isAdmin && (user.plan === "pro" || user.plan === "expert");
+    }
     if (activeFilter === "low-credits") return !user.isAdmin && user.credits <= 3;
     return true;
   });
@@ -385,6 +391,7 @@ export default function Admin() {
   useEffect(() => {
     if (!billing) return;
     setConfigProPriceId(billing.activeConfig.activeProPriceId ?? "");
+    setConfigExpertPriceId(billing.activeConfig.activeExpertPriceId ?? "");
     setConfigCreditsPriceId(billing.activeConfig.activeCreditsPackPriceId ?? "");
     setConfigCreditsAmount(String(billing.activeConfig.activeCreditsPackAmount ?? 10));
   }, [billing]);
@@ -536,6 +543,7 @@ export default function Admin() {
     mutationFn: () =>
       api.post("/api/admin/billing/config", {
         activeProPriceId: configProPriceId || null,
+        activeExpertPriceId: configExpertPriceId || null,
         activeCreditsPackPriceId: configCreditsPriceId || null,
         activeCreditsPackAmount: Number(configCreditsAmount),
       }),
@@ -711,7 +719,7 @@ export default function Admin() {
     (priceMode !== "one_time" || !priceCreditsAmount || Number(priceCreditsAmount) > 0);
   const canSaveConfig =
     Number(configCreditsAmount) > 0 &&
-    (!!configProPriceId || !!configCreditsPriceId);
+    (!!configProPriceId || !!configExpertPriceId || !!configCreditsPriceId);
 
   const stripeUnavailableReason =
     "Stripe is not configured on this environment. Add STRIPE_SECRET in Coolify and redeploy.";
@@ -734,8 +742,8 @@ export default function Admin() {
 
   const configActionHint = !billing?.stripeEnabled
     ? stripeUnavailableReason
-    : !configProPriceId && !configCreditsPriceId
-      ? "Select at least one active price to make the billing config usable."
+    : !configProPriceId && !configExpertPriceId && !configCreditsPriceId
+      ? "Select at least one active recurring or credit-pack price to make the billing config usable."
       : Number(configCreditsAmount) <= 0
         ? "Credit pack amount must be greater than zero."
         : "Saving this updates the prices used by the account-page checkout buttons.";
@@ -839,21 +847,21 @@ export default function Admin() {
             />
             <StatCard
               icon={Sparkles}
-              label="Pro Subscribers"
+              label="Paid Subscribers"
               value={stats?.proSubscribers ?? 0}
-              meta={`${stats?.totalUsers ? Math.round((stats.proSubscribers / stats.totalUsers) * 100) : 0}% of current accounts`}
+              meta={`${stats?.totalUsers ? Math.round((stats.proSubscribers / stats.totalUsers) * 100) : 0}% of current accounts on Pro or Expert`}
             />
             <StatCard
               icon={CreditCard}
               label="Conversions"
               value={stats?.totalConversions ?? 0}
-              meta={`${lowCreditCount} users at 3 credits or below`}
+              meta={`${lowCreditCount} users at 3 AI credits or below`}
             />
             <StatCard
               icon={Shield}
               label="MRR"
               value={`€${stats?.mrr ?? 0}`}
-              meta="Estimated from active Pro subscriptions"
+              meta="Legacy estimate from active paid subscriptions"
             />
           </section>
         )}
@@ -906,7 +914,7 @@ export default function Admin() {
             <div className="grid grid-cols-[minmax(0,1.6fr)_110px_90px_110px] gap-3 border-b border-[#dfd8cc] px-5 py-3 text-[10px] uppercase tracking-[1.8px] text-muted-foreground sm:px-6">
               <span>User</span>
               <span>Plan</span>
-              <span>Credits</span>
+              <span>AI Credits</span>
               <span>Conversions</span>
             </div>
 
@@ -990,7 +998,7 @@ export default function Admin() {
                 <div className="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
                   <div className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
                     <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
-                      Credits
+                      AI Credits
                     </p>
                     <p className="mt-2 text-[28px] font-black leading-none tracking-[-1px] text-[#332e24]">
                       {selectedUser.isAdmin ? "∞" : selectedUser.credits}
@@ -998,20 +1006,29 @@ export default function Admin() {
                   </div>
                   <div className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
                     <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
-                      Conversions
+                      Vectorize Credits
                     </p>
                     <p className="mt-2 text-[28px] font-black leading-none tracking-[-1px] text-[#332e24]">
-                      {selectedUser.conversionCount}
+                      {selectedUser.isAdmin ? "∞" : selectedUser.vectorizeCredits}
                     </p>
                   </div>
                   <div className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
                     <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
-                      Joined
+                      Marketplace Used
                     </p>
-                    <p className="mt-2 text-[16px] font-semibold text-[#332e24]">
-                      {formatDate(selectedUser.createdAt)}
+                    <p className="mt-2 text-[28px] font-black leading-none tracking-[-1px] text-[#332e24]">
+                      {selectedUser.isAdmin ? "∞" : selectedUser.marketplaceDownloadsUsed}
                     </p>
                   </div>
+                </div>
+
+                <div className="mt-3 border border-[#e5dbc9] bg-[#fffdf9] p-4">
+                  <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+                    Joined
+                  </p>
+                  <p className="mt-2 text-[16px] font-semibold text-[#332e24]">
+                    {formatDate(selectedUser.createdAt)}
+                  </p>
                 </div>
 
                 <div className="mt-5 border border-[#e5dbc9] bg-[#fffdf9] p-4">
@@ -1083,7 +1100,7 @@ export default function Admin() {
                       setCreditAmount("");
                     }}
                   >
-                    Adjust Credits
+                    Adjust AI Credits
                   </Button>
 
                   <Button
@@ -1243,7 +1260,7 @@ export default function Admin() {
                     save, and redeploy before using billing controls.
                   </div>
                 )}
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-3">
                   <label className="space-y-2">
                     <span className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
                       Active Pro Price
@@ -1254,6 +1271,26 @@ export default function Admin() {
                       className="h-11 w-full rounded-2xl border border-[#d8d0c5] bg-background px-4 text-[13px] text-[#332e24]"
                     >
                       <option value="">No active Pro price</option>
+                      {recurringPrices.map((price) => (
+                        <option key={price.id} value={price.id}>
+                          {(price.productName ?? price.nickname ?? price.id)} ·{" "}
+                          {formatMoney(price.unitAmount, price.currency)}
+                          {price.interval ? ` / ${price.interval}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+                      Active Expert Price
+                    </span>
+                    <select
+                      value={configExpertPriceId}
+                      onChange={(e) => setConfigExpertPriceId(e.target.value)}
+                      className="h-11 w-full rounded-2xl border border-[#d8d0c5] bg-background px-4 text-[13px] text-[#332e24]"
+                    >
+                      <option value="">No active Expert price</option>
                       {recurringPrices.map((price) => (
                         <option key={price.id} value={price.id}>
                           {(price.productName ?? price.nickname ?? price.id)} ·{" "}
@@ -2141,7 +2178,7 @@ export default function Admin() {
         <DialogContent className="border-[#e7e0d5] bg-[#fbfaf7]">
           <DialogHeader>
             <DialogTitle className="text-[22px] font-black tracking-[-0.7px] text-[#332e24]">
-              Adjust credits
+              Adjust AI credits
             </DialogTitle>
           </DialogHeader>
 
@@ -2149,7 +2186,7 @@ export default function Admin() {
             <div className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
               <p className="text-[13px] font-medium text-[#332e24]">{creditDialogUser?.email}</p>
               <p className="mt-1 text-[12px] text-muted-foreground">
-                Current balance:{" "}
+                Current AI balance:{" "}
                 <span className="font-semibold text-foreground">
                   {creditDialogUser?.isAdmin ? "∞" : creditDialogUser?.credits}
                 </span>
@@ -2158,7 +2195,7 @@ export default function Admin() {
 
             <Input
               type="number"
-              placeholder="Credit amount"
+              placeholder="AI credit amount"
               value={creditAmount}
               onChange={(e) => setCreditAmount(e.target.value)}
               className="h-12 rounded-2xl border-[#d8d0c5] bg-background"
@@ -2173,7 +2210,7 @@ export default function Admin() {
                 {creditsMutation.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
-                Add Credits
+                Add AI Credits
               </Button>
               <Button
                 variant="outline"

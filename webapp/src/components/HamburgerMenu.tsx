@@ -19,7 +19,9 @@ export function HamburgerMenu() {
     enabled: !!session?.user,
   });
   const isAuthed = !!session?.user;
-  const creditsLabel = subscription?.isAdmin ? '∞' : String(subscription?.credits ?? 0);
+  const creditsLabel = subscription?.isAdmin
+    ? 'AI ∞ · VEC ∞'
+    : `AI ${subscription?.aiCredits ?? subscription?.credits ?? 0} · VEC ${subscription?.vectorizeCredits ?? 0}`;
 
   const menuLinks = [
     { label: 'Home', href: isAuthed ? '/app' : '/', match: isAuthed ? '/app' : '/', auth: false },
@@ -132,7 +134,7 @@ export function HamburgerMenu() {
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between border border-neutral-200 bg-white px-3 py-2">
                       <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400">
-                        Credits
+                        Balance
                       </span>
                       <span className="font-mono text-[10px] text-neutral-900">{creditsLabel}</span>
                     </div>

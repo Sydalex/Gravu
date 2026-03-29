@@ -6,6 +6,7 @@ import { stripe } from "../stripe";
 import { getBillingConfig } from "../billingConfig";
 import { env } from "../env";
 import { deleteUserAccount } from "../services/deleteUser";
+import { resolveAppPlan, syncMarketplaceDownloadWindow } from "../services/planEntitlements";
 import type { auth } from "../auth";
 
 type Variables = {
@@ -75,6 +76,7 @@ const CreatePriceSchema = z
 
 const UpdateBillingConfigSchema = z.object({
   activeProPriceId: z.string().min(1).nullable().optional(),
+  activeExpertPriceId: z.string().min(1).nullable().optional(),
   activeCreditsPackPriceId: z.string().min(1).nullable().optional(),
   activeCreditsPackAmount: z.number().int().positive().max(10_000).optional(),
 });
@@ -159,11 +161,16 @@ async function clearArchivedPricesFromBillingConfig(priceIds: string[]) {
 
   const update: {
     activeProPriceId?: string | null;
+    activeExpertPriceId?: string | null;
     activeCreditsPackPriceId?: string | null;
   } = {};
 
   if (config.activeProPriceId && priceIds.includes(config.activeProPriceId)) {
     update.activeProPriceId = null;
+  }
+
+  if (config.activeExpertPriceId && priceIds.includes(config.activeExpertPriceId)) {
+    update.activeExpertPriceId = null;
   }
 
   if (
@@ -280,31 +287,44 @@ adminRouter.get("/stats", async (c) => {
 
 // GET /api/admin/users — list all users with plan + conversion count
 adminRouter.get("/users", async (c) => {
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      subscription: true,
-      _count: { select: { conversions: true } },
-    },
-  });
+  const [users, billingConfig] = await Promise.all([
+    prisma.user.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        subscription: true,
+        _count: { select: { conversions: true } },
+      },
+    }),
+    getBillingConfig(),
+  ]);
 
-  const data = users.map((u) => ({
+  const data = await Promise.all(users.map(async (u) => {
+    const syncedDownloads = await syncMarketplaceDownloadWindow(u.id);
+    const plan = resolveAppPlan({
+      manualPlan: u.manualPlan,
+      liteActivatedAt: u.liteActivatedAt,
+      subscriptionStatus: u.subscription?.status,
+      subscriptionPriceId: u.subscription?.stripePriceId,
+      billingConfig,
+    });
+
+    return {
     id: u.id,
     name: u.name,
     email: u.email,
     createdAt: u.createdAt.toISOString(),
     isAdmin: u.isAdmin,
     credits: u.credits,
+    vectorizeCredits: u.vectorizeCredits,
+    marketplaceDownloadsUsed:
+      syncedDownloads?.marketplaceDownloadsUsed ?? u.marketplaceDownloadsUsed,
     manualPlan: u.manualPlan,
     stripeCustomerId: u.stripeCustomerId,
     subscriptionStatus: u.subscription?.status ?? null,
     currentPeriodEnd: u.subscription?.currentPeriodEnd?.toISOString() ?? null,
-    plan:
-      u.manualPlan ??
-      (u.subscription?.status === "active" || u.subscription?.status === "trialing"
-        ? "pro"
-        : "free"),
+    plan,
     conversionCount: u._count.conversions,
+    };
   }));
 
   return c.json({ data });
@@ -597,13 +617,14 @@ adminRouter.post(
   "/billing/config",
   zValidator("json", UpdateBillingConfigSchema),
   async (c) => {
-    const { activeProPriceId, activeCreditsPackPriceId, activeCreditsPackAmount } =
+    const { activeProPriceId, activeExpertPriceId, activeCreditsPackPriceId, activeCreditsPackAmount } =
       c.req.valid("json");
 
     const updated = await prisma.billingConfig.upsert({
       where: { id: "default" },
       update: {
         ...(activeProPriceId !== undefined ? { activeProPriceId } : {}),
+        ...(activeExpertPriceId !== undefined ? { activeExpertPriceId } : {}),
         ...(activeCreditsPackPriceId !== undefined
           ? { activeCreditsPackPriceId }
           : {}),
@@ -614,6 +635,7 @@ adminRouter.post(
       create: {
         id: "default",
         activeProPriceId: activeProPriceId ?? null,
+        activeExpertPriceId: activeExpertPriceId ?? null,
         activeCreditsPackPriceId: activeCreditsPackPriceId ?? null,
         activeCreditsPackAmount: activeCreditsPackAmount ?? 10,
       },

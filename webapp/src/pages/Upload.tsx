@@ -154,10 +154,10 @@ const Upload = () => {
   });
   const subscription = subscriptionQuery.data;
 
-  const shouldBlockPaidAction = (status?: SubscriptionStatus) =>
+  const shouldBlockVectorizeAction = (status?: SubscriptionStatus) =>
     !status?.isAdmin &&
     ((status?.freeTrialUsed ?? false) || (status?.deviceTrialUsed ?? false)) &&
-    (status?.credits ?? 0) <= 0;
+    ((status?.vectorizeCredits ?? 0) + (status?.aiCredits ?? status?.credits ?? 0)) <= 0;
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -215,7 +215,7 @@ const Upload = () => {
     const continueWithFreshStatus = async () => {
       const latestSubscription = (await subscriptionQuery.refetch()).data ?? subscription;
 
-      if (flowType === 'vectorize_only' && shouldBlockPaidAction(latestSubscription)) {
+      if (flowType === 'vectorize_only' && shouldBlockVectorizeAction(latestSubscription)) {
         setShowUpgradeDialog(true);
         return;
       }

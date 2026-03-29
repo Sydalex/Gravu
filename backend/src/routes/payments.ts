@@ -12,6 +12,13 @@ import {
   hashTrialDeviceToken,
 } from "../services/trialDevice";
 import {
+  getMarketplaceDownloadLimit,
+  getMarketplaceDownloadsRemaining,
+  getMonthlyPlanGrants,
+  resolveAppPlan,
+  syncMarketplaceDownloadWindow,
+} from "../services/planEntitlements";
+import {
   CreateCheckoutSessionRequestSchema,
   BuyCreditsRequestSchema,
   type SubscriptionStatus,
@@ -59,36 +66,63 @@ paymentsRouter.get("/subscription", async (c) => {
   const deviceToken = getOrCreateTrialDeviceToken(c);
   const deviceHash = hashTrialDeviceToken(deviceToken);
 
-  const dbUser = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: {
-      stripeCustomerId: true,
-      credits: true,
-      freeTrialUsed: true,
-      isAdmin: true,
-      manualPlan: true,
-    },
-  });
+  const [dbUser, subscription, syncedDownloads] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        stripeCustomerId: true,
+        credits: true,
+        vectorizeCredits: true,
+        freeTrialUsed: true,
+        isAdmin: true,
+        manualPlan: true,
+        liteActivatedAt: true,
+        marketplaceDownloadsUsed: true,
+      },
+    }),
+    prisma.subscription.findUnique({
+      where: { userId: user.id },
+    }),
+    syncMarketplaceDownloadWindow(user.id),
+  ]);
 
-  const subscription = await prisma.subscription.findUnique({
-    where: { userId: user.id },
-  });
   const deviceTrialUsed = await getDeviceTrialUsed(deviceHash);
+  const plan = resolveAppPlan({
+    manualPlan: dbUser?.manualPlan,
+    liteActivatedAt: dbUser?.liteActivatedAt,
+    subscriptionStatus: subscription?.status,
+    subscriptionPriceId: subscription?.stripePriceId,
+    billingConfig,
+  });
+  const marketplaceDownloadsUsed =
+    syncedDownloads?.marketplaceDownloadsUsed ??
+    dbUser?.marketplaceDownloadsUsed ??
+    0;
+  const marketplaceDownloadsLimit = dbUser?.isAdmin
+    ? null
+    : getMarketplaceDownloadLimit(plan);
 
   const status: SubscriptionStatus = {
-    plan:
-      (dbUser?.manualPlan as SubscriptionStatus["plan"] | null | undefined) ??
-      (subscription?.status === "active" || subscription?.status === "trialing" ? "pro" : "free"),
+    plan,
     status: subscription?.status ?? null,
     currentPeriodEnd: subscription?.currentPeriodEnd?.toISOString() ?? null,
     cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,
     stripeCustomerId: dbUser?.stripeCustomerId ?? null,
     credits: dbUser?.credits ?? 0,
+    aiCredits: dbUser?.credits ?? 0,
+    vectorizeCredits: dbUser?.vectorizeCredits ?? 0,
+    marketplaceDownloadsUsed,
+    marketplaceDownloadsRemaining:
+      dbUser?.isAdmin
+        ? null
+        : getMarketplaceDownloadsRemaining(plan, marketplaceDownloadsUsed),
+    marketplaceDownloadsLimit,
     freeTrialUsed: dbUser?.freeTrialUsed ?? false,
     deviceTrialUsed,
     isAdmin: dbUser?.isAdmin ?? false,
     billingEnabled: !!stripe,
     activeProPriceId: billingConfig.activeProPriceId ?? null,
+    activeExpertPriceId: billingConfig.activeExpertPriceId ?? null,
     activeCreditsPackPriceId: billingConfig.activeCreditsPackPriceId ?? null,
     activeCreditsPackAmount: billingConfig.activeCreditsPackPriceId
       ? billingConfig.activeCreditsPackAmount
@@ -109,7 +143,11 @@ paymentsRouter.post(
     // Get or create Stripe customer
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { stripeCustomerId: true, email: true, name: true },
+      select: {
+        stripeCustomerId: true,
+        email: true,
+        name: true,
+      },
     });
 
     let customerId = dbUser?.stripeCustomerId;
@@ -294,12 +332,30 @@ paymentsRouter.post("/webhook", async (c) => {
         where: { stripeCustomerId: customerId },
       });
       if (!dbUser) break;
-      // Grant 30 credits on each successful subscription payment
+      const stripeSubscription = await stripe!.subscriptions.retrieve(subscriptionRef);
+      const subscriptionPriceId = stripeSubscription.items.data[0]?.price?.id ?? null;
+      const billingConfig = await getBillingConfig();
+      const plan = resolveAppPlan({
+        manualPlan: dbUser.manualPlan,
+        liteActivatedAt: dbUser.liteActivatedAt,
+        subscriptionStatus: stripeSubscription.status,
+        subscriptionPriceId,
+        billingConfig,
+      });
+      const grants = getMonthlyPlanGrants(plan);
+      if (grants.aiCredits <= 0 && grants.vectorizeCredits <= 0) {
+        break;
+      }
       await prisma.user.update({
         where: { id: dbUser.id },
-        data: { credits: { increment: 30 } },
+        data: {
+          credits: { increment: grants.aiCredits },
+          vectorizeCredits: { increment: grants.vectorizeCredits },
+        },
       });
-      console.log(`[webhook] Granted 30 credits to user ${dbUser.id} for invoice ${invoice.id}`);
+      console.log(
+        `[webhook] Granted ${grants.aiCredits} AI credits and ${grants.vectorizeCredits} vectorize credits to user ${dbUser.id} for invoice ${invoice.id}`
+      );
       break;
     }
     case "checkout.session.completed": {
@@ -312,11 +368,18 @@ paymentsRouter.post("/webhook", async (c) => {
         if (!isNaN(creditAmount) && creditAmount > 0) {
           const dbUser = await prisma.user.findFirst({
             where: { stripeCustomerId: customerId },
+            select: {
+              id: true,
+              liteActivatedAt: true,
+            },
           });
           if (dbUser) {
             await prisma.user.update({
               where: { id: dbUser.id },
-              data: { credits: { increment: creditAmount } },
+              data: {
+                credits: { increment: creditAmount },
+                liteActivatedAt: dbUser.liteActivatedAt ?? new Date(),
+              },
             });
             console.log(`[webhook] Granted ${creditAmount} credits to user ${dbUser.id} for one-time purchase`);
           }

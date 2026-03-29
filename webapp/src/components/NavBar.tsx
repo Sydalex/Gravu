@@ -15,7 +15,9 @@ export function NavBar() {
   });
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
-  const creditsLabel = subscription?.isAdmin ? '∞' : String(subscription?.credits ?? 0);
+  const creditsLabel = subscription?.isAdmin
+    ? 'AI ∞ · VEC ∞'
+    : `AI ${subscription?.aiCredits ?? subscription?.credits ?? 0} · VEC ${subscription?.vectorizeCredits ?? 0}`;
 
   return (
     <motion.nav
@@ -41,7 +43,7 @@ export function NavBar() {
           to="/account"
           className="flex items-center gap-2 border border-neutral-200 bg-[#f8f8f6]/95 px-3 py-1.5 text-neutral-700 transition-colors hover:border-neutral-300"
         >
-          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-neutral-400">Credits</span>
+          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-neutral-400">Balance</span>
           <span className="font-mono text-[10px] font-semibold text-neutral-900">{creditsLabel}</span>
         </Link>
 

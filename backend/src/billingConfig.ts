@@ -7,6 +7,12 @@ function configuredEnvProPriceId() {
     : null;
 }
 
+function configuredEnvExpertPriceId() {
+  return env.STRIPE_EXPERT_PRICE_ID !== "price_placeholder_expert"
+    ? env.STRIPE_EXPERT_PRICE_ID
+    : null;
+}
+
 export async function getBillingConfig() {
   const config = await prisma.billingConfig.upsert({
     where: { id: "default" },
@@ -14,6 +20,7 @@ export async function getBillingConfig() {
     create: {
       id: "default",
       activeProPriceId: configuredEnvProPriceId(),
+      activeExpertPriceId: configuredEnvExpertPriceId(),
       activeCreditsPackAmount: 10,
     },
   });
@@ -21,5 +28,6 @@ export async function getBillingConfig() {
   return {
     ...config,
     activeProPriceId: config.activeProPriceId ?? configuredEnvProPriceId(),
+    activeExpertPriceId: config.activeExpertPriceId ?? configuredEnvExpertPriceId(),
   };
 }

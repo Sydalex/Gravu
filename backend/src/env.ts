@@ -47,6 +47,7 @@ const envSchema = z.object({
   STRIPE_SECRET: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_PRO_PRICE_ID: z.string().default("price_placeholder_pro"),
+  STRIPE_EXPERT_PRICE_ID: z.string().default("price_placeholder_expert"),
 });
 
 /**

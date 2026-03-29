@@ -36,22 +36,32 @@ function formatDate(dateStr: string | null): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-const proFeatures = [
-  'Continue converting after your free process',
-  'Monthly plan access plus extra credit purchases',
-  'Photo to Vector and Vectorize Linework',
-  'DXF + SVG + PNG exports',
-  'Full conversion history',
-  'Billing management via Stripe',
-];
-
-const freeFeatures = [
-  'One free successful process',
-  'Buy credits anytime after the free process',
-  'Photo to Vector and Vectorize Linework',
-  'PNG, SVG, DXF exports',
-  'Conversion history',
-];
+const planFeatures: Record<SubscriptionStatus['plan'], string[]> = {
+  free: [
+    'One free successful process',
+    'Buy AI credits to continue on demand',
+    'Marketplace submissions go to review automatically',
+    '5 marketplace downloads each month',
+  ],
+  lite: [
+    'Pay-as-you-go with AI credit purchases',
+    'Marketplace submissions go to review automatically',
+    '5 marketplace downloads each month',
+    'Photo to Vector and Vectorize Linework',
+  ],
+  pro: [
+    '40 AI credits and 30 vectorize credits added on each paid invoice',
+    'Marketplace submissions go to review automatically',
+    '30 marketplace downloads each month',
+    'Stripe billing management and extra AI credit purchases',
+  ],
+  expert: [
+    '150 AI credits and 150 vectorize credits added on each paid invoice',
+    'Private by default; submit to marketplace only when you choose',
+    'Unlimited marketplace downloads',
+    'Highest-volume plan for heavy production use',
+  ],
+};
 
 function formatPlanLabel(plan?: SubscriptionStatus['plan'] | null): string {
   switch (plan) {
@@ -73,17 +83,21 @@ interface SubscriptionCardProps {
 }
 
 const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) => {
-  const isPro = subscription?.plan === 'pro';
-  const isCanceling = isPro && subscription?.cancelAtPeriodEnd;
+  const currentPlan = subscription?.plan ?? 'free';
+  const isPro = currentPlan === 'pro';
+  const isExpert = currentPlan === 'expert';
+  const isSubscriber = isPro || isExpert;
+  const isCanceling = isSubscriber && subscription?.cancelAtPeriodEnd;
   const activeProPriceId = subscription?.activeProPriceId ?? null;
+  const activeExpertPriceId = subscription?.activeExpertPriceId ?? null;
   const activeCreditsPackPriceId = subscription?.activeCreditsPackPriceId ?? null;
   const activeCreditsPackAmount = subscription?.activeCreditsPackAmount ?? null;
 
   const checkoutMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (params: { priceId: string; successParam: string }) =>
       api.post<{ url: string }>('/api/payments/checkout', {
-        priceId: activeProPriceId,
-        successUrl: `${window.location.origin}/account?upgraded=1`,
+        priceId: params.priceId,
+        successUrl: `${window.location.origin}/account?${params.successParam}=1`,
         cancelUrl: `${window.location.origin}/account`,
       }),
     onSuccess: ({ url }) => {
@@ -123,14 +137,25 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
   }
 
   return (
-    <div className={`border bg-white p-6 space-y-5 ${isPro ? 'border-orange-500' : 'border-neutral-200'}`}>
+    <div className={`border bg-white p-6 space-y-5 ${
+      isExpert ? 'border-neutral-900' : isSubscriber ? 'border-orange-500' : 'border-neutral-200'
+    }`}>
       {/* Plan header */}
       <div className="flex items-center justify-between">
         <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400">Plan</p>
-        {isPro ? (
+        {isExpert ? (
+          <span className="flex items-center gap-1.5 border border-neutral-900/20 bg-neutral-900/5 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.15em] text-neutral-900">
+            <Crown className="h-2.5 w-2.5" />
+            Expert
+          </span>
+        ) : isPro ? (
           <span className="flex items-center gap-1.5 border border-orange-500/30 bg-orange-500/10 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.15em] text-orange-600">
             <Crown className="h-2.5 w-2.5" />
             Pro
+          </span>
+        ) : currentPlan === 'lite' ? (
+          <span className="border border-[#d6d0c5] bg-neutral-50 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.15em] text-neutral-600">
+            Lite
           </span>
         ) : (
           <span className="border border-neutral-200 bg-neutral-50 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.15em] text-neutral-500">
@@ -139,8 +164,8 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
         )}
       </div>
 
-      {/* Status info for Pro */}
-      {isPro && subscription?.currentPeriodEnd && (
+      {/* Status info for paid subscribers */}
+      {isSubscriber && subscription?.currentPeriodEnd && (
         <div className="border border-neutral-200 bg-neutral-50 px-3 py-2.5 space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="font-mono text-[10px] text-neutral-400">
@@ -154,32 +179,58 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
         </div>
       )}
 
-      {/* Credits balance */}
-      <div className="border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+      {/* Balances */}
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="border border-neutral-200 bg-neutral-50 px-3 py-2.5">
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1.5 font-mono text-[10px] text-neutral-400">
             <Zap className="h-3 w-3" />
-            Credits available
+            AI credits
           </span>
           <span className="font-mono text-[10px] font-semibold text-neutral-700">
-            {subscription?.isAdmin ? '∞' : subscription?.credits ?? 0}
+            {subscription?.isAdmin ? '∞' : subscription?.aiCredits ?? subscription?.credits ?? 0}
           </span>
         </div>
-        {!subscription?.isAdmin && (subscription?.credits ?? 0) === 0 && (
+        {!subscription?.isAdmin && (subscription?.aiCredits ?? subscription?.credits ?? 0) === 0 && (
           <p className="mt-1 font-mono text-[9px] text-amber-600">
-            Free process used. Upgrade or buy credits to continue converting.
+            No AI credits left.
           </p>
         )}
+        </div>
+        <div className="border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[10px] text-neutral-400">Vectorize credits</span>
+            <span className="font-mono text-[10px] font-semibold text-neutral-700">
+              {subscription?.isAdmin ? '∞' : subscription?.vectorizeCredits ?? 0}
+            </span>
+          </div>
+        </div>
+        <div className="border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[10px] text-neutral-400">Marketplace</span>
+            <span className="font-mono text-[10px] font-semibold text-neutral-700">
+              {subscription?.isAdmin || subscription?.marketplaceDownloadsRemaining === null
+                ? 'Unlimited'
+                : `${subscription?.marketplaceDownloadsRemaining ?? 0}/${subscription?.marketplaceDownloadsLimit ?? 0}`}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Features */}
       <ul className="space-y-2">
-        {(isPro ? proFeatures : freeFeatures).map((feature) => (
+        {planFeatures[currentPlan].map((feature) => (
           <li key={feature} className="flex items-center gap-2.5">
             <span
-              className={`flex h-4 w-4 flex-shrink-0 items-center justify-center ${isPro ? 'bg-orange-500/10' : 'bg-neutral-100'}`}
+              className={`flex h-4 w-4 flex-shrink-0 items-center justify-center ${
+                isExpert ? 'bg-neutral-900/10' : isSubscriber ? 'bg-orange-500/10' : 'bg-neutral-100'
+              }`}
             >
-              <Check className={`h-2.5 w-2.5 ${isPro ? 'text-orange-500' : 'text-neutral-400'}`} />
+              <Check
+                className={`h-2.5 w-2.5 ${
+                  isExpert ? 'text-neutral-900' : isSubscriber ? 'text-orange-500' : 'text-neutral-400'
+                }`}
+              />
             </span>
             <span className="font-mono text-[10px] text-neutral-500">{feature}</span>
           </li>
@@ -189,7 +240,7 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
       <div className="h-px bg-neutral-200" />
 
       {/* Action */}
-      {isPro ? (
+      {isSubscriber ? (
         <div className="space-y-3">
           <button
             onClick={() => portalMutation.mutate()}
@@ -203,6 +254,23 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
             )}
             <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Manage Billing</span>
           </button>
+          {!isExpert && (
+            <button
+              onClick={() =>
+                activeExpertPriceId
+                  ? checkoutMutation.mutate({
+                      priceId: activeExpertPriceId,
+                      successParam: 'expert',
+                    })
+                  : null
+              }
+              disabled={checkoutMutation.isPending || !activeExpertPriceId}
+              className="flex w-full items-center justify-center gap-2 border border-neutral-900 bg-neutral-900 px-4 py-3 text-white transition-all hover:bg-neutral-800 disabled:opacity-50"
+            >
+              {checkoutMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Crown className="h-3.5 w-3.5" />}
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Upgrade to Expert</span>
+            </button>
+          )}
           {!subscription?.isAdmin && (
             <button
               onClick={() =>
@@ -226,16 +294,38 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
       ) : (
         <div className="space-y-3">
           <button
-            onClick={() => checkoutMutation.mutate()}
+            onClick={() =>
+              activeProPriceId
+                ? checkoutMutation.mutate({
+                    priceId: activeProPriceId,
+                    successParam: 'pro',
+                  })
+                : null
+            }
             disabled={checkoutMutation.isPending || !activeProPriceId}
             className="flex w-full items-center justify-center gap-2 border border-orange-500 bg-orange-500 px-4 py-3 text-white transition-all hover:bg-orange-600 disabled:opacity-50"
           >
             {checkoutMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
             <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Upgrade to Pro</span>
           </button>
+          <button
+            onClick={() =>
+              activeExpertPriceId
+                ? checkoutMutation.mutate({
+                    priceId: activeExpertPriceId,
+                    successParam: 'expert',
+                  })
+                : null
+            }
+            disabled={checkoutMutation.isPending || !activeExpertPriceId}
+            className="flex w-full items-center justify-center gap-2 border border-neutral-900 bg-neutral-900 px-4 py-3 text-white transition-all hover:bg-neutral-800 disabled:opacity-50"
+          >
+            {checkoutMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Crown className="h-3.5 w-3.5" />}
+            <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Go Expert</span>
+          </button>
           <p className="text-center font-mono text-[9px] text-neutral-400">
             {activeProPriceId
-              ? 'Includes one free successful process before upgrade or credits are required.'
+              ? 'Free and Lite accounts can keep buying AI credits, or move into Pro and Expert for recurring monthly entitlements.'
               : 'No active Pro price configured yet.'}
           </p>
           {!subscription?.isAdmin && (
@@ -280,7 +370,8 @@ const Account = () => {
     staleTime: 30_000,
   });
 
-  const upgraded = new URLSearchParams(window.location.search).get('upgraded') === '1';
+  const upgradedToPro = new URLSearchParams(window.location.search).get('pro') === '1';
+  const upgradedToExpert = new URLSearchParams(window.location.search).get('expert') === '1';
   const creditsAdded = new URLSearchParams(window.location.search).get('credits') === '1';
 
   const deleteAccountMutation = useMutation({
@@ -358,7 +449,7 @@ const Account = () => {
         </motion.div>
 
         {/* Upgrade success banner */}
-        {upgraded && (
+        {upgradedToPro && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -366,6 +457,17 @@ const Account = () => {
           >
             <Crown className="h-4 w-4 text-orange-500 flex-shrink-0" />
             <p className="font-mono text-xs text-orange-600">Welcome to Pro! Your subscription is now active.</p>
+          </motion.div>
+        )}
+
+        {upgradedToExpert && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 flex items-center gap-3 border border-neutral-900/20 bg-neutral-900/5 px-4 py-3"
+          >
+            <Crown className="h-4 w-4 text-neutral-900 flex-shrink-0" />
+            <p className="font-mono text-xs text-neutral-700">Welcome to Expert! Your subscription is now active.</p>
           </motion.div>
         )}
 

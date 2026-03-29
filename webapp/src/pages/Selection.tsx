@@ -44,10 +44,10 @@ const Selection = () => {
   });
   const subscription = subscriptionQuery.data;
 
-  const shouldBlockPaidAction = (status?: SubscriptionStatus) =>
+  const shouldBlockAiAction = (status?: SubscriptionStatus) =>
     !status?.isAdmin &&
     ((status?.freeTrialUsed ?? false) || (status?.deviceTrialUsed ?? false)) &&
-    (status?.credits ?? 0) <= 0;
+    (status?.aiCredits ?? status?.credits ?? 0) <= 0;
 
   const detectMutation = useMutation({
     mutationFn: () =>
@@ -71,7 +71,7 @@ const Selection = () => {
     const processWithFreshStatus = async () => {
       const latestSubscription = (await subscriptionQuery.refetch()).data ?? subscription;
 
-      if (shouldBlockPaidAction(latestSubscription)) {
+      if (shouldBlockAiAction(latestSubscription)) {
         setShowUpgradeDialog(true);
         return;
       }
@@ -86,7 +86,7 @@ const Selection = () => {
     const detectWithFreshStatus = async () => {
       const latestSubscription = (await subscriptionQuery.refetch()).data ?? subscription;
 
-      if (shouldBlockPaidAction(latestSubscription)) {
+      if (shouldBlockAiAction(latestSubscription)) {
         setShowUpgradeDialog(true);
         return;
       }

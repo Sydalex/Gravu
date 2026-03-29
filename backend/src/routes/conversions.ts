@@ -3,6 +3,8 @@ import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../prisma";
 import { auth } from "../auth";
 import { CreateConversionRequestSchema, UpdateAssetRequestSchema } from "../types";
+import { getBillingConfig } from "../billingConfig";
+import { getMarketplaceDefaultStatus, resolveAppPlan } from "../services/planEntitlements";
 
 const conversionsRouter = new Hono<{
   Variables: {
@@ -22,12 +24,31 @@ conversionsRouter.post(
     }
 
     const { flowType, name, originalImageBase64, assets } = c.req.valid("json");
-    const activeSubscription = await prisma.subscription.findUnique({
-      where: { userId: user.id },
-      select: { status: true },
+    const [billingConfig, dbUser, activeSubscription] = await Promise.all([
+      getBillingConfig(),
+      prisma.user.findUnique({
+        where: { id: user.id },
+        select: {
+          manualPlan: true,
+          liteActivatedAt: true,
+        },
+      }),
+      prisma.subscription.findUnique({
+        where: { userId: user.id },
+        select: {
+          status: true,
+          stripePriceId: true,
+        },
+      }),
+    ]);
+    const plan = resolveAppPlan({
+      manualPlan: dbUser?.manualPlan,
+      liteActivatedAt: dbUser?.liteActivatedAt,
+      subscriptionStatus: activeSubscription?.status,
+      subscriptionPriceId: activeSubscription?.stripePriceId,
+      billingConfig,
     });
-    const autoListInMarketplace =
-      activeSubscription?.status !== "active" && activeSubscription?.status !== "trialing";
+    const marketplaceStatus = getMarketplaceDefaultStatus(plan);
 
     const conversion = await prisma.$transaction(async (tx) => {
       const created = await tx.conversion.create({
@@ -42,9 +63,9 @@ conversionsRouter.post(
               imageBase64: a.imageBase64 ?? null,
               svgContent: a.svgContent ?? null,
               dxfContent: a.dxfContent ?? null,
-              marketplaceStatus: autoListInMarketplace ? "pending_review" : "private",
+              marketplaceStatus,
               marketplaceTitle: a.title?.trim() || name?.trim() || `Asset ${a.subjectId}`,
-              marketplaceCategory: autoListInMarketplace ? "Uncategorized" : null,
+              marketplaceCategory: marketplaceStatus === "private" ? null : "Uncategorized",
             })),
           },
         },
