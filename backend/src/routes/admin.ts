@@ -5,6 +5,7 @@ import { prisma } from "../prisma";
 import { stripe } from "../stripe";
 import { getBillingConfig } from "../billingConfig";
 import { env } from "../env";
+import { deleteUserAccount } from "../services/deleteUser";
 import type { auth } from "../auth";
 
 type Variables = {
@@ -347,6 +348,40 @@ adminRouter.post(
     return c.json({ data: updated });
   }
 );
+
+adminRouter.delete("/users/:id", async (c) => {
+  const { id } = c.req.param();
+  const adminUser = c.get("user");
+
+  if (adminUser?.id === id) {
+    return c.json(
+      {
+        error: {
+          message: "Delete your own account from the account page.",
+          code: "SELF_DELETE_NOT_ALLOWED",
+        },
+      },
+      400
+    );
+  }
+
+  try {
+    const deleted = await deleteUserAccount(id);
+
+    if (!deleted) {
+      return c.json({ error: { message: "User not found", code: "NOT_FOUND" } }, 404);
+    }
+
+    return c.body(null, 204);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to delete user";
+    return c.json(
+      { error: { message, code: "DELETE_USER_ERROR" } },
+      500
+    );
+  }
+});
 
 // GET /api/admin/billing — Stripe status, prices, promo codes, and active config
 adminRouter.get("/billing", async (c) => {

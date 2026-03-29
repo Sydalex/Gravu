@@ -21,6 +21,7 @@ import {
   Search,
   Shield,
   Sparkles,
+  Trash2,
   Users,
   X,
 } from "lucide-react";
@@ -288,6 +289,7 @@ export default function Admin() {
   const [search, setSearch] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [creditDialogUser, setCreditDialogUser] = useState<AdminUser | null>(null);
+  const [deleteDialogUser, setDeleteDialogUser] = useState<AdminUser | null>(null);
   const [creditAmount, setCreditAmount] = useState("");
   const [planDraft, setPlanDraft] = useState<AccountPlan>("free");
 
@@ -462,6 +464,24 @@ export default function Admin() {
         queryClient.invalidateQueries({ queryKey: ["subscription"] }),
       ]);
       toast.success("Account tier updated");
+    },
+    onError: (error) => {
+      toast.error(formatMutationError(error));
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId: string) => api.delete(`/api/admin/users/${userId}`),
+    onSuccess: async (_data, userId) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "stats"] }),
+      ]);
+      if (selectedUserId === userId) {
+        setSelectedUserId(null);
+      }
+      setDeleteDialogUser(null);
+      toast.success("Account deleted");
     },
     onError: (error) => {
       toast.error(formatMutationError(error));
@@ -1079,6 +1099,18 @@ export default function Admin() {
                     )}
                     Open Billing Portal
                   </Button>
+
+                  {!selectedUser.isAdmin && (
+                    <Button
+                      variant="outline"
+                      className="h-11 w-full rounded-2xl border-red-200 bg-white text-red-600 hover:bg-red-50 hover:text-red-700"
+                      disabled={deleteUserMutation.isPending}
+                      onClick={() => setDeleteDialogUser(selectedUser)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Account
+                    </Button>
+                  )}
                 </div>
 
                 <div className="mt-5 border border-[#e5dbc9] bg-[#fffdf9] p-4">
@@ -2150,6 +2182,61 @@ export default function Admin() {
                 disabled={!creditAmount || creditsMutation.isPending}
               >
                 Set Balance
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!deleteDialogUser}
+        onOpenChange={(open) => {
+          if (!open && !deleteUserMutation.isPending) {
+            setDeleteDialogUser(null);
+          }
+        }}
+      >
+        <DialogContent className="border-red-200 bg-[#fbfaf7]">
+          <DialogHeader>
+            <DialogTitle className="text-[22px] font-black tracking-[-0.7px] text-[#332e24]">
+              Delete account
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <div className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
+              <p className="text-[13px] font-medium text-[#332e24]">{deleteDialogUser?.email}</p>
+              <p className="mt-1 text-[12px] leading-6 text-muted-foreground">
+                This permanently removes the user, sessions, conversion archive, marketplace submissions, credits, and local billing records from Gravu.
+              </p>
+            </div>
+
+            <p className="text-[12px] leading-6 text-[#b42318]">
+              Active Stripe subscriptions are canceled before deletion. This cannot be undone.
+            </p>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Button
+                className="h-11 rounded-2xl bg-red-600 text-white hover:bg-red-700"
+                disabled={!deleteDialogUser || deleteUserMutation.isPending}
+                onClick={() =>
+                  deleteDialogUser ? deleteUserMutation.mutate(deleteDialogUser.id) : null
+                }
+              >
+                {deleteUserMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                Delete
+              </Button>
+              <Button
+                variant="outline"
+                className="h-11 rounded-2xl border-[#d8d0c5] bg-background"
+                disabled={deleteUserMutation.isPending}
+                onClick={() => setDeleteDialogUser(null)}
+              >
+                Cancel
               </Button>
             </div>
           </div>

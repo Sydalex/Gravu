@@ -12,6 +12,7 @@ import { conversionsRouter } from "./routes/conversions";
 import { marketplaceRouter } from "./routes/marketplace";
 import { paymentsRouter } from "./routes/payments";
 import { adminRouter } from "./routes/admin";
+import { accountRouter } from "./routes/account";
 import { logger } from "hono/logger";
 import { prisma } from "./prisma";
 
@@ -75,6 +76,7 @@ app.route("/api/conversions", conversionsRouter);
 app.route("/api/marketplace", marketplaceRouter);
 app.route("/api/payments", paymentsRouter);
 app.route("/api/admin", adminRouter);
+app.route("/api/account", accountRouter);
 
 const port = Number(process.env.PORT) || 3000;
 

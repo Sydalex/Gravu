@@ -1,12 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { LogOut, Check, Zap, Pencil, Crown, CreditCard, Loader2, Plus, Shield, ArrowRight } from 'lucide-react';
+import { LogOut, Check, Zap, Pencil, Crown, CreditCard, Loader2, Plus, Shield, ArrowRight, Trash2 } from 'lucide-react';
 import { PageWrapper } from '@/components/PageWrapper';
 import { useSession } from '@/lib/auth-client';
 import { api } from '@/lib/api';
 import { useAppSignOut } from '@/hooks/use-app-sign-out';
+import { toast } from '@/components/ui/sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import type { SubscriptionStatus } from '../../../backend/src/types';
 
 function getInitials(name?: string | null, email?: string | null): string {
@@ -258,12 +265,14 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
 
 const Account = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: session } = useSession();
   const user = session?.user;
   const { signOutUser, isSigningOut } = useAppSignOut();
 
   const [editingName, setEditingName] = useState(false);
   const [displayName, setDisplayName] = useState(user?.name ?? '');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const { data: subscription, isLoading: subLoading } = useQuery({
     queryKey: ['subscription'],
@@ -274,8 +283,62 @@ const Account = () => {
   const upgraded = new URLSearchParams(window.location.search).get('upgraded') === '1';
   const creditsAdded = new URLSearchParams(window.location.search).get('credits') === '1';
 
+  const deleteAccountMutation = useMutation({
+    mutationFn: () => api.delete('/api/account/me'),
+    onSuccess: async () => {
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      window.location.replace('/welcome');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Failed to delete account.';
+      toast.error(message);
+    },
+  });
+
   return (
     <PageWrapper className="pt-20">
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="border-red-200 bg-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[22px] font-black tracking-[-0.7px] text-[#332e24]">
+              Delete account
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="font-mono text-[11px] leading-5 text-[#6c6354]">
+              This permanently removes your Gravu account, conversion archive, marketplace submissions, and stored credits.
+            </p>
+            <p className="font-mono text-[11px] leading-5 text-[#b42318]">
+              Active Stripe subscriptions are canceled before deletion. This cannot be undone.
+            </p>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => deleteAccountMutation.mutate()}
+              disabled={deleteAccountMutation.isPending}
+              className="flex flex-1 items-center justify-center gap-2 border border-red-500 bg-red-500 px-4 py-3 text-white transition-all hover:bg-red-600 disabled:opacity-50"
+            >
+              {deleteAccountMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
+                {deleteAccountMutation.isPending ? 'Deleting' : 'Delete Account'}
+              </span>
+            </button>
+            <button
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={deleteAccountMutation.isPending}
+              className="flex flex-1 items-center justify-center border border-neutral-300 px-4 py-3 text-neutral-700 transition-all hover:border-neutral-400 disabled:opacity-50"
+            >
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Cancel</span>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="mx-auto max-w-3xl px-6 py-10 md:py-14">
         {/* Header */}
         <motion.div
@@ -417,12 +480,12 @@ const Account = () => {
           </motion.div>
         </div>
 
-        {/* Sign Out */}
+        {/* Session actions */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.3 }}
-          className="mt-8"
+          className="mt-8 grid gap-4"
         >
           <div className="border border-red-200 bg-white p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -440,6 +503,31 @@ const Account = () => {
                 {isSigningOut ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
                 <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
                   {isSigningOut ? 'Signing Out' : 'Sign Out'}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div className="border border-red-200 bg-white p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-mono text-xs text-neutral-900">Delete account</p>
+                <p className="font-mono text-[10px] text-neutral-400">
+                  Permanently remove this account and all Gravu data linked to it.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={deleteAccountMutation.isPending}
+                className="flex items-center justify-center gap-2 border border-red-200 bg-transparent px-4 py-2.5 text-red-500 transition-all hover:bg-red-50 hover:border-red-300 disabled:opacity-50 sm:flex-shrink-0"
+              >
+                {deleteAccountMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+                <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
+                  {deleteAccountMutation.isPending ? 'Deleting' : 'Delete Account'}
                 </span>
               </button>
             </div>
