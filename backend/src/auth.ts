@@ -42,6 +42,7 @@ async function sendOTPEmail(
     subject: message.subject,
     text: message.text,
     html: `<p>${message.text.replace(/\n/g, "<br />")}</p>`,
+    idempotencyKey: `otp-${type}/${to.toLowerCase()}/${otp}`,
   });
 }
 
