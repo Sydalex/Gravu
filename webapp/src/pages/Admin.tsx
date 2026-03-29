@@ -186,6 +186,26 @@ function formatMutationError(error: unknown) {
   return error instanceof Error ? error.message : "Request failed";
 }
 
+function marketplaceStatusLabel(status: MarketplaceReviewAsset["marketplaceStatus"]) {
+  if (status === "pending_review") return "Pending Review";
+  if (status === "listed") return "Listed";
+  if (status === "rejected") return "Rejected";
+  return "Private";
+}
+
+function marketplaceStatusClass(status: MarketplaceReviewAsset["marketplaceStatus"]) {
+  if (status === "listed") {
+    return "border-[#edcbbd] bg-[#fcf2ee] text-[#c96240]";
+  }
+  if (status === "rejected") {
+    return "border-[#efd4d4] bg-[#fbefef] text-[#b25959]";
+  }
+  if (status === "private") {
+    return "border-[#ddd8ea] bg-[#f5f1fb] text-[#7055a6]";
+  }
+  return "border-[#e8dcc2] bg-[#f7f0e3] text-[#8f6a1d]";
+}
+
 function PlanBadge({ plan, isAdmin }: { plan: string; isAdmin: boolean }) {
   if (isAdmin) {
     return (
@@ -379,9 +399,13 @@ export default function Admin() {
     return a.code.localeCompare(b.code);
   });
   const moderationAssets = marketplaceAssets ?? [];
-  const pendingMarketplaceCount = moderationAssets.filter(
+  const pendingMarketplaceAssets = moderationAssets.filter(
     (asset) => asset.marketplaceStatus === "pending_review"
-  ).length;
+  );
+  const archivedMarketplaceAssets = moderationAssets.filter(
+    (asset) => asset.marketplaceStatus === "listed" || asset.marketplaceStatus === "rejected"
+  );
+  const pendingMarketplaceCount = pendingMarketplaceAssets.length;
 
   useEffect(() => {
     if (!priceProductId && selectableProducts.length) {
@@ -1715,149 +1739,337 @@ export default function Admin() {
               No marketplace submissions yet.
             </div>
           ) : (
-            <div className="mt-6 grid gap-4 lg:grid-cols-2">
-              {moderationAssets.map((asset) => {
-                const draft = getMarketplaceDraft(asset);
-                return (
-                  <div key={asset.id} className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
-                    <div className="flex gap-4">
-                      <div className="h-28 w-28 shrink-0 overflow-hidden border border-[#ece5d8] bg-[#fcfaf6]">
-                        {asset.previewBase64 ? (
-                          <img
-                            src={`data:image/png;base64,${asset.previewBase64}`}
-                            alt={asset.title}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full items-center justify-center text-[11px] text-muted-foreground">
-                            No preview
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1 space-y-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={cn(
-                              "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]",
-                              asset.marketplaceStatus === "listed"
-                                ? "border-[#edcbbd] bg-[#fcf2ee] text-[#c96240]"
-                                : asset.marketplaceStatus === "rejected"
-                                  ? "border-[#efd4d4] bg-[#fbefef] text-[#b25959]"
-                                  : "border-[#e8dcc2] bg-[#f7f0e3] text-[#8f6a1d]"
-                            )}
-                          >
-                            {asset.marketplaceStatus === "pending_review"
-                              ? "Pending Review"
-                              : asset.marketplaceStatus === "listed"
-                                ? "Listed"
-                                : "Rejected"}
-                          </span>
-                          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                            {asset.flowType === "full" ? "Photo to Vector" : "Vectorize"}
-                          </span>
-                        </div>
-
-                        <div className="space-y-1">
-                          <p className="truncate text-[13px] font-semibold text-[#332e24]">
-                            {asset.owner.name || asset.owner.email}
-                          </p>
-                          <p className="truncate text-[11px] text-muted-foreground">
-                            {asset.owner.email}
-                          </p>
-                        </div>
-
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <Input
-                            value={draft.title}
-                            onChange={(e) =>
-                              setMarketplaceDraft(asset.id, { title: e.target.value })
-                            }
-                            className="h-10 rounded-2xl border-[#d8d0c5] bg-background"
-                          />
-                          <select
-                            value={draft.category}
-                            onChange={(e) =>
-                              setMarketplaceDraft(asset.id, { category: e.target.value })
-                            }
-                            className="h-10 w-full rounded-2xl border border-[#d8d0c5] bg-background px-4 text-[13px] text-[#332e24]"
-                          >
-                            {[
-                              "People",
-                              "Furniture",
-                              "Objects",
-                              "Plants",
-                              "Architecture",
-                              "Decor",
-                              "Uncategorized",
-                            ].map((category) => (
-                              <option key={category} value={category}>
-                                {category}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2 text-[11px] text-[#6f695f]">
-                          <span>{asset.hasSvg ? "SVG ready" : "No SVG"}</span>
-                          <span>{asset.hasDxf ? "DXF ready" : "No DXF"}</span>
-                          <span>{formatDate(asset.createdAt)}</span>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            className="h-9 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90"
-                            disabled={marketplaceMutation.isPending}
-                            onClick={() =>
-                              marketplaceMutation.mutate({
-                                assetId: asset.id,
-                                status: "listed",
-                                title: draft.title.trim(),
-                                category: draft.category,
-                              })
-                            }
-                          >
-                            <Check className="mr-2 h-4 w-4" />
-                            Approve
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="h-9 rounded-2xl border-[#d8d0c5] bg-background"
-                            disabled={marketplaceMutation.isPending}
-                            onClick={() =>
-                              marketplaceMutation.mutate({
-                                assetId: asset.id,
-                                status: "rejected",
-                                title: draft.title.trim(),
-                                category: draft.category,
-                              })
-                            }
-                          >
-                            <X className="mr-2 h-4 w-4" />
-                            Reject
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="h-9 rounded-2xl border-[#d8d0c5] bg-background"
-                            disabled={marketplaceMutation.isPending}
-                            onClick={() =>
-                              marketplaceMutation.mutate({
-                                assetId: asset.id,
-                                status: "private",
-                                title: draft.title.trim(),
-                                category: draft.category,
-                              })
-                            }
-                          >
-                            <EyeOff className="mr-2 h-4 w-4" />
-                            Hide
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
+            <div className="mt-6 space-y-8">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+                      Active queue
+                    </p>
+                    <p className="mt-1 text-[13px] text-[#6f695f]">
+                      Only items still waiting for a decision stay here.
+                    </p>
                   </div>
-                );
-              })}
+                  <span className="rounded-full border border-[#e8dcc2] bg-[#f7f0e3] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8f6a1d]">
+                    {pendingMarketplaceAssets.length} pending
+                  </span>
+                </div>
+
+                {pendingMarketplaceAssets.length === 0 ? (
+                  <div className="rounded-[18px] border border-dashed border-[#d9d0c2] px-4 py-8 text-center text-[13px] text-muted-foreground">
+                    Nothing is waiting for review right now.
+                  </div>
+                ) : (
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {pendingMarketplaceAssets.map((asset) => {
+                      const draft = getMarketplaceDraft(asset);
+                      return (
+                        <div key={asset.id} className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
+                          <div className="flex gap-4">
+                            <div className="h-28 w-28 shrink-0 overflow-hidden border border-[#ece5d8] bg-[#fcfaf6]">
+                              {asset.previewBase64 ? (
+                                <img
+                                  src={`data:image/png;base64,${asset.previewBase64}`}
+                                  alt={asset.title}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full items-center justify-center text-[11px] text-muted-foreground">
+                                  No preview
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1 space-y-3">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span
+                                  className={cn(
+                                    "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]",
+                                    marketplaceStatusClass(asset.marketplaceStatus)
+                                  )}
+                                >
+                                  {marketplaceStatusLabel(asset.marketplaceStatus)}
+                                </span>
+                                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                                  {asset.flowType === "full" ? "Photo to Vector" : "Vectorize"}
+                                </span>
+                              </div>
+
+                              <div className="space-y-1">
+                                <p className="truncate text-[13px] font-semibold text-[#332e24]">
+                                  {asset.owner.name || asset.owner.email}
+                                </p>
+                                <p className="truncate text-[11px] text-muted-foreground">
+                                  {asset.owner.email}
+                                </p>
+                              </div>
+
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                <Input
+                                  value={draft.title}
+                                  onChange={(e) =>
+                                    setMarketplaceDraft(asset.id, { title: e.target.value })
+                                  }
+                                  className="h-10 rounded-2xl border-[#d8d0c5] bg-background"
+                                />
+                                <select
+                                  value={draft.category}
+                                  onChange={(e) =>
+                                    setMarketplaceDraft(asset.id, { category: e.target.value })
+                                  }
+                                  className="h-10 w-full rounded-2xl border border-[#d8d0c5] bg-background px-4 text-[13px] text-[#332e24]"
+                                >
+                                  {[
+                                    "People",
+                                    "Furniture",
+                                    "Objects",
+                                    "Plants",
+                                    "Architecture",
+                                    "Decor",
+                                    "Uncategorized",
+                                  ].map((category) => (
+                                    <option key={category} value={category}>
+                                      {category}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div className="flex flex-wrap gap-2 text-[11px] text-[#6f695f]">
+                                <span>{asset.hasSvg ? "SVG ready" : "No SVG"}</span>
+                                <span>{asset.hasDxf ? "DXF ready" : "No DXF"}</span>
+                                <span>{formatDate(asset.createdAt)}</span>
+                              </div>
+
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  className="h-9 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90"
+                                  disabled={marketplaceMutation.isPending}
+                                  onClick={() =>
+                                    marketplaceMutation.mutate({
+                                      assetId: asset.id,
+                                      status: "listed",
+                                      title: draft.title.trim(),
+                                      category: draft.category,
+                                    })
+                                  }
+                                >
+                                  <Check className="mr-2 h-4 w-4" />
+                                  Approve
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  className="h-9 rounded-2xl border-[#d8d0c5] bg-background"
+                                  disabled={marketplaceMutation.isPending}
+                                  onClick={() =>
+                                    marketplaceMutation.mutate({
+                                      assetId: asset.id,
+                                      status: "rejected",
+                                      title: draft.title.trim(),
+                                      category: draft.category,
+                                    })
+                                  }
+                                >
+                                  <X className="mr-2 h-4 w-4" />
+                                  Reject
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  className="h-9 rounded-2xl border-[#d8d0c5] bg-background"
+                                  disabled={marketplaceMutation.isPending}
+                                  onClick={() =>
+                                    marketplaceMutation.mutate({
+                                      assetId: asset.id,
+                                      status: "private",
+                                      title: draft.title.trim(),
+                                      category: draft.category,
+                                    })
+                                  }
+                                >
+                                  <EyeOff className="mr-2 h-4 w-4" />
+                                  Hide
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-4 border-t border-[#ece6db] pt-6">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+                      Moderation archive
+                    </p>
+                    <p className="mt-1 text-[13px] text-[#6f695f]">
+                      Approved and rejected items move here, but you can still rename or recategorize them later.
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-[#d8d0c5] bg-[#fffdf9] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6f695f]">
+                    {archivedMarketplaceAssets.length} handled
+                  </span>
+                </div>
+
+                {archivedMarketplaceAssets.length === 0 ? (
+                  <div className="rounded-[18px] border border-dashed border-[#d9d0c2] px-4 py-8 text-center text-[13px] text-muted-foreground">
+                    No approved or rejected marketplace items yet.
+                  </div>
+                ) : (
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {archivedMarketplaceAssets.map((asset) => {
+                      const draft = getMarketplaceDraft(asset);
+                      const isListed = asset.marketplaceStatus === "listed";
+                      return (
+                        <div key={asset.id} className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
+                          <div className="flex gap-4">
+                            <div className="h-28 w-28 shrink-0 overflow-hidden border border-[#ece5d8] bg-[#fcfaf6]">
+                              {asset.previewBase64 ? (
+                                <img
+                                  src={`data:image/png;base64,${asset.previewBase64}`}
+                                  alt={asset.title}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full items-center justify-center text-[11px] text-muted-foreground">
+                                  No preview
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1 space-y-3">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span
+                                  className={cn(
+                                    "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]",
+                                    marketplaceStatusClass(asset.marketplaceStatus)
+                                  )}
+                                >
+                                  {marketplaceStatusLabel(asset.marketplaceStatus)}
+                                </span>
+                                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                                  {asset.flowType === "full" ? "Photo to Vector" : "Vectorize"}
+                                </span>
+                              </div>
+
+                              <div className="space-y-1">
+                                <p className="truncate text-[13px] font-semibold text-[#332e24]">
+                                  {asset.owner.name || asset.owner.email}
+                                </p>
+                                <p className="truncate text-[11px] text-muted-foreground">
+                                  {asset.owner.email}
+                                </p>
+                              </div>
+
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                <Input
+                                  value={draft.title}
+                                  onChange={(e) =>
+                                    setMarketplaceDraft(asset.id, { title: e.target.value })
+                                  }
+                                  className="h-10 rounded-2xl border-[#d8d0c5] bg-background"
+                                />
+                                <select
+                                  value={draft.category}
+                                  onChange={(e) =>
+                                    setMarketplaceDraft(asset.id, { category: e.target.value })
+                                  }
+                                  className="h-10 w-full rounded-2xl border border-[#d8d0c5] bg-background px-4 text-[13px] text-[#332e24]"
+                                >
+                                  {[
+                                    "People",
+                                    "Furniture",
+                                    "Objects",
+                                    "Plants",
+                                    "Architecture",
+                                    "Decor",
+                                    "Uncategorized",
+                                  ].map((category) => (
+                                    <option key={category} value={category}>
+                                      {category}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div className="flex flex-wrap gap-2 text-[11px] text-[#6f695f]">
+                                <span>{asset.hasSvg ? "SVG ready" : "No SVG"}</span>
+                                <span>{asset.hasDxf ? "DXF ready" : "No DXF"}</span>
+                                <span>{formatDate(asset.createdAt)}</span>
+                              </div>
+
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  variant="outline"
+                                  className="h-9 rounded-2xl border-[#d8d0c5] bg-background"
+                                  disabled={marketplaceMutation.isPending || draft.title.trim().length < 2}
+                                  onClick={() =>
+                                    marketplaceMutation.mutate({
+                                      assetId: asset.id,
+                                      status: asset.marketplaceStatus,
+                                      title: draft.title.trim(),
+                                      category: draft.category,
+                                    })
+                                  }
+                                >
+                                  Save details
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  className="h-9 rounded-2xl border-[#d8d0c5] bg-background"
+                                  disabled={marketplaceMutation.isPending}
+                                  onClick={() =>
+                                    marketplaceMutation.mutate({
+                                      assetId: asset.id,
+                                      status: "pending_review",
+                                      title: draft.title.trim(),
+                                      category: draft.category,
+                                    })
+                                  }
+                                >
+                                  Return to queue
+                                </Button>
+                                <Button
+                                  className={cn(
+                                    "h-9 rounded-2xl",
+                                    isListed
+                                      ? "border border-[#d8d0c5] bg-background text-[#332e24] hover:bg-[#f4ede4]"
+                                      : "bg-primary text-primary-foreground hover:bg-primary/90"
+                                  )}
+                                  disabled={marketplaceMutation.isPending}
+                                  onClick={() =>
+                                    marketplaceMutation.mutate({
+                                      assetId: asset.id,
+                                      status: isListed ? "rejected" : "listed",
+                                      title: draft.title.trim(),
+                                      category: draft.category,
+                                    })
+                                  }
+                                >
+                                  {isListed ? (
+                                    <>
+                                      <X className="mr-2 h-4 w-4" />
+                                      Reject
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Check className="mr-2 h-4 w-4" />
+                                      Approve
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </section>
