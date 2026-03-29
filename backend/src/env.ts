@@ -15,6 +15,7 @@ const envSchema = z.object({
 
   // Gemini AI API
   GEMINI_API_KEY: z.string().optional(),
+  GEMINI_IMAGE_MODEL: z.string().optional().default("gemini-3-pro-image-preview"),
 
   // Vectoriser.AI API
   VECTORISER_AI_API_ID: z.string().optional(),

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import sharp from "sharp";
 import type { auth } from "../auth";
+import { env } from "../env";
 import {
   DetectSubjectsRequestSchema,
   GenerateLineworkRequestSchema,
@@ -53,7 +54,11 @@ interface GeminiResponse {
 }
 
 function getApiKey(): string | null {
-  return process.env.GEMINI_API_KEY ?? null;
+  return env.GEMINI_API_KEY ?? null;
+}
+
+function getImageGenerationModel(): string {
+  return env.GEMINI_IMAGE_MODEL?.trim() || "gemini-3-pro-image-preview";
 }
 
 async function callGemini(
@@ -456,11 +461,13 @@ aiRouter.post("/generate-linework", async (c) => {
 
     const viewDescription = customViewDescription || viewAngle;
 
-    const model = "gemini-3-pro-image-preview";
+    const model = getImageGenerationModel();
     const apiVersion = "v1beta";
     const generationConfig = {
       responseModalities: ["IMAGE", "TEXT"],
     };
+
+    console.log(`[generate-linework] Using image model: ${model}`);
 
     const results: LineworkResult[] = [];
 
