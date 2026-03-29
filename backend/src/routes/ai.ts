@@ -233,9 +233,9 @@ Subject-specific simplification hints:
 - ${subjectHints.join("\n- ")}`
       : "";
 
-  return `Convert this image into extremely simplified centerline-ready black linework for CAD vectorization.
+  return `Convert this image into faithful, centerline-ready black linework for CAD vectorization.
 
-This is NOT a photo trace. It is a strict structural simplification pass.
+This IS a tracing-style simplification pass. The output must stay geometrically anchored to the source image while removing only non-essential detail.
 
 VIEW REQUIREMENT:
 - Render from this view/context: ${viewDescription}
@@ -244,7 +244,7 @@ VIEW REQUIREMENT:
 ABSOLUTE VECTORIZATION CONSTRAINTS (mandatory):
 1. Pure black lines (#000000) on pure white background (#FFFFFF) only.
 2. No grayscale, no color, no soft edges, no anti-aliased edges.
-3. Uniform thin stroke weight for all strokes.
+3. Use one global stroke width everywhere. Do not intentionally vary line thickness by importance, depth, or material.
 4. No shading, no fills, no hatching, no texture, no sketch marks.
 5. Prefer clean, separable, continuous strokes over realism.
 6. No dense clusters of tiny lines, no overlapping short strokes.
@@ -253,6 +253,14 @@ ABSOLUTE VECTORIZATION CONSTRAINTS (mandatory):
 9. If a detail is smaller than about 4 stroke widths, omit it.
 10. Remove all unselected or out-of-scope objects.
 
+TRACING FIDELITY RULES (strict):
+- Treat the source image like a tracing underlay. Follow the observed outer contour and observed internal structure directly.
+- Do not invent, redesign, straighten, beautify, rebalance, or restage the subject.
+- Keep the real position, scale, tilt, and bend of the head, torso, limbs, joints, and major object parts.
+- If simplification conflicts with source shape, preserve source shape.
+- Keep overlap, contact points, and attachment points exactly where they appear in the source.
+- Do not convert an observed object into a generic icon, mannequin, symbol, or stock pose.
+
 SCALE-AWARE SIMPLIFICATION:
 - Large objects: keep major silhouette and major structural lines only.
 - Medium objects: keep silhouette plus a few internal lines.
@@ -260,17 +268,11 @@ SCALE-AWARE SIMPLIFICATION:
 - Distant figures and tiny mechanical detail must be simplified aggressively.
 
 THIN-STRUCTURE CENTERLINE RULES (strict):
-- Draw thin structural elements as single-stroke centerlines, not double-edge outlined shapes.
-- Use single-stroke centerlines only for very thin wire-like members where thickness is barely visible in the source.
-- Cables, wires, and extremely thin supports may be represented by one center stroke.
-- Bars, rails, handles, tubular exercise frames, and other members with clearly visible thickness must keep only their outer contour and must NOT get an interior center line.
-- Do not draw tube/rail thickness for narrow members.
-- Do not use parallel contour lines to describe narrow objects.
-- Use a monoline schematic style for thin structures.
-- If a part is narrow, represent it with one line, not two borders.
-- When a narrow structural part bends, keep one continuous centerline through the bend (not two boundary contours).
-- For narrow closed shapes, prefer opening them into a single representative stroke when recognition is preserved.
+- Use a single centerline only for extremely thin wire-like parts whose thickness is barely visible in the source.
+- Cables, wires, and threadlike supports may be represented by one center stroke.
+- Bars, rails, handles, tubular exercise frames, walking canes, and other members with clearly visible thickness must keep their observed outer edges and must NOT get an interior center line.
 - Never add a longitudinal centerline inside a closed tubular contour.
+- Do not replace a clearly visible thick shape with a single symbolic line.
 
 TOPOLOGY AND OBSERVATION RULES (strict):
 - Do not add guide lines, center axes, construction lines, or symbolic strokes that are not visibly present in the source image.
@@ -280,12 +282,12 @@ TOPOLOGY AND OBSERVATION RULES (strict):
 - Keep the object readable as an observed scene object, not as an icon or schematic symbol.
 
 HUMAN FIGURE RULES (strict):
-- Simplify people as observed silhouettes and pose contours, not stick figures or pictograms.
+- Simplify people as observed silhouettes and observed contour lines, not stick figures, mannequins, or pictograms.
 - Do not replace heads with simple circles unless that shape is actually supported by the source.
-- Keep only the minimum real contours needed for recognition from the source image.
-- Prefer one gesture line or one contour when sufficient for recognition.
-- Do not use closed outline loops when one gesture line or one contour is enough.
-- Keep interior human detail minimal and only when essential for recognition.
+- Preserve the observed head shape, shoulder slope, arm bend, hand position, leg bend, garment outline, and shoe placement.
+- Do not reduce a person to a gesture-only drawing when a clear outer contour is visible in the source.
+- Closed outer contours are allowed and preferred when needed to preserve the observed silhouette faithfully.
+- Keep interior human detail minimal and only when essential for recognition, but do not lose the real body proportions or pose.
 
 MICRO-DETAIL REMOVAL (strict):
 - No tiny fasteners, straps, clamps, seams, cutouts, rigging filigree, texture lines, or repetitive micro-parts.
@@ -464,7 +466,8 @@ aiRouter.post("/generate-linework", async (c) => {
     const model = getImageGenerationModel();
     const apiVersion = "v1beta";
     const generationConfig = {
-      responseModalities: ["IMAGE", "TEXT"],
+      responseModalities: ["IMAGE"],
+      temperature: 0.1,
     };
 
     console.log(`[generate-linework] Using image model: ${model}`);
