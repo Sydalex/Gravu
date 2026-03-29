@@ -115,9 +115,9 @@ const Login = () => {
             </div>
 
             {verified ? (
-              <div className="mb-6 flex items-start gap-3 border border-orange-500/20 bg-orange-500/5 px-4 py-3">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-orange-500" />
-                <p className="text-xs uppercase tracking-widest text-foreground/60">
+              <div className="mb-6 flex items-start gap-3 border border-emerald-600/20 bg-emerald-600/5 px-4 py-3">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
+                <p className="text-xs uppercase tracking-widest text-emerald-800">
                   Email verified{verifiedEmail ? ` for ${verifiedEmail}` : ''}. You can sign in now.
                 </p>
               </div>
