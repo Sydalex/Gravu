@@ -53,6 +53,12 @@ export async function sendTransactionalEmail({
   });
 
   if (error) {
+    console.error("[email] Resend send failed", {
+      to,
+      subject,
+      message: error.message,
+      name: error.name,
+    });
     throw new Error(`Failed to send email: ${error.message}`);
   }
 

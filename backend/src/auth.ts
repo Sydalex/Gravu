@@ -69,7 +69,9 @@ export const auth = betterAuth({
   },
   plugins: [
     emailOTP({
-      sendVerificationOnSignUp: true,
+      // Trigger the initial verification email explicitly from the signup UI so
+      // the client can surface send failures instead of silently navigating on.
+      sendVerificationOnSignUp: false,
       overrideDefaultEmailVerification: true,
       async sendVerificationOTP({ email, otp, type }) {
         await sendOTPEmail(email, String(otp), type);

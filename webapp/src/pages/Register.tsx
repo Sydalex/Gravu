@@ -24,13 +24,27 @@ const Register = () => {
     if (password !== confirmPassword) { setError('Passwords do not match'); return; }
     setLoading(true);
     setError(null);
-    const result = await authClient.signUp.email({ email: email.trim(), password, name: name.trim() });
-    setLoading(false);
+    const normalizedEmail = email.trim();
+    const result = await authClient.signUp.email({ email: normalizedEmail, password, name: name.trim() });
     if (result.error) {
+      setLoading(false);
       setError(result.error.message || 'Failed to create account');
     } else {
+      const otpResult = await authClient.emailOtp.sendVerificationOtp({
+        email: normalizedEmail,
+        type: 'email-verification',
+      });
       await signOut().catch(() => undefined);
-      navigate(`/verify-otp?email=${encodeURIComponent(email.trim())}&mode=email-verification`);
+      setLoading(false);
+      navigate(`/verify-otp?email=${encodeURIComponent(normalizedEmail)}&mode=email-verification`, {
+        state: {
+          email: normalizedEmail,
+          mode: 'email-verification',
+          initialError: otpResult.error
+            ? otpResult.error.message || 'We created your account, but the verification code could not be sent yet. Please use resend.'
+            : undefined,
+        },
+      });
     }
   };
 

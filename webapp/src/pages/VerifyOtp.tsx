@@ -12,13 +12,13 @@ const VerifyOtp = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
-  const state = location.state as { email?: string; mode?: 'sign-in' | 'email-verification' } | null;
+  const state = location.state as { email?: string; mode?: 'sign-in' | 'email-verification'; initialError?: string } | null;
   const email = state?.email ?? searchParams.get('email') ?? undefined;
   const mode = state?.mode ?? ((searchParams.get('mode') as 'sign-in' | 'email-verification' | null) ?? 'sign-in');
 
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(state?.initialError ?? null);
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
 
