@@ -3,8 +3,8 @@ export const LEGAL_LAST_UPDATED = "March 24, 2026";
 export const LEGAL_CONFIG = {
   productName: "Gravu",
   websiteName: "Gravu website and application",
-  supportEmail: "info@gravu.app",
-  contentReportEmail: "info@gravu.app",
+  supportEmail: "Support@gravu.org",
+  contentReportEmail: "Support@gravu.org",
   legalEntityName: "[Your full legal name or registered business name]",
   legalRepresentative: "[Owner / legal representative]",
   legalAddress: "[Your full business address]",
