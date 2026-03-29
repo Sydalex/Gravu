@@ -37,6 +37,10 @@ export async function sendTransactionalEmail({
   const resend = getResendClient();
 
   if (!resend) {
+    if (env.NODE_ENV === "production") {
+      throw new Error("RESEND_API_KEY is not configured.");
+    }
+
     console.log(`\n[email] To: ${to}\nSubject: ${subject}\n\n${text}\n`);
     return;
   }
