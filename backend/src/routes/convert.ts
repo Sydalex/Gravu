@@ -187,6 +187,39 @@ async function mergeBinaryLinework(primaryBuffer: Buffer, secondaryBuffer: Buffe
     .toBuffer();
 }
 
+async function analyzeLineworkCharacteristics(inputBuffer: Buffer) {
+  const { data } = await sharp(inputBuffer)
+    .flatten({ background: "#ffffff" })
+    .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
+    .grayscale()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  let sum = 0;
+  let midDarkPixels = 0;
+  let darkPixels = 0;
+
+  for (const value of data) {
+    sum += value;
+    if (value < 245) midDarkPixels += 1;
+    if (value < 220) darkPixels += 1;
+  }
+
+  const total = Math.max(1, data.length);
+  const mean = sum / total;
+  const midDarkRatio = midDarkPixels / total;
+  const darkRatio = darkPixels / total;
+
+  return {
+    mean,
+    midDarkRatio,
+    darkRatio,
+    // Already-clean line art: very bright background with a small amount of
+    // sparse stroke pixels. Gemini is too destructive for this case.
+    isCleanLineArt: mean > 248 && midDarkRatio < 0.08 && darkRatio < 0.05,
+  };
+}
+
 async function preprocessLineworkForCenterline(inputBuffer: Buffer) {
   const resizedPng = await sharp(inputBuffer)
     .flatten({ background: "#ffffff" })
@@ -195,8 +228,23 @@ async function preprocessLineworkForCenterline(inputBuffer: Buffer) {
     .toBuffer();
 
   const fallbackBuffer = await prepareBinaryLinework(resizedPng);
-  const thinnedFallbackBuffer = await thinBinaryLinework(resizedPng);
+  const analysis = await analyzeLineworkCharacteristics(resizedPng);
   const apiKey = getGeminiApiKey();
+
+  if (analysis.isCleanLineArt) {
+    console.log(
+      `[vectorise-ai] Skipping AI preprocess for clean line art (mean=${analysis.mean.toFixed(
+        1,
+      )}, midDarkRatio=${analysis.midDarkRatio.toFixed(4)}, darkRatio=${analysis.darkRatio.toFixed(4)})`,
+    );
+    return {
+      vectorizerBuffer: fallbackBuffer,
+      previewBase64: fallbackBuffer.toString("base64"),
+      aiUsed: false,
+    };
+  }
+
+  const thinnedFallbackBuffer = await thinBinaryLinework(resizedPng);
 
   if (!apiKey) {
     console.warn("[vectorise-ai] GEMINI_API_KEY missing, using non-AI line cleanup fallback");
