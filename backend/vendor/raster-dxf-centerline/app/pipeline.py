@@ -1318,8 +1318,11 @@ def vectorize_from_array(
         points = _resample_path(points, spacing=1.0)
         if smooth_iterations > 0:
             points = _smooth_path(points, iterations=max(1, smooth_iterations))
-        points = _simplify_path(points, epsilon=simplify_epsilon)
-        points = _collapse_nearly_straight_path(points)
+        if not preserve_detail:
+            points = _simplify_path(points, epsilon=simplify_epsilon)
+            points = _collapse_nearly_straight_path(points)
+        elif simplify_epsilon > 0:
+            points = _simplify_path(points, epsilon=min(simplify_epsilon, 0.05))
         if len(points) >= 2:
             vector_paths.append(points)
 

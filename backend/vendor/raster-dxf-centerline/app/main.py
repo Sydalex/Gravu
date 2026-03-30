@@ -107,7 +107,7 @@ async def vectorize(
 
     try:
         if preserve_detail:
-            resolved_epsilon = min(resolved_epsilon, 0.3)
+            resolved_epsilon = min(resolved_epsilon, 0.05)
             resolved_smooth = 0
         result = vectorize_from_image_bytes(
             payload,
@@ -151,7 +151,7 @@ async def vectorize_dxf(
 
     try:
         if preserve_detail:
-            resolved_epsilon = min(resolved_epsilon, 0.3)
+            resolved_epsilon = min(resolved_epsilon, 0.05)
             resolved_smooth = 0
         result = vectorize_from_image_bytes(
             payload,
@@ -192,7 +192,7 @@ async def vectorize_debug(
 
     try:
         if preserve_detail:
-            resolved_epsilon = min(resolved_epsilon, 0.3)
+            resolved_epsilon = min(resolved_epsilon, 0.05)
             resolved_smooth = 0
         result = vectorize_from_image_bytes(
             payload,
