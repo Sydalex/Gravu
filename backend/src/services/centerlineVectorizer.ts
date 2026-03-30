@@ -33,7 +33,7 @@ export async function vectorizeCenterline(
   options: { simplification?: SimplificationLevel } = {},
 ): Promise<{ dxf: string }> {
   const baseUrl = getCenterlineVectorizerUrl();
-  const endpoint = `${baseUrl.replace(/\/+$/, "")}/vectorize/dxf`;
+  const endpoint = `${baseUrl.replace(/\/+$/, "")}/vectorize/dxf?include_fill=false`;
   const simplification = options.simplification ?? "mid";
 
   // Build multipart form data with the image

@@ -1100,15 +1100,17 @@ def _build_svg(
     fill_paths: Iterable[list[Point]],
     width: int,
     height: int,
+    include_fill: bool = True,
 ) -> str:
     path_tags: list[str] = []
-    for path in fill_paths:
-        if len(path) < 3:
-            continue
-        path_tags.append(
-            f'<polygon points="{_points_attr(path)}" fill="#ffffff" stroke="none" '
-            'stroke-linecap="round" stroke-linejoin="round" />'
-        )
+    if include_fill:
+        for path in fill_paths:
+            if len(path) < 3:
+                continue
+            path_tags.append(
+                f'<polygon points="{_points_attr(path)}" fill="#ffffff" stroke="none" '
+                'stroke-linecap="round" stroke-linejoin="round" />'
+            )
 
     for entity in centerline_entities:
         if len(entity.points) < 2:
@@ -1158,20 +1160,26 @@ def _build_open_svg_path_data(points: list[Point]) -> str:
 
     return " ".join(segments)
 
-def _build_dxf(centerline_entities: Iterable[CenterlineEntity], fill_paths: Iterable[list[Point]], height: int) -> str:
+def _build_dxf(
+    centerline_entities: Iterable[CenterlineEntity],
+    fill_paths: Iterable[list[Point]],
+    height: int,
+    include_fill: bool = True,
+) -> str:
     doc = ezdxf.new("R2010")
     modelspace = doc.modelspace()
     _ensure_dxf_layers(doc)
 
-    for path in fill_paths:
-        if len(path) < 3:
-            continue
-        transformed_2d = [(x, float(height) - y) for x, y in path]
+    if include_fill:
+        for path in fill_paths:
+            if len(path) < 3:
+                continue
+            transformed_2d = [(x, float(height) - y) for x, y in path]
 
-        hatch = modelspace.add_hatch(color=7, dxfattribs={"layer": "FILL"})
-        hatch.set_solid_fill(color=7)
-        hatch.rgb = (255, 255, 255)
-        hatch.paths.add_polyline_path(transformed_2d, is_closed=True)
+            hatch = modelspace.add_hatch(color=7, dxfattribs={"layer": "FILL"})
+            hatch.set_solid_fill(color=7)
+            hatch.rgb = (255, 255, 255)
+            hatch.paths.add_polyline_path(transformed_2d, is_closed=True)
 
     for entity in centerline_entities:
         if len(entity.points) < 2:
@@ -1203,6 +1211,7 @@ def vectorize_from_array(
     simplify_epsilon: float = 0.8,
     smooth_iterations: int = 1,
     export_mode: ExportMode = "hybrid",
+    include_fill: bool = True,
 ) -> VectorizationResult:
     if gray.ndim != 2:
         raise ValueError("Input must be grayscale")
@@ -1267,8 +1276,19 @@ def vectorize_from_array(
     spline_count = sum(1 for entity in centerline_entities if entity.kind == "spline")
     polyline_count = sum(1 for entity in centerline_entities if entity.kind == "polyline")
 
-    svg_text = _build_svg(centerline_entities, fill_paths=fill_paths, width=width, height=height)
-    dxf_text = _build_dxf(centerline_entities, fill_paths=fill_paths, height=height)
+    svg_text = _build_svg(
+        centerline_entities,
+        fill_paths=fill_paths,
+        width=width,
+        height=height,
+        include_fill=include_fill,
+    )
+    dxf_text = _build_dxf(
+        centerline_entities,
+        fill_paths=fill_paths,
+        height=height,
+        include_fill=include_fill,
+    )
 
     return VectorizationResult(
         width=width,
@@ -1294,6 +1314,7 @@ def vectorize_from_image_bytes(
     simplify_epsilon: float = 0.8,
     smooth_iterations: int = 1,
     export_mode: ExportMode = "hybrid",
+    include_fill: bool = True,
 ) -> VectorizationResult:
     gray = _decode_grayscale(image_bytes)
     return vectorize_from_array(
@@ -1301,4 +1322,5 @@ def vectorize_from_image_bytes(
         simplify_epsilon=simplify_epsilon,
         smooth_iterations=smooth_iterations,
         export_mode=export_mode,
+        include_fill=include_fill,
     )

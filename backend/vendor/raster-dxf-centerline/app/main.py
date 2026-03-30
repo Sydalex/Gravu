@@ -95,6 +95,7 @@ async def vectorize(
     simplify_epsilon: float = 0.8,
     smooth_iterations: int = 1,
     export_mode: ExportMode = "hybrid",
+    include_fill: bool = True,
 ) -> VectorizeResponse:
     payload = await _read_image_payload(file)
     resolved_epsilon, resolved_smooth, resolved_level = _resolve_vectorization_params(
@@ -109,6 +110,7 @@ async def vectorize(
             simplify_epsilon=resolved_epsilon,
             smooth_iterations=resolved_smooth,
             export_mode=export_mode,
+            include_fill=include_fill,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -132,6 +134,7 @@ async def vectorize_dxf(
     simplify_epsilon: float = 0.8,
     smooth_iterations: int = 1,
     export_mode: ExportMode = "hybrid",
+    include_fill: bool = False,
 ) -> Response:
     payload = await _read_image_payload(file)
     resolved_epsilon, resolved_smooth, _resolved_level = _resolve_vectorization_params(
@@ -146,6 +149,7 @@ async def vectorize_dxf(
             simplify_epsilon=resolved_epsilon,
             smooth_iterations=resolved_smooth,
             export_mode=export_mode,
+            include_fill=include_fill,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -166,6 +170,7 @@ async def vectorize_debug(
     simplify_epsilon: float = 0.8,
     smooth_iterations: int = 1,
     export_mode: ExportMode = "hybrid",
+    include_fill: bool = True,
 ) -> VectorizeDebugResponse:
     payload = await _read_image_payload(file)
     resolved_epsilon, resolved_smooth, resolved_level = _resolve_vectorization_params(
@@ -180,6 +185,7 @@ async def vectorize_debug(
             simplify_epsilon=resolved_epsilon,
             smooth_iterations=resolved_smooth,
             export_mode=export_mode,
+            include_fill=include_fill,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
