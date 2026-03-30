@@ -16,34 +16,29 @@ type ResolvePlanInput = {
 };
 
 type PlanEntitlement = {
-  aiCreditsOnInvoicePaid: number;
-  vectorizeCreditsOnInvoicePaid: number;
+  creditsOnInvoicePaid: number;
   marketplaceDownloadLimit: number | null;
   autoSubmitToMarketplace: boolean;
 };
 
 const PLAN_ENTITLEMENTS: Record<AppPlan, PlanEntitlement> = {
   free: {
-    aiCreditsOnInvoicePaid: 0,
-    vectorizeCreditsOnInvoicePaid: 0,
+    creditsOnInvoicePaid: 0,
     marketplaceDownloadLimit: 5,
     autoSubmitToMarketplace: true,
   },
   lite: {
-    aiCreditsOnInvoicePaid: 0,
-    vectorizeCreditsOnInvoicePaid: 0,
+    creditsOnInvoicePaid: 0,
     marketplaceDownloadLimit: 5,
     autoSubmitToMarketplace: true,
   },
   pro: {
-    aiCreditsOnInvoicePaid: 40,
-    vectorizeCreditsOnInvoicePaid: 30,
+    creditsOnInvoicePaid: 70,
     marketplaceDownloadLimit: 30,
     autoSubmitToMarketplace: true,
   },
   expert: {
-    aiCreditsOnInvoicePaid: 150,
-    vectorizeCreditsOnInvoicePaid: 150,
+    creditsOnInvoicePaid: 300,
     marketplaceDownloadLimit: null,
     autoSubmitToMarketplace: false,
   },
@@ -111,8 +106,7 @@ export function getMarketplaceDownloadsRemaining(plan: AppPlan, used: number) {
 export function getMonthlyPlanGrants(plan: AppPlan) {
   const entitlements = getPlanEntitlements(plan);
   return {
-    aiCredits: entitlements.aiCreditsOnInvoicePaid,
-    vectorizeCredits: entitlements.vectorizeCreditsOnInvoicePaid,
+    credits: entitlements.creditsOnInvoicePaid,
   };
 }
 

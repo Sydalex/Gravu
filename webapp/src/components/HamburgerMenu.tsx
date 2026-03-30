@@ -20,8 +20,8 @@ export function HamburgerMenu() {
   });
   const isAuthed = !!session?.user;
   const creditsLabel = subscription?.isAdmin
-    ? 'AI ∞ · VEC ∞'
-    : `AI ${subscription?.aiCredits ?? subscription?.credits ?? 0} · VEC ${subscription?.vectorizeCredits ?? 0}`;
+    ? 'Credits ∞'
+    : `Credits ${subscription?.credits ?? 0}`;
 
   const menuLinks = [
     { label: 'Home', href: isAuthed ? '/app' : '/', match: isAuthed ? '/app' : '/', auth: false },

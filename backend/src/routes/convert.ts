@@ -15,6 +15,7 @@ import {
 } from "../types";
 import type { auth } from "../auth";
 import { prisma } from "../prisma";
+import { env } from "../env";
 import {
   vectorizeCenterline,
   type SimplificationLevel,
@@ -33,6 +34,165 @@ type Variables = {
 const simplificationLevels: SimplificationLevel[] = ["low", "mid", "high"];
 
 const convertRouter = new Hono<{ Variables: Variables }>();
+
+interface GeminiPart {
+  text?: string;
+  inline_data?: {
+    mime_type: string;
+    data: string;
+  };
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
+}
+
+interface GeminiContent {
+  parts: GeminiPart[];
+}
+
+interface GeminiCandidate {
+  content: GeminiContent;
+}
+
+interface GeminiResponse {
+  candidates?: GeminiCandidate[];
+  error?: { message: string; code: number };
+}
+
+function getGeminiApiKey() {
+  return env.GEMINI_API_KEY ?? null;
+}
+
+function getVectorizePreprocessModel() {
+  return env.GEMINI_IMAGE_MODEL?.trim() || "gemini-3-pro-image-preview";
+}
+
+async function callGeminiImageTransform(
+  model: string,
+  prompt: string,
+  imageBase64: string,
+): Promise<string> {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not set");
+  }
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              {
+                inline_data: {
+                  mime_type: "image/png",
+                  data: imageBase64,
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseModalities: ["IMAGE"],
+          temperature: 0.05,
+        },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "(unknown error)");
+    throw new Error(`Gemini API returned ${response.status}: ${errorText}`);
+  }
+
+  const data = (await response.json()) as GeminiResponse;
+  if (data.error) {
+    throw new Error(`Gemini API error: ${data.error.message}`);
+  }
+
+  const parts = data.candidates?.[0]?.content?.parts ?? [];
+  const imagePart = parts.find((part) => part.inlineData ?? part.inline_data);
+  const outputBase64 = imagePart?.inlineData?.data ?? imagePart?.inline_data?.data ?? "";
+
+  if (!outputBase64) {
+    throw new Error("Gemini did not return an image output.");
+  }
+
+  return outputBase64;
+}
+
+async function prepareBinaryLinework(inputBuffer: Buffer) {
+  return sharp(inputBuffer)
+    .flatten({ background: "#ffffff" })
+    .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+    .grayscale()
+    .normalize()
+    .threshold(188)
+    .png()
+    .toBuffer();
+}
+
+async function preprocessLineworkForCenterline(inputBuffer: Buffer) {
+  const resizedPng = await sharp(inputBuffer)
+    .flatten({ background: "#ffffff" })
+    .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+    .png()
+    .toBuffer();
+
+  const fallbackBuffer = await prepareBinaryLinework(resizedPng);
+  const apiKey = getGeminiApiKey();
+
+  if (!apiKey) {
+    console.warn("[vectorise-ai] GEMINI_API_KEY missing, using non-AI line cleanup fallback");
+    return {
+      vectorizerBuffer: fallbackBuffer,
+      previewBase64: fallbackBuffer.toString("base64"),
+      aiUsed: false,
+    };
+  }
+
+  const prompt = `Redraw this existing line drawing into centerline-ready source artwork for downstream CAD vectorization.
+
+You are tracing and cleaning the provided line drawing, not inventing a new image.
+
+Mandatory rules:
+1. Keep the exact silhouette, pose, proportions, wing shape, tail shape, overlaps, and line placement from the source image.
+2. Do not restage, redesign, beautify, simplify into an icon, or change the geometry.
+3. Use one uniform thin black stroke weight everywhere.
+4. Pure black lines on a pure white background only.
+5. No grayscale, transparency, glow, antialiasing, fills, shading, texture, sketch strokes, or soft edges.
+6. Keep the same major contours and same internal separations that already exist in the source.
+7. Remove only accidental roughness, uneven stroke thickness, fuzzy edges, and inconsistent line rendering.
+8. Preserve open and closed paths exactly as observed.
+9. The result must look like the same drawing cleaned for technical vectorization, not like a new illustration.`;
+
+  try {
+    const aiBase64 = await callGeminiImageTransform(
+      getVectorizePreprocessModel(),
+      prompt,
+      resizedPng.toString("base64"),
+    );
+    const cleanedBuffer = await prepareBinaryLinework(Buffer.from(aiBase64, "base64"));
+
+    return {
+      vectorizerBuffer: cleanedBuffer,
+      previewBase64: cleanedBuffer.toString("base64"),
+      aiUsed: true,
+    };
+  } catch (error) {
+    console.warn("[vectorise-ai] AI line cleanup failed, falling back to binary cleanup:", error);
+    return {
+      vectorizerBuffer: fallbackBuffer,
+      previewBase64: fallbackBuffer.toString("base64"),
+      aiUsed: false,
+    };
+  }
+}
 
 // ─── DXF Parsing Helpers ────────────────────────────────────────────────────
 
@@ -1383,12 +1543,22 @@ convertRouter.post("/vectorise-ai", async (c) => {
     );
 
     const inputBuffer = Buffer.from(await imageFile.arrayBuffer());
+    const preprocessed = await preprocessLineworkForCenterline(inputBuffer);
+    console.log(
+      `[vectorise-ai] Line cleanup path: ${preprocessed.aiUsed ? "ai_preprocess" : "binary_fallback"}`
+    );
 
     // Call centerline vectorizer service (raster-dxf-centerline)
-    const result = await vectorizeCenterline(inputBuffer, { simplification });
+    const result = await vectorizeCenterline(preprocessed.vectorizerBuffer, { simplification });
 
     console.log(`[vectorise-ai] Success, DXF length: ${result.dxf.length}`);
-    return c.json({ data: { dxf: result.dxf, trialConsumed } });
+    return c.json({
+      data: {
+        dxf: result.dxf,
+        preprocessedImageBase64: preprocessed.previewBase64,
+        trialConsumed,
+      },
+    });
   } catch (err) {
     if (reservedUserId && reservedMode) {
       try {

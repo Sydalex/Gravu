@@ -157,7 +157,7 @@ const Upload = () => {
   const shouldBlockVectorizeAction = (status?: SubscriptionStatus) =>
     !status?.isAdmin &&
     ((status?.freeTrialUsed ?? false) || (status?.deviceTrialUsed ?? false)) &&
-    ((status?.vectorizeCredits ?? 0) + (status?.aiCredits ?? status?.credits ?? 0)) <= 0;
+    (status?.credits ?? 0) <= 0;
 
   const handleFile = useCallback(
     async (file: File) => {

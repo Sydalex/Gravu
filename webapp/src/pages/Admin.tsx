@@ -40,7 +40,6 @@ interface AdminUser {
   createdAt: string;
   isAdmin: boolean;
   credits: number;
-  vectorizeCredits: number;
   marketplaceDownloadsUsed: number;
   manualPlan?: string | null;
   stripeCustomerId: string | null;
@@ -855,7 +854,7 @@ export default function Admin() {
               icon={CreditCard}
               label="Conversions"
               value={stats?.totalConversions ?? 0}
-              meta={`${lowCreditCount} users at 3 AI credits or below`}
+              meta={`${lowCreditCount} users at 3 credits or below`}
             />
             <StatCard
               icon={Shield}
@@ -998,7 +997,7 @@ export default function Admin() {
                 <div className="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
                   <div className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
                     <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
-                      AI Credits
+                      Credits
                     </p>
                     <p className="mt-2 text-[28px] font-black leading-none tracking-[-1px] text-[#332e24]">
                       {selectedUser.isAdmin ? "∞" : selectedUser.credits}
@@ -1006,10 +1005,10 @@ export default function Admin() {
                   </div>
                   <div className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
                     <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
-                      Vectorize Credits
+                      Conversions
                     </p>
                     <p className="mt-2 text-[28px] font-black leading-none tracking-[-1px] text-[#332e24]">
-                      {selectedUser.isAdmin ? "∞" : selectedUser.vectorizeCredits}
+                      {selectedUser.conversionCount}
                     </p>
                   </div>
                   <div className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
@@ -1100,7 +1099,7 @@ export default function Admin() {
                       setCreditAmount("");
                     }}
                   >
-                    Adjust AI Credits
+                    Adjust Credits
                   </Button>
 
                   <Button
@@ -2178,7 +2177,7 @@ export default function Admin() {
         <DialogContent className="border-[#e7e0d5] bg-[#fbfaf7]">
           <DialogHeader>
             <DialogTitle className="text-[22px] font-black tracking-[-0.7px] text-[#332e24]">
-              Adjust AI credits
+              Adjust credits
             </DialogTitle>
           </DialogHeader>
 
@@ -2186,7 +2185,7 @@ export default function Admin() {
             <div className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
               <p className="text-[13px] font-medium text-[#332e24]">{creditDialogUser?.email}</p>
               <p className="mt-1 text-[12px] text-muted-foreground">
-                Current AI balance:{" "}
+                Current balance:{" "}
                 <span className="font-semibold text-foreground">
                   {creditDialogUser?.isAdmin ? "∞" : creditDialogUser?.credits}
                 </span>
@@ -2195,7 +2194,7 @@ export default function Admin() {
 
             <Input
               type="number"
-              placeholder="AI credit amount"
+              placeholder="Credit amount"
               value={creditAmount}
               onChange={(e) => setCreditAmount(e.target.value)}
               className="h-12 rounded-2xl border-[#d8d0c5] bg-background"
@@ -2210,7 +2209,7 @@ export default function Admin() {
                 {creditsMutation.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
-                Add AI Credits
+                Add Credits
               </Button>
               <Button
                 variant="outline"

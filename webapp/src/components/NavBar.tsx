@@ -16,8 +16,8 @@ export function NavBar() {
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
   const creditsLabel = subscription?.isAdmin
-    ? 'AI ∞ · VEC ∞'
-    : `AI ${subscription?.aiCredits ?? subscription?.credits ?? 0} · VEC ${subscription?.vectorizeCredits ?? 0}`;
+    ? 'Credits ∞'
+    : `Credits ${subscription?.credits ?? 0}`;
 
   return (
     <motion.nav

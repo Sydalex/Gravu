@@ -157,8 +157,11 @@ const Processing = () => {
         );
       }
 
-      const vectorData = (await vectorRes.json()) as { data: { dxf: string; trialConsumed?: boolean } };
+      const vectorData = (await vectorRes.json()) as {
+        data: { dxf: string; preprocessedImageBase64?: string; trialConsumed?: boolean };
+      };
       const dxfContent = vectorData.data.dxf;
+      const previewBase64 = vectorData.data.preprocessedImageBase64 ?? uploadedBase64;
 
       setStatus('converting');
       setProgress(70);
@@ -171,7 +174,7 @@ const Processing = () => {
 
       setCachedDxf(0, dxfContent);
       setCachedSvg(0, svgContent);
-      setResultImages([{ subjectId: 0, imageBase64: uploadedBase64, title: outputTitle }]);
+      setResultImages([{ subjectId: 0, imageBase64: previewBase64, title: outputTitle }]);
 
       const store = useImageStore.getState();
       try {
@@ -182,6 +185,7 @@ const Processing = () => {
           assets: [
             {
               subjectId: 0,
+              imageBase64: previewBase64,
               title: outputTitle,
               svgContent: svgContent || undefined,
               dxfContent: dxfContent || undefined,

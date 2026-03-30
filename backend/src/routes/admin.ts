@@ -7,6 +7,7 @@ import { getBillingConfig } from "../billingConfig";
 import { env } from "../env";
 import { deleteUserAccount } from "../services/deleteUser";
 import { resolveAppPlan, syncMarketplaceDownloadWindow } from "../services/planEntitlements";
+import { getUnifiedCredits } from "../services/credits";
 import type { auth } from "../auth";
 
 type Variables = {
@@ -314,8 +315,8 @@ adminRouter.get("/users", async (c) => {
     email: u.email,
     createdAt: u.createdAt.toISOString(),
     isAdmin: u.isAdmin,
-    credits: u.credits,
-    vectorizeCredits: u.vectorizeCredits,
+    credits: getUnifiedCredits(u),
+    vectorizeCredits: 0,
     marketplaceDownloadsUsed:
       syncedDownloads?.marketplaceDownloadsUsed ?? u.marketplaceDownloadsUsed,
     manualPlan: u.manualPlan,
@@ -342,6 +343,7 @@ adminRouter.post(
       where: { id },
       data: {
         credits: operation === "add" ? { increment: amount } : amount,
+        vectorizeCredits: 0,
       },
       select: { id: true, credits: true },
     });

@@ -47,7 +47,7 @@ const Selection = () => {
   const shouldBlockAiAction = (status?: SubscriptionStatus) =>
     !status?.isAdmin &&
     ((status?.freeTrialUsed ?? false) || (status?.deviceTrialUsed ?? false)) &&
-    (status?.aiCredits ?? status?.credits ?? 0) <= 0;
+    (status?.credits ?? 0) <= 0;
 
   const detectMutation = useMutation({
     mutationFn: () =>

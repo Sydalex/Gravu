@@ -18,6 +18,7 @@ import {
   resolveAppPlan,
   syncMarketplaceDownloadWindow,
 } from "../services/planEntitlements";
+import { getUnifiedCredits, normalizeLegacyCredits } from "../services/credits";
 import {
   CreateCheckoutSessionRequestSchema,
   BuyCreditsRequestSchema,
@@ -62,6 +63,7 @@ paymentsRouter.use("/webhook", requireStripe);
 // GET /api/payments/subscription — get current user's subscription status
 paymentsRouter.get("/subscription", async (c) => {
   const user = c.get("user")!;
+  await normalizeLegacyCredits(user.id);
   const billingConfig = await getBillingConfig();
   const deviceToken = getOrCreateTrialDeviceToken(c);
   const deviceHash = hashTrialDeviceToken(deviceToken);
@@ -101,6 +103,7 @@ paymentsRouter.get("/subscription", async (c) => {
   const marketplaceDownloadsLimit = dbUser?.isAdmin
     ? null
     : getMarketplaceDownloadLimit(plan);
+  const unifiedCredits = getUnifiedCredits(dbUser);
 
   const status: SubscriptionStatus = {
     plan,
@@ -108,9 +111,9 @@ paymentsRouter.get("/subscription", async (c) => {
     currentPeriodEnd: subscription?.currentPeriodEnd?.toISOString() ?? null,
     cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,
     stripeCustomerId: dbUser?.stripeCustomerId ?? null,
-    credits: dbUser?.credits ?? 0,
-    aiCredits: dbUser?.credits ?? 0,
-    vectorizeCredits: dbUser?.vectorizeCredits ?? 0,
+    credits: unifiedCredits,
+    aiCredits: unifiedCredits,
+    vectorizeCredits: 0,
     marketplaceDownloadsUsed,
     marketplaceDownloadsRemaining:
       dbUser?.isAdmin
@@ -343,18 +346,18 @@ paymentsRouter.post("/webhook", async (c) => {
         billingConfig,
       });
       const grants = getMonthlyPlanGrants(plan);
-      if (grants.aiCredits <= 0 && grants.vectorizeCredits <= 0) {
+      if (grants.credits <= 0) {
         break;
       }
       await prisma.user.update({
         where: { id: dbUser.id },
         data: {
-          credits: { increment: grants.aiCredits },
-          vectorizeCredits: { increment: grants.vectorizeCredits },
+          credits: { increment: grants.credits },
+          vectorizeCredits: 0,
         },
       });
       console.log(
-        `[webhook] Granted ${grants.aiCredits} AI credits and ${grants.vectorizeCredits} vectorize credits to user ${dbUser.id} for invoice ${invoice.id}`
+        `[webhook] Granted ${grants.credits} credits to user ${dbUser.id} for invoice ${invoice.id}`
       );
       break;
     }

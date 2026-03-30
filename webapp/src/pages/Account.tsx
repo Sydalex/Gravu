@@ -39,24 +39,24 @@ function formatDate(dateStr: string | null): string {
 const planFeatures: Record<SubscriptionStatus['plan'], string[]> = {
   free: [
     'One free successful process',
-    'Buy AI credits to continue on demand',
+    'Buy credits to continue on demand',
     'Marketplace submissions go to review automatically',
     '5 marketplace downloads each month',
   ],
   lite: [
-    'Pay-as-you-go with AI credit purchases',
+    'Pay-as-you-go with credit purchases',
     'Marketplace submissions go to review automatically',
     '5 marketplace downloads each month',
     'Photo to Vector and Vectorize Linework',
   ],
   pro: [
-    '40 AI credits and 30 vectorize credits added on each paid invoice',
+    '70 credits added on each paid invoice',
     'Marketplace submissions go to review automatically',
     '30 marketplace downloads each month',
-    'Stripe billing management and extra AI credit purchases',
+    'Stripe billing management and extra credit purchases',
   ],
   expert: [
-    '150 AI credits and 150 vectorize credits added on each paid invoice',
+    '300 credits added on each paid invoice',
     'Private by default; submit to marketplace only when you choose',
     'Unlimited marketplace downloads',
     'Highest-volume plan for heavy production use',
@@ -180,40 +180,28 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
       )}
 
       {/* Balances */}
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="border border-neutral-200 bg-neutral-50 px-3 py-2.5">
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 font-mono text-[10px] text-neutral-400">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="border border-neutral-200 bg-neutral-50 px-3 py-3">
+          <p className="flex items-center gap-1.5 font-mono text-[10px] text-neutral-400">
             <Zap className="h-3 w-3" />
-            AI credits
-          </span>
-          <span className="font-mono text-[10px] font-semibold text-neutral-700">
-            {subscription?.isAdmin ? '∞' : subscription?.aiCredits ?? subscription?.credits ?? 0}
-          </span>
-        </div>
-        {!subscription?.isAdmin && (subscription?.aiCredits ?? subscription?.credits ?? 0) === 0 && (
-          <p className="mt-1 font-mono text-[9px] text-amber-600">
-            No AI credits left.
+            Credits
           </p>
-        )}
+          <p className="mt-3 font-mono text-lg font-semibold text-neutral-900">
+            {subscription?.isAdmin ? 'Unlimited' : subscription?.credits ?? 0}
+          </p>
+          {!subscription?.isAdmin && (subscription?.credits ?? 0) === 0 && (
+            <p className="mt-1 font-mono text-[9px] text-amber-600">
+              No credits left.
+            </p>
+          )}
         </div>
-        <div className="border border-neutral-200 bg-neutral-50 px-3 py-2.5">
-          <div className="flex items-center justify-between">
-            <span className="font-mono text-[10px] text-neutral-400">Vectorize credits</span>
-            <span className="font-mono text-[10px] font-semibold text-neutral-700">
-              {subscription?.isAdmin ? '∞' : subscription?.vectorizeCredits ?? 0}
-            </span>
-          </div>
-        </div>
-        <div className="border border-neutral-200 bg-neutral-50 px-3 py-2.5">
-          <div className="flex items-center justify-between">
-            <span className="font-mono text-[10px] text-neutral-400">Marketplace</span>
-            <span className="font-mono text-[10px] font-semibold text-neutral-700">
-              {subscription?.isAdmin || subscription?.marketplaceDownloadsRemaining === null
-                ? 'Unlimited'
-                : `${subscription?.marketplaceDownloadsRemaining ?? 0}/${subscription?.marketplaceDownloadsLimit ?? 0}`}
-            </span>
-          </div>
+        <div className="border border-neutral-200 bg-neutral-50 px-3 py-3">
+          <p className="font-mono text-[10px] text-neutral-400">Marketplace</p>
+          <p className="mt-3 break-words font-mono text-sm font-semibold text-neutral-900">
+            {subscription?.isAdmin || subscription?.marketplaceDownloadsRemaining === null
+              ? 'Unlimited downloads'
+              : `${subscription?.marketplaceDownloadsRemaining ?? 0} / ${subscription?.marketplaceDownloadsLimit ?? 0} downloads left`}
+          </p>
         </div>
       </div>
 
@@ -325,7 +313,7 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
           </button>
           <p className="text-center font-mono text-[9px] text-neutral-400">
             {activeProPriceId
-              ? 'Free and Lite accounts can keep buying AI credits, or move into Pro and Expert for recurring monthly entitlements.'
+              ? 'Free and Lite accounts can keep buying credits, or move into Pro and Expert for recurring monthly entitlements.'
               : 'No active Pro price configured yet.'}
           </p>
           {!subscription?.isAdmin && (
