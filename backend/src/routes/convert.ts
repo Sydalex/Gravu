@@ -143,6 +143,50 @@ async function prepareBinaryLinework(inputBuffer: Buffer) {
     .toBuffer();
 }
 
+async function thinBinaryLinework(inputBuffer: Buffer) {
+  return sharp(inputBuffer)
+    .flatten({ background: "#ffffff" })
+    .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+    .grayscale()
+    .normalize()
+    .threshold(145)
+    .erode(1)
+    .png()
+    .toBuffer();
+}
+
+async function mergeBinaryLinework(primaryBuffer: Buffer, secondaryBuffer: Buffer) {
+  const primary = await sharp(primaryBuffer)
+    .grayscale()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const secondary = await sharp(secondaryBuffer)
+    .resize(primary.info.width, primary.info.height, {
+      fit: "fill",
+      kernel: sharp.kernel.nearest,
+    })
+    .grayscale()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const merged = Buffer.alloc(primary.data.length);
+  for (let i = 0; i < primary.data.length; i += 1) {
+    // Preserve any stroke that exists in either image. Black wins.
+    merged[i] = Math.min(primary.data[i]!, secondary.data[i]!);
+  }
+
+  return sharp(merged, {
+    raw: {
+      width: primary.info.width,
+      height: primary.info.height,
+      channels: primary.info.channels,
+    },
+  })
+    .png()
+    .toBuffer();
+}
+
 async function preprocessLineworkForCenterline(inputBuffer: Buffer) {
   const resizedPng = await sharp(inputBuffer)
     .flatten({ background: "#ffffff" })
@@ -151,6 +195,7 @@ async function preprocessLineworkForCenterline(inputBuffer: Buffer) {
     .toBuffer();
 
   const fallbackBuffer = await prepareBinaryLinework(resizedPng);
+  const thinnedFallbackBuffer = await thinBinaryLinework(resizedPng);
   const apiKey = getGeminiApiKey();
 
   if (!apiKey) {
@@ -178,11 +223,16 @@ Mandatory rules:
 9. Preserve open versus closed intent, but do not create closed loops only because the original stroke had thickness.
 10. Remove accidental roughness, uneven stroke thickness, fuzzy edges, and inconsistent rendering.
 11. The result must look like the same drawing cleaned into single-stroke technical linework, not like a new illustration.
+12. Do not omit, shorten, or merge source marks. If a mark exists in the input, keep it.
+13. Preserve all endpoints, joins, beak/head contours, feather starts, and tail starts exactly where they appear.
+14. If uncertain, keep the source mark rather than deleting it.
 
 Important examples:
 - Each feather rib should become one stroke, not a pair of edge lines.
 - The bird body contour should become one thin path per drawn mark, not a hollow or doubled outline.
-- No doubled contours caused by stroke thickness.`;
+- No doubled contours caused by stroke thickness.
+- Do not collapse multiple adjacent feathers into one wing mass.
+- Do not drop the front of the head, neck line, or small interior marks if they exist in the source.`;
 
   try {
     const aiBase64 = await callGeminiImageTransform(
@@ -191,10 +241,11 @@ Important examples:
       resizedPng.toString("base64"),
     );
     const cleanedBuffer = await prepareBinaryLinework(Buffer.from(aiBase64, "base64"));
+    const mergedBuffer = await mergeBinaryLinework(cleanedBuffer, thinnedFallbackBuffer);
 
     return {
-      vectorizerBuffer: cleanedBuffer,
-      previewBase64: cleanedBuffer.toString("base64"),
+      vectorizerBuffer: mergedBuffer,
+      previewBase64: mergedBuffer.toString("base64"),
       aiUsed: true,
     };
   } catch (error) {
