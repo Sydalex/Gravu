@@ -80,6 +80,13 @@ def _synthetic_dense_parallel_strokes() -> np.ndarray:
     return canvas
 
 
+def _synthetic_mixed_outline_cavities() -> np.ndarray:
+    canvas = np.full((180, 220), 255, dtype=np.uint8)
+    cv2.rectangle(canvas, (20, 25), (110, 150), color=0, thickness=3)
+    cv2.rectangle(canvas, (150, 35), (170, 145), color=0, thickness=3)
+    return canvas
+
+
 def test_vectorization_produces_centerline_paths() -> None:
     gray = _synthetic_strokes()
     result = vectorize_from_array(gray, simplify_epsilon=1.2, smooth_iterations=1)
@@ -150,6 +157,17 @@ def test_dense_detail_preprocess_preserves_parallel_stroke_separation() -> None:
     assert component_count == 4
     assert int(detail_mask.sum()) > 0
     assert int(bridge_mask.sum()) == 0
+
+
+def test_preprocess_fills_narrow_enclosed_stroke_cavities_only() -> None:
+    gray = _synthetic_mixed_outline_cavities()
+    foreground, _detail_mask, _bridge_mask = preprocess_binarize(gray)
+
+    # The narrow outlined rectangle should be collapsed into a solid stroke area.
+    assert bool(foreground[90, 160])
+
+    # The large outlined rectangle should still retain its intended interior hole.
+    assert not bool(foreground[90, 65])
 
 
 def test_blocked_dense_region_prevents_gap_bridge() -> None:

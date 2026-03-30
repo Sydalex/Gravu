@@ -150,6 +150,12 @@ def preprocess_binarize(gray: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.nd
 
     blended = aggressive.copy()
     blended[detail_protection_mask] = conservative[detail_protection_mask]
+    blended = _fill_narrow_enclosed_stroke_cavities(blended)
+    blended = cv2.morphologyEx(
+        blended.astype(np.uint8) * 255,
+        cv2.MORPH_CLOSE,
+        np.ones((3, 3), np.uint8),
+    ) > 0
     return blended, detail_protection_mask, bridge_block_mask
 
 
@@ -181,6 +187,52 @@ def _normalize_stroke_width(foreground: np.ndarray, target_width: float = 5.0) -
         adjusted = cv2.erode(foreground_u8, kernel, iterations=1)
         adjusted = cv2.morphologyEx(adjusted, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
     return adjusted > 0
+
+
+def _fill_narrow_enclosed_stroke_cavities(
+    foreground: np.ndarray,
+    max_minor_axis: int = 16,
+    max_area: int = 2400,
+) -> np.ndarray:
+    """Collapse hollow stroked-outline cavities into solid strokes.
+
+    This targets narrow enclosed white regions created by outlined feather/line
+    shapes while leaving large intended interiors, such as a body cavity or a
+    large framed opening, untouched.
+    """
+
+    if not np.any(foreground):
+        return foreground
+
+    background_u8 = np.where(foreground, 0, 255).astype(np.uint8)
+    component_count, labels, stats, _ = cv2.connectedComponentsWithStats(background_u8, connectivity=8)
+    filled = foreground.copy()
+
+    for label in range(1, component_count):
+        x = int(stats[label, cv2.CC_STAT_LEFT])
+        y = int(stats[label, cv2.CC_STAT_TOP])
+        component_width = int(stats[label, cv2.CC_STAT_WIDTH])
+        component_height = int(stats[label, cv2.CC_STAT_HEIGHT])
+        area = int(stats[label, cv2.CC_STAT_AREA])
+
+        touches_border = (
+            x == 0
+            or y == 0
+            or x + component_width >= foreground.shape[1]
+            or y + component_height >= foreground.shape[0]
+        )
+        if touches_border:
+            continue
+
+        if min(component_width, component_height) > max_minor_axis:
+            continue
+
+        if area > max_area:
+            continue
+
+        filled[labels == label] = True
+
+    return filled
 
 
 def skeletonize_foreground(foreground: np.ndarray) -> np.ndarray:
