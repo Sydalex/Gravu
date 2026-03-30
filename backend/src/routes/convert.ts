@@ -137,7 +137,8 @@ async function prepareBinaryLinework(inputBuffer: Buffer) {
     .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
     .grayscale()
     .normalize()
-    .threshold(188)
+    .sharpen()
+    .threshold(145)
     .png()
     .toBuffer();
 }
@@ -168,13 +169,20 @@ You are tracing and cleaning the provided line drawing, not inventing a new imag
 Mandatory rules:
 1. Keep the exact silhouette, pose, proportions, wing shape, tail shape, overlaps, and line placement from the source image.
 2. Do not restage, redesign, beautify, simplify into an icon, or change the geometry.
-3. Use one uniform thin black stroke weight everywhere.
+3. Convert every visible stroke into one single thin centered black line.
 4. Pure black lines on a pure white background only.
 5. No grayscale, transparency, glow, antialiasing, fills, shading, texture, sketch strokes, or soft edges.
-6. Keep the same major contours and same internal separations that already exist in the source.
-7. Remove only accidental roughness, uneven stroke thickness, fuzzy edges, and inconsistent line rendering.
-8. Preserve open and closed paths exactly as observed.
-9. The result must look like the same drawing cleaned for technical vectorization, not like a new illustration.`;
+6. If a source mark appears as a thick ribbon, outlined stroke, or band with two visible edges, replace it with one medial line only.
+7. Never preserve both outer edges of one thick source stroke. No parallel double rails for one mark.
+8. Keep the same major contours and internal structure, but express each mark as a single-stroke centerline version.
+9. Preserve open versus closed intent, but do not create closed loops only because the original stroke had thickness.
+10. Remove accidental roughness, uneven stroke thickness, fuzzy edges, and inconsistent rendering.
+11. The result must look like the same drawing cleaned into single-stroke technical linework, not like a new illustration.
+
+Important examples:
+- Each feather rib should become one stroke, not a pair of edge lines.
+- The bird body contour should become one thin path per drawn mark, not a hollow or doubled outline.
+- No doubled contours caused by stroke thickness.`;
 
   try {
     const aiBase64 = await callGeminiImageTransform(
