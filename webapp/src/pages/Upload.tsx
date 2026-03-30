@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
-import { useImageStore, type SimplificationLevel } from '@/lib/store';
+import { useImageStore, type SimplificationLevel, type VectorizeMode } from '@/lib/store';
 import type { SubscriptionStatus } from '../../../backend/src/types';
 
 const FULL_FLOW_MAX_DIMENSION = 1600;
@@ -130,6 +130,19 @@ const simplificationOptions: Array<{ value: SimplificationLevel; label: string }
   { value: 'high', label: 'High' },
 ];
 
+const vectorizeModeOptions: Array<{ value: VectorizeMode; label: string; description: string }> = [
+  {
+    value: 'centerline',
+    label: 'Centre Line',
+    description: 'AI cleanup for centerline-ready CAD output.',
+  },
+  {
+    value: 'outline',
+    label: 'Outline',
+    description: 'Trace the existing contours as SVG and DXF.',
+  },
+];
+
 const Upload = () => {
   const navigate = useNavigate();
   const flowType = useImageStore((s) => s.flowType);
@@ -138,6 +151,8 @@ const Upload = () => {
   const setImage = useImageStore((s) => s.setImage);
   const simplificationLevel = useImageStore((s) => s.simplificationLevel);
   const setSimplificationLevel = useImageStore((s) => s.setSimplificationLevel);
+  const vectorizeMode = useImageStore((s) => s.vectorizeMode);
+  const setVectorizeMode = useImageStore((s) => s.setVectorizeMode);
   const [dragActive, setDragActive] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -292,36 +307,72 @@ const Upload = () => {
           </h1>
         </motion.div>
 
-        {/* Simplification level for vectorize flow */}
+        {/* Vectorization settings */}
         {flowType === 'vectorize_only' && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="mb-8"
+            className="mb-8 space-y-6"
           >
-            <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400 mb-3">
-              Detail Level
-            </p>
-            <div className="flex gap-2">
-              {simplificationOptions.map((option) => {
-                const active = simplificationLevel === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setSimplificationLevel(option.value)}
-                    className={`flex-1 border px-4 py-3 font-mono text-xs uppercase tracking-[0.1em] transition-all ${
-                      active
-                        ? 'border-orange-500 bg-orange-500/10 text-orange-600'
-                        : 'border-neutral-300 text-neutral-500 hover:border-neutral-400'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
+            <div>
+              <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400">
+                Vector Mode
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {vectorizeModeOptions.map((option) => {
+                  const active = vectorizeMode === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setVectorizeMode(option.value)}
+                      className={`space-y-1 border px-4 py-4 text-left transition-all ${
+                        active
+                          ? 'border-orange-500 bg-orange-500/10 text-orange-600'
+                          : 'border-neutral-300 text-neutral-600 hover:border-neutral-400'
+                      }`}
+                    >
+                      <div className="font-mono text-xs uppercase tracking-[0.1em]">{option.label}</div>
+                      <div className="font-mono text-[10px] leading-5 text-neutral-400">
+                        {option.description}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+
+            {vectorizeMode === 'centerline' ? (
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400 mb-3">
+                  Detail Level
+                </p>
+                <div className="flex gap-2">
+                  {simplificationOptions.map((option) => {
+                    const active = simplificationLevel === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setSimplificationLevel(option.value)}
+                        className={`flex-1 border px-4 py-3 font-mono text-xs uppercase tracking-[0.1em] transition-all ${
+                          active
+                            ? 'border-orange-500 bg-orange-500/10 text-orange-600'
+                            : 'border-neutral-300 text-neutral-500 hover:border-neutral-400'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <p className="font-mono text-[10px] leading-5 text-neutral-400">
+                Outline mode keeps the original contours and skips the centerline simplification controls.
+              </p>
+            )}
           </motion.div>
         )}
 

@@ -4,6 +4,7 @@ export type FlowType = 'full' | 'vectorize_only';
 export type ProcessingMode = 'extract_all' | 'keep_together';
 export type ViewAngle = 'perspective' | 'top' | 'side' | 'custom';
 export type SimplificationLevel = 'low' | 'mid' | 'high';
+export type VectorizeMode = 'centerline' | 'outline';
 
 export interface Subject {
   id: number;
@@ -40,6 +41,8 @@ interface ImageStore {
   setProcessingMode: (mode: ProcessingMode) => void;
   simplificationLevel: SimplificationLevel;
   setSimplificationLevel: (level: SimplificationLevel) => void;
+  vectorizeMode: VectorizeMode;
+  setVectorizeMode: (mode: VectorizeMode) => void;
 
   // Results
   resultImages: Array<{ subjectId: number; imageBase64: string; title: string }> | null;
@@ -70,6 +73,7 @@ const initialState = {
   customViewDescription: null as string | null,
   processingMode: 'extract_all' as ProcessingMode,
   simplificationLevel: 'mid' as SimplificationLevel,
+  vectorizeMode: 'centerline' as VectorizeMode,
   resultImages: null as Array<{ subjectId: number; imageBase64: string; title: string }> | null,
   cachedSvg: {} as Record<number, string>,
   cachedDxf: {} as Record<number, string>,
@@ -165,6 +169,16 @@ export const useImageStore = create<ImageStore>((set, get) => ({
         ? {}
         : {
             simplificationLevel: level,
+            cachedSvg: {},
+            cachedDxf: {},
+          }
+    ),
+  setVectorizeMode: (mode) =>
+    set((state) =>
+      state.vectorizeMode === mode
+        ? {}
+        : {
+            vectorizeMode: mode,
             cachedSvg: {},
             cachedDxf: {},
           }

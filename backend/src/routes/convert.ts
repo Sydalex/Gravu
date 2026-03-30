@@ -20,6 +20,11 @@ import {
   vectorizeCenterline,
   type SimplificationLevel,
 } from "../services/centerlineVectorizer";
+import {
+  DEFAULT_OUTLINE_SETTINGS,
+  convertSvgToDxfString,
+  traceOutlineSvgFromBuffer,
+} from "../services/outlineVectorizer";
 import { releaseProcessAccess, reserveProcessAccess } from "../services/processAccess";
 import {
   getOrCreateTrialDeviceToken,
@@ -1500,6 +1505,70 @@ convertRouter.post("/vectorise-all", async (c) => {
 
 // ─── POST /vectorise-ai ──────────────────────────────────────────────────────
 // Production DXF path backed by the raster-dxf-centerline service.
+
+convertRouter.post("/vectorise-outline", async (c) => {
+  const user = c.get("user");
+  let reservedUserId: string | null = null;
+  let reservedMode: "admin" | "credit" | "free_trial" | null = null;
+  let trialConsumed = false;
+  let reservedDeviceHash: string | undefined;
+
+  try {
+    if (!user) {
+      return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+    }
+
+    const body = await c.req.parseBody();
+    const imageFile = (body["image"] ?? body["file"]) as File | undefined;
+
+    if (!imageFile || !(imageFile instanceof File)) {
+      return c.json({ error: { message: "No image file provided.", code: "MISSING_FILE" } }, 400);
+    }
+
+    const deviceToken = getOrCreateTrialDeviceToken(c);
+    const deviceHash = hashTrialDeviceToken(deviceToken);
+    const reservation = await reserveProcessAccess(user.id, "vectorize", deviceHash);
+    if (!reservation.allowed) {
+      return c.json({ error: reservation.error }, reservation.status as 401 | 402 | 403 | 500);
+    }
+
+    reservedUserId = user.id;
+    reservedMode = reservation.mode;
+    trialConsumed = reservation.trialConsumed;
+    reservedDeviceHash = deviceHash;
+
+    console.log(`[vectorise-outline] Processing ${imageFile.name}, size: ${imageFile.size}`);
+
+    const inputBuffer = Buffer.from(await imageFile.arrayBuffer());
+    const outlined = await traceOutlineSvgFromBuffer(inputBuffer, DEFAULT_OUTLINE_SETTINGS);
+    const dxf = convertSvgToDxfString(outlined.svg);
+
+    console.log(`[vectorise-outline] Success, SVG length: ${outlined.svg.length}, DXF length: ${dxf.length}`);
+    return c.json({
+      data: {
+        svg: outlined.svg,
+        dxf,
+        previewBase64: outlined.previewBase64,
+        trialConsumed,
+      },
+    });
+  } catch (err) {
+    if (reservedUserId && reservedMode) {
+      try {
+        await releaseProcessAccess(reservedUserId, reservedMode, reservedDeviceHash);
+      } catch (releaseErr) {
+        console.error("[vectorise-outline] Failed to release reserved access:", releaseErr);
+      }
+    }
+
+    console.error("[vectorise-outline] Error:", err);
+    const message = err instanceof Error ? err.message : "Failed to vectorise image";
+    return c.json(
+      { error: { message, code: "VECTORISE_OUTLINE_ERROR" } },
+      500
+    );
+  }
+});
 
 convertRouter.post("/vectorise-ai", async (c) => {
   const user = c.get("user");

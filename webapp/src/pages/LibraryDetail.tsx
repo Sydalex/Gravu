@@ -19,9 +19,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PageWrapper } from '@/components/PageWrapper';
-import { useImageStore } from '@/lib/store';
+import { useImageStore, type VectorizeMode } from '@/lib/store';
 import { api } from '@/lib/api';
 import { buildDownloadFilename } from '@/lib/asset-naming';
+import { base64ToPngFile, vectorizeRaster } from '@/lib/vectorize';
 import { toast } from '@/components/ui/sonner';
 import type { ConversionDetail, ConversionAsset } from '../../../backend/src/types';
 
@@ -105,6 +106,7 @@ const VectoriseButtons = ({ asset, conversionId, conversionName }: VectoriseButt
   const simplificationLevel = useImageStore((s) => s.simplificationLevel);
   const [convertingDxf, setConvertingDxf] = useState<boolean>(false);
   const [convertingSvg, setConvertingSvg] = useState<boolean>(false);
+  const [vectorizeMode, setVectorizeMode] = useState<VectorizeMode>('centerline');
   const assetTitle = getAssetTitle(asset, conversionName);
 
   const saveAsset = useMutation({
@@ -119,19 +121,12 @@ const VectoriseButtons = ({ asset, conversionId, conversionName }: VectoriseButt
     if (!asset.imageBase64) return;
     setConvertingDxf(true);
     try {
-      const bytes = Uint8Array.from(atob(asset.imageBase64), (c) => c.charCodeAt(0));
-      const blob = new Blob([bytes], { type: 'image/png' });
-      const formData = new FormData();
-      formData.append('image', blob, buildDownloadFilename(assetTitle, 'png'));
-      formData.append('simplification', simplificationLevel);
-      const res = await api.raw('/api/convert/vectorise-ai', {
-        method: 'POST',
-        body: formData,
-      });
-      if (!res.ok) throw new Error('Vectorise failed');
-      const json = (await res.json()) as { data: { dxf: string } };
-      const dxfText = json.data.dxf;
-      await saveAsset.mutateAsync({ dxfContent: dxfText });
+      const vectorized = await vectorizeRaster(
+        base64ToPngFile(asset.imageBase64, buildDownloadFilename(assetTitle, 'png')),
+        vectorizeMode,
+        simplificationLevel
+      );
+      await saveAsset.mutateAsync({ dxfContent: vectorized.dxf, svgContent: vectorized.svg });
     } catch (e) {
       console.error('DXF conversion error', e);
     } finally {
@@ -143,21 +138,12 @@ const VectoriseButtons = ({ asset, conversionId, conversionName }: VectoriseButt
     if (!asset.imageBase64) return;
     setConvertingSvg(true);
     try {
-      const bytes = Uint8Array.from(atob(asset.imageBase64), (c) => c.charCodeAt(0));
-      const blob = new Blob([bytes], { type: 'image/png' });
-      const formData = new FormData();
-      formData.append('image', blob, buildDownloadFilename(assetTitle, 'png'));
-      formData.append('simplification', simplificationLevel);
-      const dxfRes = await api.raw('/api/convert/vectorise-ai', {
-        method: 'POST',
-        body: formData,
-      });
-      if (!dxfRes.ok) throw new Error('Vectorise failed');
-      const dxfJson = (await dxfRes.json()) as { data: { dxf: string } };
-      const dxfText = dxfJson.data.dxf;
-      const svgData = await api.post<{ svg: string }>('/api/convert/dxf-to-svg', { dxf: dxfText });
-      const svg = svgData.svg;
-      await saveAsset.mutateAsync({ svgContent: svg, dxfContent: dxfText });
+      const vectorized = await vectorizeRaster(
+        base64ToPngFile(asset.imageBase64, buildDownloadFilename(assetTitle, 'png')),
+        vectorizeMode,
+        simplificationLevel
+      );
+      await saveAsset.mutateAsync({ svgContent: vectorized.svg, dxfContent: vectorized.dxf });
     } catch (e) {
       console.error('SVG conversion error', e);
     } finally {
@@ -170,6 +156,27 @@ const VectoriseButtons = ({ asset, conversionId, conversionName }: VectoriseButt
       <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider mb-1.5">
         Convert to vector:
       </p>
+      <div className="mb-2 flex gap-1.5">
+        {(['centerline', 'outline'] as VectorizeMode[]).map((mode) => {
+          const active = vectorizeMode === mode;
+          return (
+            <Button
+              key={mode}
+              variant="secondary"
+              size="sm"
+              className={`h-7 px-2.5 text-[10px] uppercase tracking-[0.12em] ${
+                active
+                  ? 'border border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-50'
+                  : 'border border-border/60 text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => setVectorizeMode(mode)}
+              disabled={convertingDxf || convertingSvg}
+            >
+              {mode === 'outline' ? 'Outline' : 'Centre Line'}
+            </Button>
+          );
+        })}
+      </div>
       <div className="flex flex-wrap gap-1.5">
         <Button
           variant="secondary"

@@ -4,36 +4,14 @@ import { useMutation } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Eye, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageWrapper } from '@/components/PageWrapper';
-import { useImageStore, type SimplificationLevel } from '@/lib/store';
+import { useImageStore } from '@/lib/store';
 import { api } from '@/lib/api';
 import { buildDownloadFilename } from '@/lib/asset-naming';
+import { base64ToPngFile, vectorizeRaster } from '@/lib/vectorize';
 
 interface UpdateAssetPayload {
   svgContent?: string;
   dxfContent?: string;
-}
-
-function base64ToFile(base64: string, filename: string): File {
-  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-  return new File([bytes], filename, { type: 'image/png' });
-}
-
-async function vectoriseToDxf(imageFile: File, simplificationLevel: SimplificationLevel): Promise<string> {
-  const form = new FormData();
-  form.append('image', imageFile);
-  form.append('simplification', simplificationLevel);
-  const res = await api.raw('/api/convert/vectorise-ai', { method: 'POST', body: form });
-  if (!res.ok) {
-    const e = await res.json().catch(() => null);
-    throw new Error(e?.error?.message ?? 'Vectorisation failed');
-  }
-  const json = (await res.json()) as { data: { dxf: string } };
-  return json.data.dxf;
-}
-
-async function dxfToSvg(dxf: string): Promise<string> {
-  const res = await api.post<{ svg: string }>('/api/convert/dxf-to-svg', { dxf });
-  return res.svg;
 }
 
 const Result = () => {
@@ -46,6 +24,7 @@ const Result = () => {
   const cachedDxf = useImageStore((s) => s.cachedDxf);
   const setCachedDxf = useImageStore((s) => s.setCachedDxf);
   const simplificationLevel = useImageStore((s) => s.simplificationLevel);
+  const vectorizeMode = useImageStore((s) => s.vectorizeMode);
   const savedConversionId = useImageStore((s) => s.savedConversionId);
   const savedAssetIds = useImageStore((s) => s.savedAssetIds);
   const reset = useImageStore((s) => s.reset);
@@ -94,16 +73,18 @@ const Result = () => {
       if (existing) return { subjectId, dxf: existing };
       const item = resultImages?.find((r) => r.subjectId === subjectId);
       if (!item?.imageBase64) throw new Error('No image data for this subject');
-      const dxf = await vectoriseToDxf(
-        base64ToFile(item.imageBase64, buildDownloadFilename(item.title, 'png')),
+      const vectorized = await vectorizeRaster(
+        base64ToPngFile(item.imageBase64, buildDownloadFilename(item.title, 'png')),
+        vectorizeMode,
         simplificationLevel
       );
-      return { subjectId, dxf };
+      return { subjectId, dxf: vectorized.dxf, svg: vectorized.svg };
     },
-    onSuccess: ({ subjectId, dxf }) => {
+    onSuccess: ({ subjectId, dxf, svg }) => {
       setCachedDxf(subjectId, dxf);
+      setCachedSvg(subjectId, svg);
       downloadText(dxf, buildDownloadFilename(getResultTitle(subjectId), 'dxf'), 'application/dxf');
-      void patchAssetToDb(subjectId, { dxfContent: dxf });
+      void patchAssetToDb(subjectId, { dxfContent: dxf, svgContent: svg });
     },
   });
 
@@ -111,24 +92,20 @@ const Result = () => {
     mutationFn: async (subjectId: number) => {
       const existing = cachedSvg[subjectId];
       if (existing) return { subjectId, svg: existing, dxf: undefined as string | undefined };
-      let dxf = cachedDxf[subjectId];
-      if (!dxf) {
-        const item = resultImages?.find((r) => r.subjectId === subjectId);
-        if (!item?.imageBase64) throw new Error('No image data for this subject');
-        dxf = await vectoriseToDxf(
-          base64ToFile(item.imageBase64, buildDownloadFilename(item.title, 'png')),
-          simplificationLevel
-        );
-      }
-      const svg = await dxfToSvg(dxf);
-      return { subjectId, svg, dxf };
+      const item = resultImages?.find((r) => r.subjectId === subjectId);
+      if (!item?.imageBase64) throw new Error('No image data for this subject');
+      const vectorized = await vectorizeRaster(
+        base64ToPngFile(item.imageBase64, buildDownloadFilename(item.title, 'png')),
+        vectorizeMode,
+        simplificationLevel
+      );
+      return { subjectId, svg: vectorized.svg, dxf: vectorized.dxf };
     },
     onSuccess: ({ subjectId, svg, dxf }) => {
       setCachedSvg(subjectId, svg);
-      void patchAssetToDb(subjectId, { svgContent: svg });
+      void patchAssetToDb(subjectId, { svgContent: svg, dxfContent: dxf });
       if (dxf) {
         setCachedDxf(subjectId, dxf);
-        void patchAssetToDb(subjectId, { dxfContent: dxf });
       }
     },
   });
@@ -142,6 +119,7 @@ const Result = () => {
   const current = resultImages[currentIndex];
   const isVectorizeOnly = flowType === 'vectorize_only';
   const hasMultiple = resultImages.length > 1;
+  const vectorizeModeLabel = vectorizeMode === 'outline' ? 'Outline' : 'Centre Line';
 
   const handleExportSvg = () => {
     if (cachedSvg[current.subjectId]) {
@@ -236,7 +214,7 @@ const Result = () => {
           className="mb-10"
         >
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-400 mb-3">
-            {isVectorizeOnly ? '03 — Vectorization Complete' : '04 — Generation Complete'}
+            {isVectorizeOnly ? `03 — ${vectorizeModeLabel} Complete` : '04 — Generation Complete'}
           </p>
           <div className="flex items-end justify-between gap-4">
             <h1

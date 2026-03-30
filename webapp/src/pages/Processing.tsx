@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useImageStore } from '@/lib/store';
 import { api, ApiError } from '@/lib/api';
 import { buildCombinedSelectionTitle, normalizeAssetTitle, stripExtension } from '@/lib/asset-naming';
+import { base64ToPngFile, vectorizeRaster } from '@/lib/vectorize';
 import type { CreateConversionResponse } from '../../../backend/src/types';
 
 interface LineworkResult {
@@ -31,6 +32,7 @@ const Processing = () => {
   const imageFile = useImageStore((s) => s.imageFile);
   const detectedSubjects = useImageStore((s) => s.detectedSubjects);
   const simplificationLevel = useImageStore((s) => s.simplificationLevel);
+  const vectorizeMode = useImageStore((s) => s.vectorizeMode);
   const setResultImages = useImageStore((s) => s.setResultImages);
   const setCachedSvg = useImageStore((s) => s.setCachedSvg);
   const setCachedDxf = useImageStore((s) => s.setCachedDxf);
@@ -136,37 +138,14 @@ const Processing = () => {
       setStatus('vectorizing');
       setProgress(30);
 
-      const imageBytes = Uint8Array.from(atob(uploadedBase64), (c) => c.charCodeAt(0));
-      const imageBlob = new File([imageBytes], 'image.png', { type: 'image/png' });
-
-      const vectorForm = new FormData();
-      vectorForm.append('image', imageBlob);
-      vectorForm.append('simplification', simplificationLevel);
-
-      const vectorRes = await api.raw('/api/convert/vectorise-ai', {
-        method: 'POST',
-        body: vectorForm,
-      });
-
-      if (!vectorRes.ok) {
-        const errJson = await vectorRes.json().catch(() => null);
-        throw new ApiError(
-          errJson?.error?.message ?? 'Vectorization failed',
-          vectorRes.status,
-          errJson?.error ?? errJson
-        );
-      }
-
-      const vectorData = (await vectorRes.json()) as {
-        data: { dxf: string; preprocessedImageBase64?: string; trialConsumed?: boolean };
-      };
-      const dxfContent = vectorData.data.dxf;
-      const previewBase64 = vectorData.data.preprocessedImageBase64 ?? uploadedBase64;
-
-      setStatus('converting');
-      setProgress(70);
-
-      const { svg: svgContent } = await api.post<{ svg: string }>('/api/convert/dxf-to-svg', { dxf: dxfContent });
+      const vectorized = await vectorizeRaster(
+        base64ToPngFile(uploadedBase64, 'image.png'),
+        vectorizeMode,
+        simplificationLevel
+      );
+      const dxfContent = vectorized.dxf;
+      const svgContent = vectorized.svg;
+      const previewBase64 = vectorized.previewBase64 ?? uploadedBase64;
 
       setProgress(95);
       setStatus('complete');
