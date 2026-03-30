@@ -143,6 +143,15 @@ async function prepareBinaryLinework(inputBuffer: Buffer) {
     .toBuffer();
 }
 
+async function prepareConservativeCenterlineInput(inputBuffer: Buffer) {
+  return sharp(inputBuffer)
+    .flatten({ background: "#ffffff" })
+    .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+    .grayscale()
+    .png()
+    .toBuffer();
+}
+
 async function thinBinaryLinework(inputBuffer: Buffer) {
   return sharp(inputBuffer)
     .flatten({ background: "#ffffff" })
@@ -221,12 +230,7 @@ async function analyzeLineworkCharacteristics(inputBuffer: Buffer) {
 }
 
 async function preprocessLineworkForCenterline(inputBuffer: Buffer) {
-  const resizedPng = await sharp(inputBuffer)
-    .flatten({ background: "#ffffff" })
-    .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
-    .png()
-    .toBuffer();
-
+  const resizedPng = await prepareConservativeCenterlineInput(inputBuffer);
   const fallbackBuffer = await prepareBinaryLinework(resizedPng);
   const analysis = await analyzeLineworkCharacteristics(resizedPng);
   const apiKey = getGeminiApiKey();
@@ -238,8 +242,8 @@ async function preprocessLineworkForCenterline(inputBuffer: Buffer) {
       )}, midDarkRatio=${analysis.midDarkRatio.toFixed(4)}, darkRatio=${analysis.darkRatio.toFixed(4)})`,
     );
     return {
-      vectorizerBuffer: fallbackBuffer,
-      previewBase64: fallbackBuffer.toString("base64"),
+      vectorizerBuffer: resizedPng,
+      previewBase64: resizedPng.toString("base64"),
       aiUsed: false,
       vectorizerOptions: {
         simplification: "low" as const,
