@@ -1264,6 +1264,7 @@ def vectorize_from_array(
     smooth_iterations: int = 1,
     export_mode: ExportMode = "hybrid",
     include_fill: bool = True,
+    preserve_detail: bool = False,
 ) -> VectorizationResult:
     if gray.ndim != 2:
         raise ValueError("Input must be grayscale")
@@ -1276,7 +1277,7 @@ def vectorize_from_array(
 
     foreground, _detail_protection_mask, bridge_block_mask = preprocess_binarize(working_gray)
     skeleton = skeletonize_foreground(foreground)
-    skeleton = _prune_short_spurs(skeleton, max_spur_length=3)
+    skeleton = _prune_short_spurs(skeleton, max_spur_length=1 if preserve_detail else 3)
     skeleton = _bridge_endpoint_gaps(
         skeleton,
         max_gap=10.0 * WORK_SCALE,
@@ -1284,18 +1285,20 @@ def vectorize_from_array(
         iterations=2,
         blocked_mask=bridge_block_mask,
     )
-    skeleton = _prune_short_spurs(skeleton, max_spur_length=2)
+    skeleton = _prune_short_spurs(skeleton, max_spur_length=1 if preserve_detail else 2)
     estimated_stroke_radius = _estimate_stroke_radius(foreground, skeleton=skeleton)
 
     pixel_paths, _endpoints_raw, junctions = _trace_graph_runs(skeleton)
     edge_run_count = len(pixel_paths)
     junction_mapping, junction_anchors = _cluster_junction_anchors(junctions, skeleton.shape)
     pixel_paths = _snap_path_terminals_to_junctions(pixel_paths, junction_mapping)
-    pixel_paths = _remove_tiny_intra_junction_runs(pixel_paths, junction_anchors)
-    pixel_paths = _remove_tiny_connector_runs(pixel_paths)
+    if not preserve_detail:
+        pixel_paths = _remove_tiny_intra_junction_runs(pixel_paths, junction_anchors)
+        pixel_paths = _remove_tiny_connector_runs(pixel_paths)
     pixel_paths = _merge_through_junctions(pixel_paths, junctions=junction_anchors)
     merge_blockers = junction_anchors if junction_anchors else junctions
-    pixel_paths = _merge_collinear_runs(pixel_paths, junctions=merge_blockers)
+    if not preserve_detail:
+        pixel_paths = _merge_collinear_runs(pixel_paths, junctions=merge_blockers)
 
     endpoint_count, junction_count = _infer_terminal_graph_stats(pixel_paths, junction_radius=3.0)
 
@@ -1303,7 +1306,8 @@ def vectorize_from_array(
     for pixel_path in pixel_paths:
         points = _pixel_path_to_points(pixel_path)
         points = _resample_path(points, spacing=1.0)
-        points = _smooth_path(points, iterations=max(1, smooth_iterations))
+        if smooth_iterations > 0:
+            points = _smooth_path(points, iterations=max(1, smooth_iterations))
         points = _simplify_path(points, epsilon=simplify_epsilon)
         points = _collapse_nearly_straight_path(points)
         if len(points) >= 2:
@@ -1367,6 +1371,7 @@ def vectorize_from_image_bytes(
     smooth_iterations: int = 1,
     export_mode: ExportMode = "hybrid",
     include_fill: bool = True,
+    preserve_detail: bool = False,
 ) -> VectorizationResult:
     gray = _decode_grayscale(image_bytes)
     return vectorize_from_array(
@@ -1375,4 +1380,5 @@ def vectorize_from_image_bytes(
         smooth_iterations=smooth_iterations,
         export_mode=export_mode,
         include_fill=include_fill,
+        preserve_detail=preserve_detail,
     )

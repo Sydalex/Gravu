@@ -20,6 +20,7 @@ function getCenterlineVectorizerUrl(): string {
 }
 
 export type SimplificationLevel = "low" | "mid" | "high";
+export type CenterlineExportMode = "hybrid" | "polyline" | "spline";
 
 /**
  * Convert a raster image to centerline DXF format.
@@ -30,21 +31,30 @@ export type SimplificationLevel = "low" | "mid" | "high";
  */
 export async function vectorizeCenterline(
   imageBuffer: Buffer,
-  options: { simplification?: SimplificationLevel } = {},
+  options: {
+    simplification?: SimplificationLevel;
+    exportMode?: CenterlineExportMode;
+    preserveDetail?: boolean;
+  } = {},
 ): Promise<{ dxf: string }> {
   const baseUrl = getCenterlineVectorizerUrl();
   const endpoint = `${baseUrl.replace(/\/+$/, "")}/vectorize/dxf?include_fill=false`;
   const simplification = options.simplification ?? "mid";
+  const exportMode = options.exportMode ?? "hybrid";
+  const preserveDetail = options.preserveDetail === true;
 
   // Build multipart form data with the image
   const formData = new FormData();
   const blob = new Blob([imageBuffer], { type: "image/png" });
   formData.append("file", blob, "image.png");
   formData.append("simplification", simplification);
-  formData.append("export_mode", "hybrid");
+  formData.append("export_mode", exportMode);
+  formData.append("preserve_detail", preserveDetail ? "true" : "false");
 
   try {
-    console.log(`[centerlineVectorizer] Calling ${endpoint} with simplification=${simplification}`);
+    console.log(
+      `[centerlineVectorizer] Calling ${endpoint} with simplification=${simplification}, exportMode=${exportMode}, preserveDetail=${preserveDetail}`
+    );
 
     const response = await fetch(endpoint, {
       method: "POST",

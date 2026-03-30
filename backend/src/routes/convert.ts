@@ -241,6 +241,11 @@ async function preprocessLineworkForCenterline(inputBuffer: Buffer) {
       vectorizerBuffer: fallbackBuffer,
       previewBase64: fallbackBuffer.toString("base64"),
       aiUsed: false,
+      vectorizerOptions: {
+        simplification: "low" as const,
+        exportMode: "polyline" as const,
+        preserveDetail: true,
+      },
     };
   }
 
@@ -295,6 +300,11 @@ Important examples:
       vectorizerBuffer: mergedBuffer,
       previewBase64: mergedBuffer.toString("base64"),
       aiUsed: true,
+      vectorizerOptions: {
+        simplification: "mid" as const,
+        exportMode: "hybrid" as const,
+        preserveDetail: false,
+      },
     };
   } catch (error) {
     console.warn("[vectorise-ai] AI line cleanup failed, falling back to binary cleanup:", error);
@@ -302,6 +312,11 @@ Important examples:
       vectorizerBuffer: fallbackBuffer,
       previewBase64: fallbackBuffer.toString("base64"),
       aiUsed: false,
+      vectorizerOptions: {
+        simplification: "low" as const,
+        exportMode: "polyline" as const,
+        preserveDetail: true,
+      },
     };
   }
 }
@@ -1725,7 +1740,11 @@ convertRouter.post("/vectorise-ai", async (c) => {
     );
 
     // Call centerline vectorizer service (raster-dxf-centerline)
-    const result = await vectorizeCenterline(preprocessed.vectorizerBuffer, { simplification });
+    const result = await vectorizeCenterline(preprocessed.vectorizerBuffer, {
+      simplification: preprocessed.vectorizerOptions?.simplification ?? simplification,
+      exportMode: preprocessed.vectorizerOptions?.exportMode,
+      preserveDetail: preprocessed.vectorizerOptions?.preserveDetail,
+    });
 
     console.log(`[vectorise-ai] Success, DXF length: ${result.dxf.length}`);
     return c.json({
