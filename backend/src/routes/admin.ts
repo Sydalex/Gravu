@@ -6,7 +6,11 @@ import { stripe } from "../stripe";
 import { getBillingConfig } from "../billingConfig";
 import { env } from "../env";
 import { deleteUserAccount } from "../services/deleteUser";
-import { resolveAppPlan, syncMarketplaceDownloadWindow } from "../services/planEntitlements";
+import {
+  getMonthlyPlanGrants,
+  resolveAppPlan,
+  syncMarketplaceDownloadWindow,
+} from "../services/planEntitlements";
 import { getUnifiedCredits } from "../services/credits";
 import type { auth } from "../auth";
 
@@ -358,16 +362,53 @@ adminRouter.post(
   async (c) => {
     const { id } = c.req.param();
     const { plan } = c.req.valid("json");
+    const billingConfig = await getBillingConfig();
+    const existingUser = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        manualPlan: true,
+        liteActivatedAt: true,
+        credits: true,
+        vectorizeCredits: true,
+        subscription: {
+          select: {
+            status: true,
+            stripePriceId: true,
+          },
+        },
+      },
+    });
+
+    if (!existingUser) {
+      return c.json({ error: { message: "User not found", code: "NOT_FOUND" } }, 404);
+    }
+
+    const currentPlan = resolveAppPlan({
+      manualPlan: existingUser.manualPlan,
+      liteActivatedAt: existingUser.liteActivatedAt,
+      subscriptionStatus: existingUser.subscription?.status,
+      subscriptionPriceId: existingUser.subscription?.stripePriceId,
+      billingConfig,
+    });
+    const currentIncludedCredits = getMonthlyPlanGrants(currentPlan).credits;
+    const targetIncludedCredits = getMonthlyPlanGrants(plan).credits;
+    const grantedCredits =
+      targetIncludedCredits > currentIncludedCredits
+        ? targetIncludedCredits - currentIncludedCredits
+        : 0;
 
     const updated = await prisma.user.update({
       where: { id },
       data: {
         manualPlan: plan,
+        credits: grantedCredits > 0 ? { increment: grantedCredits } : undefined,
+        vectorizeCredits: 0,
       },
-      select: { id: true, manualPlan: true },
+      select: { id: true, manualPlan: true, credits: true },
     });
 
-    return c.json({ data: updated });
+    return c.json({ data: { ...updated, grantedCredits } });
   }
 );
 

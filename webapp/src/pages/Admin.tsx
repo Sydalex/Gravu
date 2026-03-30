@@ -461,14 +461,27 @@ export default function Admin() {
 
   const planMutation = useMutation({
     mutationFn: (params: { userId: string; plan: AccountPlan }) =>
-      api.post(`/api/admin/users/${params.userId}/plan`, {
+      api.post<{ id: string; manualPlan: string | null; credits: number; grantedCredits: number }>(
+        `/api/admin/users/${params.userId}/plan`,
+        {
         plan: params.plan,
-      }),
-    onSuccess: async () => {
+        }
+      ),
+    onSuccess: async (result, params) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
         queryClient.invalidateQueries({ queryKey: ["subscription"] }),
       ]);
+      if (result.grantedCredits > 0) {
+        toast.success(`Account tier updated and ${result.grantedCredits} credits granted`);
+        return;
+      }
+
+      if (params.plan === "lite") {
+        toast.success("Lite activated. Lite does not include credits; add credits separately.");
+        return;
+      }
+
       toast.success("Account tier updated");
     },
     onError: (error) => {
