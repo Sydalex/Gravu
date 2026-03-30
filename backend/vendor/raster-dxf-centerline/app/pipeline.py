@@ -125,7 +125,10 @@ def _dense_bridge_block_mask(
     return cv2.dilate(dense_junction_gaps.astype(np.uint8) * 255, kernel, iterations=1) > 0
 
 
-def preprocess_binarize(gray: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def preprocess_binarize(
+    gray: np.ndarray,
+    preserve_detail: bool = False,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     denoised = cv2.medianBlur(gray, 3)
     _, thresholded = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     foreground = thresholded == 0
@@ -142,6 +145,10 @@ def preprocess_binarize(gray: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.nd
     conservative = despeckled > 0
     detail_protection_mask = _dense_detail_protection_mask(conservative)
     bridge_block_mask = _dense_bridge_block_mask(conservative)
+
+    if preserve_detail:
+        preserved = _fill_narrow_enclosed_stroke_cavities(conservative)
+        return preserved, detail_protection_mask, bridge_block_mask
 
     normalized = _normalize_stroke_width(conservative)
     normalized_u8 = normalized.astype(np.uint8) * 255
@@ -1275,7 +1282,10 @@ def vectorize_from_array(
     else:
         working_gray = gray
 
-    foreground, _detail_protection_mask, bridge_block_mask = preprocess_binarize(working_gray)
+    foreground, _detail_protection_mask, bridge_block_mask = preprocess_binarize(
+        working_gray,
+        preserve_detail=preserve_detail,
+    )
     skeleton = skeletonize_foreground(foreground)
     skeleton = _prune_short_spurs(skeleton, max_spur_length=1 if preserve_detail else 3)
     skeleton = _bridge_endpoint_gaps(
