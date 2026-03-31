@@ -43,8 +43,9 @@ const Landing = () => {
 
       {/* Main Content */}
       <main className="relative z-10 flex-1 flex flex-col px-6 md:px-12 pt-12 md:pt-20">
-        {/* Hero Section */}
-        <section className="flex-1 flex flex-col justify-center max-w-4xl">
+        <div className="flex-1 flex gap-12 lg:gap-16">
+          {/* Left column - Hero Section */}
+          <section className="flex-1 flex flex-col justify-center max-w-2xl">
           {/* Large headline */}
           <motion.h1
             initial={{ opacity: 0, y: 40 }}
@@ -97,6 +98,21 @@ const Landing = () => {
             </p>
           </motion.div>
         </section>
+
+        {/* Right column - Toucan illustration (hidden on mobile, shown on lg) */}
+        <motion.div
+          initial={{ opacity: 0, x: 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="hidden lg:flex flex-col justify-center items-center flex-1 min-h-[600px]"
+        >
+          <img
+            src="/toucan-mossy-branch.svg"
+            alt="Toucan on mossy branch with green leaves"
+            className="w-full h-full object-contain max-w-lg drop-shadow-sm"
+          />
+        </motion.div>
+        </div>
 
         {/* Bottom section - formats */}
         <motion.section
