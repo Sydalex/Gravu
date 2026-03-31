@@ -7,6 +7,7 @@ import { PageWrapper } from '@/components/PageWrapper';
 import { useImageStore } from '@/lib/store';
 import { api } from '@/lib/api';
 import { buildDownloadFilename } from '@/lib/asset-naming';
+import { triggerBlobDownload, downloadTextFile } from '@/lib/download';
 import { base64ToPngFile, vectorizeRaster } from '@/lib/vectorize';
 
 interface UpdateAssetPayload {
@@ -52,19 +53,12 @@ const Result = () => {
   );
 
   const downloadBlob = useCallback((blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    triggerBlobDownload(blob, filename);
   }, []);
 
   const downloadText = useCallback(
-    (content: string, filename: string, type: string) => downloadBlob(new Blob([content], { type }), filename),
-    [downloadBlob]
+    (content: string, filename: string, type: string) => downloadTextFile(content, filename, type),
+    []
   );
 
   const dxfMutation = useMutation({

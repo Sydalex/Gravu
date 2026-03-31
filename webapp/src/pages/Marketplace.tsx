@@ -5,6 +5,7 @@ import { Download, FileCode, FileImage, FileType, Layers, Search } from 'lucide-
 import { PageWrapper } from '@/components/PageWrapper';
 import { api } from '@/lib/api';
 import { buildDownloadFilename } from '@/lib/asset-naming';
+import { downloadBase64File, downloadTextFile } from '@/lib/download';
 import { toast } from '@/components/ui/sonner';
 import type {
   MarketplaceDownloadResponse,
@@ -36,28 +37,11 @@ function formatDate(dateStr: string) {
 }
 
 function downloadText(content: string, filename: string, mimeType: string) {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadTextFile(content, filename, mimeType);
 }
 
 function downloadBase64Image(base64: string, filename: string, mimeType: string) {
-  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-  const blob = new Blob([bytes], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadBase64File(base64, filename, mimeType);
 }
 
 function triggerMarketplaceDownload(payload: MarketplaceDownloadResponse) {

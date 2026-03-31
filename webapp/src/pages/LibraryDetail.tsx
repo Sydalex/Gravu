@@ -22,6 +22,7 @@ import { PageWrapper } from '@/components/PageWrapper';
 import { useImageStore, type VectorizeMode } from '@/lib/store';
 import { api } from '@/lib/api';
 import { buildDownloadFilename } from '@/lib/asset-naming';
+import { downloadBase64File, downloadTextFile, triggerBlobDownload } from '@/lib/download';
 import { base64ToPngFile, vectorizeRaster } from '@/lib/vectorize';
 import { toast } from '@/components/ui/sonner';
 import type { ConversionDetail, ConversionAsset } from '../../../backend/src/types';
@@ -37,28 +38,11 @@ function formatDate(dateStr: string) {
 }
 
 function downloadText(content: string, filename: string, mimeType: string) {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadTextFile(content, filename, mimeType);
 }
 
 function downloadBase64Image(base64: string, filename: string, mimeType: string) {
-  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-  const blob = new Blob([bytes], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadBase64File(base64, filename, mimeType);
 }
 
 function getAssetTitle(asset: ConversionAsset, conversionName?: string | null) {
@@ -77,14 +61,7 @@ function convertPngToWebp(base64: string, filename: string) {
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        triggerBlobDownload(blob, filename);
       },
       'image/webp',
       0.92,
