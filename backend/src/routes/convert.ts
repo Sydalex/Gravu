@@ -650,7 +650,7 @@ function entitiesToSvg(entities: DxfEntity[]): string {
   );
   // DXF Y-axis is flipped relative to SVG, apply transform
   svgParts.push(
-    `<g transform="scale(1,-1) translate(0,${-(minY + maxY)})" stroke="black" stroke-width="1" fill="none">`
+    `<g transform="scale(1,-1) translate(0,${-(minY + maxY)})" stroke="black" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" fill="none">`
   );
 
   for (const e of entities) {
