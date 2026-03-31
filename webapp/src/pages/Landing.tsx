@@ -107,7 +107,7 @@ const Landing = () => {
           className="hidden lg:flex flex-col justify-center items-center flex-1 min-h-[600px]"
         >
           <img
-            src="/toucan-mossy-branch.svg"
+            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/toucan-mossy-branch-green-leaves-spiky-plant.png-YLl2mxiKJQRFxxdHOSyowjLve2TNaH.jpeg"
             alt="Toucan on mossy branch with green leaves"
             className="w-full h-full object-contain max-w-lg drop-shadow-sm"
           />
