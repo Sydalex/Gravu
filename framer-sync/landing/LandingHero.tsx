@@ -8,7 +8,7 @@ export const LandingHero = () => {
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="text-[clamp(3rem,12vw,6rem)] font-light leading-[0.95] tracking-tight text-foreground uppercase"
+        className="text-[clamp(3rem,12vw,6rem)] font-normal leading-none tracking-[0.025em] text-foreground uppercase pb-10"
       >
         <span>Photos</span>
         <br />
