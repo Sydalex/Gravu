@@ -8,6 +8,7 @@ export default {
     "./components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
+    "../framer-sync/**/*.{ts,tsx}",
   ],
   prefix: "",
   theme: {
