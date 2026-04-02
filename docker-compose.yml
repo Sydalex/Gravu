@@ -15,8 +15,8 @@ services:
   # ── Frontend ──────────────────────────────────────────────────────────────
   frontend:
     build:
-      context: ./webapp
-      dockerfile: ../Dockerfile.coolify
+      context: .
+      dockerfile: ./Dockerfile.coolify
       target: frontend
     restart: unless-stopped
     # Expose port 80 to the internal Docker network only.
