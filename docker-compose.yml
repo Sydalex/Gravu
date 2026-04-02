@@ -64,6 +64,7 @@ services:
       STRIPE_SECRET: "${STRIPE_SECRET:-}"
       STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET:-}"
       STRIPE_PRO_PRICE_ID: "${STRIPE_PRO_PRICE_ID:-price_placeholder_pro}"
+      STRIPE_EXPERT_PRICE_ID: "${STRIPE_EXPERT_PRICE_ID:-price_placeholder_expert}"
     volumes:
       # Persist the SQLite database across container restarts
       - sqlite_data:/app/data

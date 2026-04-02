@@ -243,21 +243,28 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
             <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Manage Billing</span>
           </button>
           {!isExpert && (
-            <button
-              onClick={() =>
-                activeExpertPriceId
-                  ? checkoutMutation.mutate({
-                      priceId: activeExpertPriceId,
-                      successParam: 'expert',
-                    })
-                  : null
-              }
-              disabled={checkoutMutation.isPending || !activeExpertPriceId}
-              className="flex w-full items-center justify-center gap-2 border border-neutral-900 bg-neutral-900 px-4 py-3 text-white transition-all hover:bg-neutral-800 disabled:opacity-50"
-            >
-              {checkoutMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Crown className="h-3.5 w-3.5" />}
-              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Upgrade to Expert</span>
-            </button>
+            <>
+              <button
+                onClick={() =>
+                  activeExpertPriceId
+                    ? checkoutMutation.mutate({
+                        priceId: activeExpertPriceId,
+                        successParam: 'expert',
+                      })
+                    : null
+                }
+                disabled={checkoutMutation.isPending || !activeExpertPriceId}
+                className="flex w-full items-center justify-center gap-2 border border-neutral-900 bg-neutral-900 px-4 py-3 text-white transition-all hover:bg-neutral-800 disabled:opacity-50"
+              >
+                {checkoutMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Crown className="h-3.5 w-3.5" />}
+                <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Upgrade to Expert</span>
+              </button>
+              {!activeExpertPriceId && (
+                <p className="text-center font-mono text-[9px] text-neutral-400">
+                  Expert plan is not configured yet.
+                </p>
+              )}
+            </>
           )}
           {!subscription?.isAdmin && (
             <button
@@ -312,9 +319,11 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
             <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Go Expert</span>
           </button>
           <p className="text-center font-mono text-[9px] text-neutral-400">
-            {activeProPriceId
+            {activeProPriceId && activeExpertPriceId
               ? 'Free and Lite accounts can keep buying credits, or move into Pro and Expert for recurring monthly entitlements.'
-              : 'No active Pro price configured yet.'}
+              : activeProPriceId
+                ? 'Expert plan is not configured yet.'
+                : 'No active Pro price configured yet.'}
           </p>
           {!subscription?.isAdmin && (
             <button
