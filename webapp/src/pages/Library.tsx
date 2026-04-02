@@ -89,13 +89,13 @@ const Library = () => {
         >
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-400 mb-3">
-              Private Archive
+              Saved Work
             </p>
             <h1
               className="text-4xl md:text-5xl font-light uppercase tracking-[-0.02em] leading-[1.1] text-neutral-900"
               style={{ fontFamily: 'system-ui, sans-serif' }}
             >
-              <span data-bird-perch="library">Archive.</span>
+              <span data-bird-perch="library">My Conversions.</span>
             </h1>
             {!isLoading && list.length > 0 && (
               <p className="mt-2 font-mono text-[10px] text-neutral-400">
@@ -142,7 +142,7 @@ const Library = () => {
             <div className="space-y-2">
               <p className="font-mono text-xs uppercase tracking-[0.1em] text-neutral-900">No conversions yet</p>
               <p className="font-mono text-[10px] text-neutral-400">
-                Your private conversions and editable outputs will appear here.
+                Your saved conversions and editable outputs will appear here.
               </p>
             </div>
             <button

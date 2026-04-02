@@ -263,7 +263,7 @@ const LibraryDetail = () => {
           <p className="text-base font-semibold text-foreground">Conversion not found</p>
           <Button variant="secondary" onClick={() => navigate('/archive')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Archive
+            Back to My Conversions
           </Button>
         </div>
       </PageWrapper>
@@ -300,7 +300,7 @@ const LibraryDetail = () => {
             className="gap-2 text-muted-foreground hover:text-foreground -ml-2"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Archive
+            Back to My Conversions
           </Button>
           <div>
             <h1 className="text-display text-2xl md:text-3xl text-foreground">

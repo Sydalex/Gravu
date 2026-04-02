@@ -2256,7 +2256,7 @@ export default function Admin() {
             <div className="border border-[#e5dbc9] bg-[#fffdf9] p-4">
               <p className="text-[13px] font-medium text-[#332e24]">{deleteDialogUser?.email}</p>
               <p className="mt-1 text-[12px] leading-6 text-muted-foreground">
-                This permanently removes the user, sessions, conversion archive, marketplace submissions, credits, and local billing records from Gravu.
+                This permanently removes the user, sessions, My Conversions history, marketplace submissions, credits, and local billing records from Gravu.
               </p>
             </div>
 

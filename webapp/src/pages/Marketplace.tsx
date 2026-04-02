@@ -134,6 +134,10 @@ const Marketplace = () => {
             </div>
 
             <div className="space-y-4">
+              <p className="max-w-xl text-sm leading-6 text-neutral-500">
+                Marketplace downloads are monthly plan-based allowances. Each listed asset counts once per month, even if you download multiple formats.
+              </p>
+
               <div className="max-w-xl">
                 <label className="relative block">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
@@ -201,7 +205,7 @@ const Marketplace = () => {
                 No marketplace assets yet
               </p>
               <p className="mt-2 max-w-md text-sm leading-6 text-neutral-500">
-                Shared assets will appear here once users list work from their private archive into the
+                Shared assets will appear here once users list work from My Conversions into the
                 marketplace.
               </p>
             </div>

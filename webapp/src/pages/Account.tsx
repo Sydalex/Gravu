@@ -387,7 +387,7 @@ const Account = () => {
           </DialogHeader>
           <div className="space-y-3">
             <p className="font-mono text-[11px] leading-5 text-[#6c6354]">
-              This permanently removes your Gravu account, conversion archive, marketplace submissions, and stored credits.
+              This permanently removes your Gravu account, My Conversions history, marketplace submissions, and stored credits.
             </p>
             <p className="font-mono text-[11px] leading-5 text-[#b42318]">
               Active Stripe subscriptions are canceled before deletion. This cannot be undone.
