@@ -1,3 +1,5 @@
+import { isPreviewAuthBypassEnabled, previewSubscription } from "@/lib/preview-mode";
+
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "";
 
 class ApiError extends Error {
@@ -13,6 +15,10 @@ interface ApiResponse<T> {
 }
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  if (isPreviewAuthBypassEnabled() && endpoint === "/api/payments/subscription") {
+    return previewSubscription as T;
+  }
+
   const url = `${API_BASE_URL}${endpoint}`;
 
   const config: RequestInit = {

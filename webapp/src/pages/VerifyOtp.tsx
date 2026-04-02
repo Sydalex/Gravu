@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { authClient, signOut } from '@/lib/auth-client';
 import { api } from '@/lib/api';
+import { isPreviewAuthBypassEnabled } from '@/lib/preview-mode';
 import { PageWrapper } from '@/components/PageWrapper';
 
 const VerifyOtp = () => {
@@ -29,6 +30,11 @@ const VerifyOtp = () => {
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otp.trim() || otp.length < 6) return;
+
+    if (isPreviewAuthBypassEnabled()) {
+      navigate('/app');
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -75,6 +81,12 @@ const VerifyOtp = () => {
   };
 
   const handleResend = async () => {
+    if (isPreviewAuthBypassEnabled()) {
+      setResent(true);
+      setTimeout(() => setResent(false), 3000);
+      return;
+    }
+
     setResending(true);
     setError(null);
     setResent(false);

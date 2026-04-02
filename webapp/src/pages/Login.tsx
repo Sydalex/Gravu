@@ -4,6 +4,7 @@ import { CheckCircle2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { authClient } from '@/lib/auth-client';
+import { isPreviewAuthBypassEnabled } from '@/lib/preview-mode';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 
 const Login = () => {
@@ -40,6 +41,10 @@ const Login = () => {
     if (result.error) {
       setError(result.error.message || 'Failed to send verification code');
     } else {
+      if (isPreviewAuthBypassEnabled()) {
+        navigate('/app');
+        return;
+      }
       navigate(`/verify-otp?email=${encodeURIComponent(email.trim())}&mode=sign-in`);
     }
   };

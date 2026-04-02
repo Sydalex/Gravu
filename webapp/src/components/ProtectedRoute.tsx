@@ -1,9 +1,19 @@
 import { Navigate } from "react-router-dom";
 import { useSession } from "@/lib/auth-client";
+import { isPreviewAuthBypassEnabled } from "@/lib/preview-mode";
 import { Loader2 } from "lucide-react";
 import { NavBar } from "@/components/NavBar";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  if (isPreviewAuthBypassEnabled()) {
+    return (
+      <>
+        <NavBar />
+        {children}
+      </>
+    );
+  }
+
   const { data: session, isPending } = useSession();
 
   if (isPending) {

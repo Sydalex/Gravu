@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { authClient } from '@/lib/auth-client';
+import { isPreviewAuthBypassEnabled } from '@/lib/preview-mode';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 
 const Register = () => {
@@ -30,6 +31,11 @@ const Register = () => {
       setLoading(false);
       setError(result.error.message || 'Failed to create account');
     } else {
+      if (isPreviewAuthBypassEnabled()) {
+        setLoading(false);
+        navigate('/app');
+        return;
+      }
       const otpResult = await authClient.emailOtp.sendVerificationOtp({
         email: normalizedEmail,
         type: 'email-verification',

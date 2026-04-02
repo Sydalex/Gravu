@@ -1,8 +1,13 @@
 import { Navigate } from "react-router-dom";
 import { useSession } from "@/lib/auth-client";
+import { isPreviewAuthBypassEnabled } from "@/lib/preview-mode";
 import { Loader2 } from "lucide-react";
 
 export function GuestRoute({ children }: { children: React.ReactNode }) {
+  if (isPreviewAuthBypassEnabled()) {
+    return <>{children}</>;
+  }
+
   const { data: session, isPending } = useSession();
 
   if (isPending) {

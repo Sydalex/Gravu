@@ -2,6 +2,7 @@ import { Navigate } from "react-router-dom";
 import { useSession } from "@/lib/auth-client";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { isPreviewAuthBypassEnabled } from "@/lib/preview-mode";
 import { Loader2 } from "lucide-react";
 import { NavBar } from "@/components/NavBar";
 
@@ -11,6 +12,10 @@ interface SubscriptionStatus {
 }
 
 export function AdminRoute({ children }: { children: React.ReactNode }) {
+  if (isPreviewAuthBypassEnabled()) {
+    return <Navigate to="/app" replace />;
+  }
+
   const { data: session, isPending } = useSession();
 
   const { data: subscription, isLoading: subLoading } = useQuery({
