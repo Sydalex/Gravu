@@ -274,7 +274,7 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
             >
               {buyMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
               <span className="font-mono text-[9px] uppercase tracking-[0.1em]">
-                {activeCreditsPackAmount ? `Buy ${activeCreditsPackAmount} credits` : 'Credit pack unavailable'}
+                {activeCreditsPackAmount ? 'Buy credits' : 'Credit pack unavailable'}
               </span>
             </button>
           )}
@@ -331,7 +331,7 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
             >
               {buyMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
               <span className="font-mono text-[9px] uppercase tracking-[0.1em]">
-                {activeCreditsPackAmount ? `Buy ${activeCreditsPackAmount} credits` : 'Credit pack unavailable'}
+                {activeCreditsPackAmount ? 'Buy credits' : 'Credit pack unavailable'}
               </span>
             </button>
           )}
