@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { Link } from '@framer-runtime/router';
+import { motion } from '@framer-runtime/motion';
 
 export const LandingHero = () => {
   return (

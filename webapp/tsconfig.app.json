@@ -23,8 +23,10 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@framer-sync/*": ["../framer-sync/*"],
+      "@framer-runtime/*": ["./src/framer-runtime/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "../framer-sync"]
 }

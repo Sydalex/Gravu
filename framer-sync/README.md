@@ -2,7 +2,9 @@
 
 This folder is the safe Framer/GitHub sync slice for Gravu.
 
-Sync this folder, not the whole `webapp/` directory.
+Use the Framer GitHub plugin against:
+
+- `framer-sync`
 
 ## Safe to edit here
 
@@ -19,14 +21,21 @@ Sync this folder, not the whole `webapp/` directory.
 - account, admin, marketplace, archive pages
 - API calls, React Query, Zustand state, billing logic
 
-## Recommended plugin target
-
-Use your Framer GitHub code sync against:
-
-- `webapp/src/framer`
+## Current scope
 
 The first production slice is:
 
-- `webapp/src/framer/landing`
+- `framer-sync/landing`
 
-Those components are consumed by `/src/pages/Landing.tsx`.
+Those components are consumed by:
+
+- `webapp/src/pages/Landing.tsx`
+
+## Import rule
+
+Inside `framer-sync`, prefer these imports instead of direct app package imports:
+
+- `@framer-runtime/motion`
+- `@framer-runtime/router`
+
+That keeps the top-level sync folder buildable from the Vite app.

@@ -4,7 +4,9 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@framer-sync/*": ["../framer-sync/*"],
+      "@framer-runtime/*": ["./src/framer-runtime/*"]
     },
     "noImplicitAny": false,
     "noUnusedParameters": false,

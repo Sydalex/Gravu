@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Footer } from '@/components/Footer';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
-import { LandingFormats, LandingHero, LandingStory } from '@/framer/landing';
+import { LandingFormats, LandingHero, LandingStory } from '@framer-sync/landing';
 
 const Landing = () => {
   return (
