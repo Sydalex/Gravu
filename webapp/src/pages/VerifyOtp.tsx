@@ -1,13 +1,12 @@
 import { useState } from 'react';
-import { useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { ShieldCheck, ArrowLeft, Loader2, RotateCw } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
+import { useNavigate, useLocation, Navigate, Link } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { authClient, signOut } from '@/lib/auth-client';
 import { api } from '@/lib/api';
 import { isPreviewAuthBypassEnabled } from '@/lib/preview-mode';
-import { PageWrapper } from '@/components/PageWrapper';
+import { HamburgerMenu } from '@/components/HamburgerMenu';
 
 const VerifyOtp = () => {
   const navigate = useNavigate();
@@ -113,116 +112,181 @@ const VerifyOtp = () => {
   };
 
   return (
-    <PageWrapper className="flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        {/* Back link */}
-        <motion.button
-          initial={{ opacity: 0, x: -8 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-          onClick={() => navigate('/login')}
-          className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to sign in
-        </motion.button>
-
-        {/* Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-card border border-border rounded-2xl p-8"
-        >
-          <div className="mb-6 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10">
-              <ShieldCheck className="h-6 w-6 text-accent" />
-            </div>
-            <h2 className="text-lg font-semibold text-foreground">
-              {mode === 'email-verification' ? 'Verify your email' : 'Check your email'}
-            </h2>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              {mode === 'email-verification' ? 'We sent a 6-digit verification code to' : 'We sent a 6-digit code to'}
-            </p>
-            <p className="mt-0.5 font-mono text-sm text-foreground">
-              {email}
-            </p>
-          </div>
-
-          <form onSubmit={handleVerify} className="space-y-4">
-            <div className="space-y-2">
-              <label
-                htmlFor="otp"
-                className="text-sm font-medium text-foreground"
-              >
-                Verification code
-              </label>
-              <Input
-                id="otp"
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                placeholder="000000"
-                value={otp}
-                onChange={(e) => handleOtpChange(e.target.value)}
-                className="h-14 bg-secondary border-border rounded-xl text-center font-mono text-2xl tracking-[0.4em] text-foreground placeholder:text-muted-foreground/40 focus-visible:ring-accent"
-                autoComplete="one-time-code"
-                autoFocus
-              />
-            </div>
-
-            {error ? (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-sm text-destructive text-center"
-              >
-                {error}
-              </motion.p>
-            ) : null}
-
-            <Button
-              type="submit"
-              disabled={loading || otp.length < 6}
-              className="h-12 w-full bg-accent text-accent-foreground rounded-xl font-medium hover:bg-accent/90 transition-colors"
-            >
-              {loading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <ShieldCheck className="mr-2 h-4 w-4" />
-              )}
-              {loading ? "Verifying..." : mode === 'email-verification' ? 'Verify Email' : 'Verify & Sign In'}
-            </Button>
-          </form>
-
-          <div className="mt-5 text-center">
-            <button
-              type="button"
-              onClick={handleResend}
-              disabled={resending}
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-            >
-              {resending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <RotateCw className="h-3.5 w-3.5" />
-              )}
-              {resending ? "Sending..." : resent ? "Code sent!" : "Resend code"}
-            </button>
-          </div>
+    <div className="relative min-h-screen bg-[#f8f8f6] overflow-hidden flex flex-col">
+      {/* Header */}
+      <header className="relative z-20 flex items-center justify-between px-6 py-6 md:px-12 md:py-8">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
+          <Link to="/welcome" className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-neutral-900" />
+            <span className="h-2 w-2 rounded-full bg-neutral-900" />
+          </Link>
+          <span className="font-mono text-sm uppercase tracking-[0.2em] text-neutral-500">Gravu</span>
         </motion.div>
+        <nav className="flex items-center gap-6">
+          <Link to="/login" className="text-sm uppercase tracking-widest text-foreground/50 hover:text-foreground transition-colors">
+            Back
+          </Link>
+          <HamburgerMenu />
+        </nav>
+      </header>
 
-        {/* Tip */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.5 }}
-          className="mt-5 text-center text-xs text-muted-foreground"
-        >
-          Didn't receive it? Check your spam folder or try again.
-        </motion.p>
-      </div>
-    </PageWrapper>
+      {/* Main */}
+      <main className="relative z-10 flex flex-1 flex-col lg:flex-row">
+        {/* Left — editorial headline */}
+        <div className="hidden lg:flex lg:flex-1 flex-col justify-end px-12 pb-20 pt-12">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            <h1 className="text-[clamp(3rem,8vw,5.5rem)] font-light leading-[0.95] tracking-tight text-foreground uppercase">
+              <span>Verify</span>
+              <br />
+              your email.
+            </h1>
+            <div className="mt-10 flex items-center gap-4">
+              <span className="h-px w-12 bg-foreground/30" />
+              <span className="text-sm uppercase tracking-widest text-foreground/40">Gravu</span>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Right — form */}
+        <div className="flex flex-1 flex-col justify-center px-6 py-12 lg:px-16 lg:max-w-lg">
+          {/* Mobile wordmark */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-12 lg:hidden"
+          >
+            <h1 className="text-4xl font-light uppercase tracking-tight text-foreground">
+              Verify your email.
+            </h1>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="w-full max-w-sm"
+          >
+            {/* Section label */}
+            <div className="mb-8 flex items-center gap-4">
+              <span className="h-px w-8 bg-foreground/20" />
+              <span className="text-xs uppercase tracking-widest text-foreground/40">
+                {mode === 'email-verification' ? 'Email verification' : 'Sign in'}
+              </span>
+            </div>
+
+            {/* Email display */}
+            <div className="mb-6 border border-foreground/10 bg-foreground/5 px-4 py-3">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-foreground/40 mb-1">
+                Code sent to
+              </p>
+              <p className="font-mono text-sm text-foreground break-all">{email}</p>
+            </div>
+
+            <form onSubmit={handleVerify} className="space-y-5">
+              {/* OTP Input */}
+              <div className="group relative">
+                <Input
+                  id="otp"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder=" "
+                  value={otp}
+                  onChange={(e) => handleOtpChange(e.target.value)}
+                  className="peer h-14 w-full rounded-none border-0 border-b border-foreground/20 bg-transparent px-0 pt-5 pb-2 text-center font-mono text-2xl tracking-[0.4em] text-foreground placeholder-transparent transition-all focus:border-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                  autoComplete="one-time-code"
+                  autoFocus
+                />
+                <label
+                  htmlFor="otp"
+                  className="pointer-events-none absolute left-0 top-1.5 text-[10px] uppercase tracking-widest text-foreground/40 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-sm peer-placeholder-shown:tracking-normal peer-focus:top-1.5 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:uppercase peer-focus:tracking-widest"
+                >
+                  6-digit code
+                </label>
+              </div>
+
+              <AnimatePresence>
+                {error ? (
+                  <motion.p
+                    key="error"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    className="text-xs text-destructive uppercase tracking-widest"
+                  >
+                    {error}
+                  </motion.p>
+                ) : null}
+              </AnimatePresence>
+
+              {/* Submit — pill style matching Landing */}
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  disabled={loading || otp.length < 6}
+                  className="group relative disabled:opacity-40"
+                >
+                  <span className="absolute -inset-1 rounded-full border border-dashed border-foreground/20 animate-spin-slow" style={{ animationDuration: '12s' }} />
+                  <span className="relative inline-flex items-center gap-3 rounded-full border-2 border-foreground px-8 py-4 text-sm uppercase tracking-widest text-foreground transition-all group-hover:bg-foreground group-hover:text-background group-disabled:pointer-events-none">
+                    {loading ? (
+                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Verifying...</>
+                    ) : (
+                      mode === 'email-verification' ? 'Verify Email' : 'Verify & Sign In'
+                    )}
+                  </span>
+                </button>
+              </div>
+            </form>
+
+            {/* Resend option */}
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resending}
+                className="text-xs uppercase tracking-widest text-foreground/40 hover:text-foreground transition-colors disabled:opacity-40"
+              >
+                {resending ? (
+                  <><Loader2 className="inline h-3 w-3 animate-spin mr-1" />Sending...</>
+                ) : resent ? (
+                  'Code sent!'
+                ) : (
+                  'Resend code'
+                )}
+              </button>
+            </div>
+
+            {/* Tip */}
+            <div className="mt-12 flex items-center gap-4">
+              <span className="h-px flex-1 bg-foreground/10" />
+              <span className="text-xs uppercase tracking-widest text-foreground/30 text-center">
+                Check spam folder
+              </span>
+              <span className="h-px flex-1 bg-foreground/10" />
+            </div>
+          </motion.div>
+        </div>
+      </main>
+
+      {/* Bottom strip */}
+      <footer className="relative z-10 border-t border-foreground/10 px-6 py-5 md:px-12">
+        <div className="flex flex-wrap items-center gap-6 text-xs uppercase tracking-widest text-foreground/30">
+          <span>SVG</span>
+          <span className="h-1 w-1 rounded-full bg-foreground/20" />
+          <span>DXF</span>
+          <span className="h-1 w-1 rounded-full bg-foreground/20" />
+          <span>PNG</span>
+          <span className="h-1 w-1 rounded-full bg-foreground/20" />
+          <span>Vectorworks</span>
+          <span className="h-1 w-1 rounded-full bg-foreground/20" />
+          <span>AutoCAD</span>
+        </div>
+      </footer>
+    </div>
   );
 };
 

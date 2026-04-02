@@ -129,36 +129,32 @@ const VectoriseButtons = ({ asset, conversionId, conversionName }: VectoriseButt
   };
 
   return (
-    <div className="mt-2 pt-2 border-t border-border/50">
-      <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider mb-1.5">
+    <div className="mt-2 pt-2 border-t border-neutral-100">
+      <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-neutral-400 mb-1.5">
         Convert to vector:
       </p>
       <div className="mb-2 flex gap-1.5">
         {(['centerline', 'outline'] as VectorizeMode[]).map((mode) => {
           const active = vectorizeMode === mode;
           return (
-            <Button
+            <button
               key={mode}
-              variant="secondary"
-              size="sm"
-              className={`h-7 px-2.5 text-[10px] uppercase tracking-[0.12em] ${
+              className={`h-7 px-2.5 font-mono text-[9px] uppercase tracking-[0.1em] transition-colors ${
                 active
-                  ? 'border border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-50'
-                  : 'border border-border/60 text-muted-foreground hover:text-foreground'
+                  ? 'border border-orange-500 bg-orange-500/10 text-orange-600'
+                  : 'border border-neutral-200 text-neutral-500 hover:border-neutral-400 hover:text-neutral-700'
               }`}
               onClick={() => setVectorizeMode(mode)}
               disabled={convertingDxf || convertingSvg}
             >
               {mode === 'outline' ? 'Outline' : 'Centre Line'}
-            </Button>
+            </button>
           );
         })}
       </div>
       <div className="flex flex-wrap gap-1.5">
-        <Button
-          variant="secondary"
-          size="sm"
-          className="gap-1.5 h-7 text-xs border border-accent/20 hover:border-accent/50 hover:text-accent"
+        <button
+          className="flex items-center gap-1.5 h-7 px-2.5 border border-neutral-200 font-mono text-[9px] uppercase tracking-[0.1em] text-neutral-600 transition-colors hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
           onClick={handleConvertSvg}
           disabled={convertingSvg || convertingDxf}
         >
@@ -167,12 +163,10 @@ const VectoriseButtons = ({ asset, conversionId, conversionName }: VectoriseButt
           ) : (
             <FileCode className="h-3 w-3" />
           )}
-          Convert &rarr; SVG
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="gap-1.5 h-7 text-xs border border-accent/20 hover:border-accent/50 hover:text-accent"
+          Convert → SVG
+        </button>
+        <button
+          className="flex items-center gap-1.5 h-7 px-2.5 border border-neutral-200 font-mono text-[9px] uppercase tracking-[0.1em] text-neutral-600 transition-colors hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
           onClick={handleConvertDxf}
           disabled={convertingDxf || convertingSvg}
         >
@@ -181,8 +175,8 @@ const VectoriseButtons = ({ asset, conversionId, conversionName }: VectoriseButt
           ) : (
             <FileType className="h-3 w-3" />
           )}
-          Convert &rarr; DXF
-        </Button>
+          Convert → DXF
+        </button>
       </div>
     </div>
   );
@@ -241,11 +235,11 @@ const LibraryDetail = () => {
     return (
       <PageWrapper className="pt-[72px]">
         <div className="mx-auto max-w-4xl px-4 py-8 space-y-6">
-          <div className="h-8 w-40 bg-secondary rounded animate-pulse" />
-          <div className="h-4 w-64 bg-secondary rounded animate-pulse" />
+          <div className="h-8 w-40 bg-neutral-100 animate-pulse" />
+          <div className="h-4 w-64 bg-neutral-100 animate-pulse" />
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="aspect-square rounded-xl bg-secondary animate-pulse" />
+              <div key={i} className="aspect-square bg-neutral-100 animate-pulse" />
             ))}
           </div>
         </div>
@@ -256,15 +250,18 @@ const LibraryDetail = () => {
   if (isError || !conversion) {
     return (
       <PageWrapper className="pt-[72px]">
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-destructive/20 bg-destructive/10">
-            <AlertCircle className="h-7 w-7 text-destructive" />
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+          <div className="flex h-16 w-16 items-center justify-center border border-red-200 bg-red-50">
+            <AlertCircle className="h-7 w-7 text-red-500" />
           </div>
-          <p className="text-base font-semibold text-foreground">Conversion not found</p>
-          <Button variant="secondary" onClick={() => navigate('/archive')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
+          <p className="font-mono text-xs uppercase tracking-[0.15em] text-neutral-900">Conversion not found</p>
+          <button
+            onClick={() => navigate('/archive')}
+            className="flex items-center gap-2 border border-neutral-300 bg-transparent px-6 py-3 font-mono text-xs uppercase tracking-[0.1em] text-neutral-700 transition-all hover:border-neutral-400"
+          >
+            <ArrowLeft className="h-4 w-4" />
             Back to Archive
-          </Button>
+          </button>
         </div>
       </PageWrapper>
     );
@@ -297,23 +294,27 @@ const LibraryDetail = () => {
             variant="ghost"
             size="sm"
             onClick={() => navigate('/archive')}
-            className="gap-2 text-muted-foreground hover:text-foreground -ml-2"
+            className="gap-2 text-neutral-400 hover:text-neutral-900 -ml-2"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Archive
+            <span className="font-mono text-xs uppercase tracking-[0.1em]">Back to Archive</span>
           </Button>
           <div>
-            <h1 className="text-display text-2xl md:text-3xl text-foreground">
-              {conversion.name ?? 'Untitled Conversion'}
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-400 mb-3">
+              {isVectorize ? 'Vectorize' : 'Photo to Vector'}
+            </p>
+            <h1
+              className="text-4xl md:text-5xl font-light uppercase tracking-[-0.02em] leading-[1.1] text-neutral-900"
+              style={{ fontFamily: 'system-ui, sans-serif' }}
+            >
+              {conversion.name ?? 'Untitled'}
             </h1>
-            <div className="flex flex-wrap items-center gap-3 mt-2">
-              <span className="font-data rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
-                {isVectorize ? 'Vectorize' : 'Linework'}
-              </span>
-              <span className="font-data text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-4 mt-3">
+              <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400">
                 {formatDate(conversion.createdAt)}
               </span>
-              <span className="font-data text-xs text-muted-foreground">
+              <span className="h-1 w-1 rounded-full bg-neutral-300" />
+              <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400">
                 {conversion.assets.length}{' '}
                 {conversion.assets.length === 1 ? 'asset' : 'assets'}
               </span>
@@ -330,15 +331,12 @@ const LibraryDetail = () => {
             className="space-y-3"
           >
             <div className="flex items-center gap-2">
-              <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <ImageIcon className="h-3.5 w-3.5 text-neutral-400" />
+              <h2 className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400">
                 Uploaded Image
               </h2>
-              <span className="rounded-full bg-secondary border border-border px-1.5 py-0.5 text-[10px] font-data text-muted-foreground">
-                1
-              </span>
             </div>
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="border border-neutral-200 bg-white overflow-hidden">
               <div className="bg-white flex items-center justify-center p-4 min-h-[200px]">
                 <img
                   src={`data:image/png;base64,${conversion.originalImageBase64}`}
@@ -346,14 +344,11 @@ const LibraryDetail = () => {
                   className="mx-auto max-h-[400px] object-contain"
                 />
               </div>
-              <div className="px-4 py-3 flex items-center gap-2 border-t border-border">
-                <span className="font-data text-xs text-muted-foreground mr-auto">
+              <div className="px-4 py-3 flex items-center gap-2 border-t border-neutral-100">
+                <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-neutral-400 mr-auto">
                   original
                 </span>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="gap-1.5 h-7 text-xs"
+                <button
                   onClick={() =>
                     downloadBase64Image(
                       conversion.originalImageBase64!,
@@ -361,10 +356,11 @@ const LibraryDetail = () => {
                       'image/png',
                     )
                   }
+                  className="flex items-center gap-1.5 border border-neutral-200 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em] text-neutral-700 transition-colors hover:border-neutral-400"
                 >
                   <Download className="h-3 w-3" />
                   Download
-                </Button>
+                </button>
               </div>
             </div>
           </motion.div>
@@ -379,12 +375,12 @@ const LibraryDetail = () => {
             className="space-y-3"
           >
             <div className="flex items-center gap-2">
-              <FileImage className="h-3.5 w-3.5 text-muted-foreground" />
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <FileImage className="h-3.5 w-3.5 text-neutral-400" />
+              <h2 className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400">
                 Result PNGs
               </h2>
-              <span className="rounded-full bg-secondary border border-border px-1.5 py-0.5 text-[10px] font-data text-muted-foreground">
-                {pngAssets.length}
+              <span className="font-mono text-[10px] text-neutral-400">
+                ({pngAssets.length})
               </span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -397,7 +393,7 @@ const LibraryDetail = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.14 + index * 0.06 }}
-                    className="rounded-xl border border-border bg-card overflow-hidden"
+                    className="border border-neutral-200 bg-white overflow-hidden"
                   >
                     {/* Preview */}
                     <div className="bg-white min-h-[200px] flex items-center justify-center p-4">
@@ -409,12 +405,12 @@ const LibraryDetail = () => {
                     </div>
 
                     {/* Actions */}
-                    <div className="px-4 py-3 border-t border-border space-y-0">
+                    <div className="px-4 py-3 border-t border-neutral-100 space-y-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-data text-xs text-muted-foreground mr-auto">
+                        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-neutral-500 mr-auto">
                           {assetTitle}
                           {isVectorised ? (
-                            <span className="ml-2 text-[10px] text-accent/70">
+                            <span className="ml-2 text-orange-500">
                               · vectorised
                             </span>
                           ) : null}
@@ -512,12 +508,12 @@ const LibraryDetail = () => {
             className="space-y-3"
           >
             <div className="flex items-center gap-2">
-              <Layers className="h-3.5 w-3.5 text-muted-foreground" />
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <Layers className="h-3.5 w-3.5 text-neutral-400" />
+              <h2 className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400">
                 Vector Files
               </h2>
-              <span className="rounded-full bg-secondary border border-border px-1.5 py-0.5 text-[10px] font-data text-muted-foreground">
-                {vectorAssets.length}
+              <span className="font-mono text-[10px] text-neutral-400">
+                ({vectorAssets.length})
               </span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -530,7 +526,7 @@ const LibraryDetail = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.2 + index * 0.06 }}
-                    className="rounded-xl border border-border bg-card overflow-hidden"
+                    className="border border-neutral-200 bg-white overflow-hidden"
                   >
                   {/* SVG preview */}
                   {asset.svgContent ? (
@@ -541,15 +537,15 @@ const LibraryDetail = () => {
                       />
                     </div>
                   ) : (
-                    <div className="bg-secondary/30 min-h-[100px] flex items-center justify-center p-4 gap-2 text-muted-foreground/50">
+                    <div className="bg-neutral-50 min-h-[100px] flex items-center justify-center p-4 gap-2 text-neutral-400">
                       <FileArchive className="h-8 w-8" />
-                      <span className="text-xs">DXF only</span>
+                      <span className="font-mono text-[10px] uppercase tracking-[0.1em]">DXF only</span>
                     </div>
                   )}
 
                   {/* Download actions */}
-                  <div className="px-4 py-3 flex flex-wrap items-center gap-2 border-t border-border">
-                    <span className="font-data text-xs text-muted-foreground mr-auto">
+                  <div className="px-4 py-3 flex flex-wrap items-center gap-2 border-t border-neutral-100">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-neutral-500 mr-auto">
                       {assetTitle}
                     </span>
                     {asset.svgContent ? (
