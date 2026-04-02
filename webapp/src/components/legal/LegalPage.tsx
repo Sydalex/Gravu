@@ -64,7 +64,7 @@ export const LegalPage = ({
           transition={{ duration: 0.45 }}
           className="border-b border-[#e7e0d5] pb-10"
         >
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.45fr)] lg:gap-12">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-12">
             <div className="space-y-5">
               <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-[#8a8378]">
                 <span className="h-px w-8 bg-[#d8d0c3]" />
@@ -78,7 +78,7 @@ export const LegalPage = ({
               </h1>
             </div>
 
-            <div className="space-y-5 lg:max-w-[52ch]">
+            <div className="space-y-5 lg:max-w-[52ch] flex flex-col justify-center">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[11px] uppercase tracking-[0.18em] text-[#8a8378]">
                 <span>Gravu</span>
                 <span className="h-1 w-1 rounded-full bg-[#d8d0c3]" />
