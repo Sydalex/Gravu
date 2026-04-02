@@ -29,6 +29,7 @@ model User {
   marketplaceDownloadsUsed        Int      @default(0)
   marketplaceDownloadsPeriodStart DateTime @default(now())
   trialDevices     TrialDevice[] @relation("TrialDeviceFirstUser")
+  marketplaceAssetDownloads MarketplaceAssetDownload[]
 }
 
 model Conversion {
@@ -55,6 +56,20 @@ model ConversionAsset {
   marketplaceCategory      String?
   marketplaceDownloadCount Int        @default(0)
   createdAt                DateTime   @default(now())
+  marketplaceAssetDownloads MarketplaceAssetDownload[]
+}
+
+model MarketplaceAssetDownload {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assetId     String
+  asset       ConversionAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  periodStart DateTime
+  createdAt   DateTime        @default(now())
+
+  @@unique([userId, assetId, periodStart])
+  @@index([userId, periodStart])
 }
 
 model Session {

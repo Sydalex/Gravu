@@ -166,8 +166,8 @@ const Marketplace = () => {
               {subscription ? (
                 <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-400">
                   {subscription.isAdmin || subscription.marketplaceDownloadsRemaining === null
-                    ? 'Marketplace downloads: unlimited'
-                    : `Marketplace downloads left this month: ${subscription.marketplaceDownloadsRemaining} / ${subscription.marketplaceDownloadsLimit ?? 0}`}
+                    ? 'Marketplace asset downloads: unlimited'
+                    : `Marketplace assets left this month: ${subscription.marketplaceDownloadsRemaining} / ${subscription.marketplaceDownloadsLimit ?? 0}`}
                 </div>
               ) : null}
             </div>

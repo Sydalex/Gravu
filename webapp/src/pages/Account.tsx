@@ -41,24 +41,24 @@ const planFeatures: Record<SubscriptionStatus['plan'], string[]> = {
     'One free successful process',
     'Buy credits to continue on demand',
     'Marketplace submissions go to review automatically',
-    '5 marketplace downloads each month',
+    '5 marketplace asset downloads each month',
   ],
   lite: [
     'Pay-as-you-go with credit purchases',
     'Marketplace submissions go to review automatically',
-    '5 marketplace downloads each month',
+    '5 marketplace asset downloads each month',
     'Photo to Vector and Vectorize Linework',
   ],
   pro: [
     '70 credits added on each paid invoice',
     'Marketplace submissions go to review automatically',
-    '30 marketplace downloads each month',
+    '30 marketplace asset downloads each month',
     'Stripe billing management and extra credit purchases',
   ],
   expert: [
     '300 credits added on each paid invoice',
     'Private by default; submit to marketplace only when you choose',
-    'Unlimited marketplace downloads',
+    'Unlimited marketplace asset downloads',
     'Highest-volume plan for heavy production use',
   ],
 };
@@ -199,8 +199,8 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
           <p className="font-mono text-[10px] text-neutral-400">Marketplace</p>
           <p className="mt-3 break-words font-mono text-sm font-semibold text-neutral-900">
             {subscription?.isAdmin || subscription?.marketplaceDownloadsRemaining === null
-              ? 'Unlimited downloads'
-              : `${subscription?.marketplaceDownloadsRemaining ?? 0} / ${subscription?.marketplaceDownloadsLimit ?? 0} downloads left`}
+              ? 'Unlimited asset downloads'
+              : `${subscription?.marketplaceDownloadsRemaining ?? 0} / ${subscription?.marketplaceDownloadsLimit ?? 0} assets left`}
           </p>
         </div>
       </div>

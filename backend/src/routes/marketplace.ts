@@ -131,6 +131,7 @@ marketplaceRouter.post(
           manualPlan: true,
           liteActivatedAt: true,
           marketplaceDownloadsUsed: true,
+          marketplaceDownloadsPeriodStart: true,
         },
       }),
       prisma.subscription.findUnique({
@@ -163,11 +164,31 @@ marketplaceRouter.post(
     });
     const downloadsUsed =
       syncedDownloads?.marketplaceDownloadsUsed ?? dbUser.marketplaceDownloadsUsed;
+    const downloadsPeriodStart =
+      syncedDownloads?.marketplaceDownloadsPeriodStart ?? dbUser.marketplaceDownloadsPeriodStart;
     const downloadsRemaining = dbUser.isAdmin
       ? null
       : getMarketplaceDownloadsRemaining(plan, downloadsUsed);
+    const alreadyDownloadedThisPeriod =
+      dbUser.isAdmin || downloadsRemaining === null
+        ? false
+        : !!(await prisma.marketplaceAssetDownload.findUnique({
+            where: {
+              userId_assetId_periodStart: {
+                userId: dbUser.id,
+                assetId: asset.id,
+                periodStart: downloadsPeriodStart,
+              },
+            },
+            select: { id: true },
+          }));
 
-    if (!dbUser.isAdmin && downloadsRemaining !== null && downloadsRemaining <= 0) {
+    if (
+      !dbUser.isAdmin &&
+      downloadsRemaining !== null &&
+      downloadsRemaining <= 0 &&
+      !alreadyDownloadedThisPeriod
+    ) {
       return c.json(
         {
           error: {
@@ -198,9 +219,16 @@ marketplaceRouter.post(
           marketplaceDownloadCount: { increment: 1 },
         },
       }),
-      ...(dbUser.isAdmin || downloadsRemaining === null
+      ...(dbUser.isAdmin || downloadsRemaining === null || alreadyDownloadedThisPeriod
         ? []
         : [
+            prisma.marketplaceAssetDownload.create({
+              data: {
+                userId: dbUser.id,
+                assetId: asset.id,
+                periodStart: downloadsPeriodStart,
+              },
+            }),
             prisma.user.update({
               where: { id: dbUser.id },
               data: {
