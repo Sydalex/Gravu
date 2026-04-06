@@ -12,7 +12,15 @@ import {
   syncMarketplaceDownloadWindow,
 } from "../services/planEntitlements";
 import { getUnifiedCredits } from "../services/credits";
+import {
+  mapSupportTicket,
+  supportTicketInclude,
+} from "../services/supportTickets";
 import type { auth } from "../auth";
+import {
+  CreateSupportTicketMessageRequestSchema,
+  UpdateSupportTicketStatusRequestSchema,
+} from "../types";
 
 type Variables = {
   user: typeof auth.$Infer.Session.user | null;
@@ -1039,5 +1047,89 @@ adminRouter.post(
         },
       },
     });
+  }
+);
+
+adminRouter.get("/support", async (c) => {
+  const tickets = await prisma.supportTicket.findMany({
+    orderBy: { updatedAt: "desc" },
+    include: supportTicketInclude,
+  });
+
+  return c.json({ data: tickets.map(mapSupportTicket) });
+});
+
+adminRouter.post(
+  "/support/:id/messages",
+  zValidator("json", CreateSupportTicketMessageRequestSchema),
+  async (c) => {
+    const user = c.get("user");
+    const { id } = c.req.param();
+    const { message } = c.req.valid("json");
+
+    const existing = await prisma.supportTicket.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+      },
+    });
+
+    if (!existing) {
+      return c.json({ error: { message: "Support ticket not found", code: "NOT_FOUND" } }, 404);
+    }
+
+    await prisma.$transaction([
+      prisma.supportMessage.create({
+        data: {
+          ticketId: existing.id,
+          authorUserId: user?.id ?? null,
+          authorRole: "admin",
+          body: message,
+        },
+      }),
+      prisma.supportTicket.update({
+        where: { id: existing.id },
+        data: {
+          status: existing.status === "resolved" ? "resolved" : "in_progress",
+          updatedAt: new Date(),
+        },
+      }),
+    ]);
+
+    const ticket = await prisma.supportTicket.findUnique({
+      where: { id: existing.id },
+      include: supportTicketInclude,
+    });
+
+    if (!ticket) {
+      return c.json({ error: { message: "Support ticket not found", code: "NOT_FOUND" } }, 404);
+    }
+
+    return c.json({ data: mapSupportTicket(ticket) });
+  }
+);
+
+adminRouter.post(
+  "/support/:id/status",
+  zValidator("json", UpdateSupportTicketStatusRequestSchema),
+  async (c) => {
+    const { id } = c.req.param();
+    const { status } = c.req.valid("json");
+
+    try {
+      const ticket = await prisma.supportTicket.update({
+        where: { id },
+        data: {
+          status,
+          updatedAt: new Date(),
+        },
+        include: supportTicketInclude,
+      });
+
+      return c.json({ data: mapSupportTicket(ticket) });
+    } catch {
+      return c.json({ error: { message: "Support ticket not found", code: "NOT_FOUND" } }, 404);
+    }
   }
 );

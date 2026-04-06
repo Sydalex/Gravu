@@ -322,6 +322,74 @@ export const CreatePortalSessionResponseSchema = z.object({
 });
 export type CreatePortalSessionResponse = z.infer<typeof CreatePortalSessionResponseSchema>;
 
+// ─── Support API Schemas ─────────────────────────────────────────────────────
+
+export const SupportTicketCategoryEnum = z.enum([
+  "billing",
+  "bug",
+  "account",
+  "marketplace",
+  "other",
+]);
+export type SupportTicketCategory = z.infer<typeof SupportTicketCategoryEnum>;
+
+export const SupportTicketStatusEnum = z.enum(["open", "in_progress", "resolved"]);
+export type SupportTicketStatus = z.infer<typeof SupportTicketStatusEnum>;
+
+export const SupportMessageAuthorRoleEnum = z.enum(["user", "admin"]);
+export type SupportMessageAuthorRole = z.infer<typeof SupportMessageAuthorRoleEnum>;
+
+export const SupportTicketOwnerSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string().email(),
+});
+export type SupportTicketOwner = z.infer<typeof SupportTicketOwnerSchema>;
+
+export const SupportTicketMessageSchema = z.object({
+  id: z.string(),
+  ticketId: z.string(),
+  body: z.string(),
+  authorRole: SupportMessageAuthorRoleEnum,
+  authorName: z.string().nullable(),
+  authorEmail: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type SupportTicketMessage = z.infer<typeof SupportTicketMessageSchema>;
+
+export const SupportTicketThreadSchema = z.object({
+  id: z.string(),
+  subject: z.string(),
+  category: SupportTicketCategoryEnum,
+  status: SupportTicketStatusEnum,
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  user: SupportTicketOwnerSchema,
+  messages: z.array(SupportTicketMessageSchema),
+});
+export type SupportTicketThread = z.infer<typeof SupportTicketThreadSchema>;
+
+export const CreateSupportTicketRequestSchema = z.object({
+  subject: z.string().trim().min(3).max(120),
+  category: SupportTicketCategoryEnum,
+  message: z.string().trim().min(10).max(5_000),
+});
+export type CreateSupportTicketRequest = z.infer<typeof CreateSupportTicketRequestSchema>;
+
+export const CreateSupportTicketMessageRequestSchema = z.object({
+  message: z.string().trim().min(1).max(5_000),
+});
+export type CreateSupportTicketMessageRequest = z.infer<
+  typeof CreateSupportTicketMessageRequestSchema
+>;
+
+export const UpdateSupportTicketStatusRequestSchema = z.object({
+  status: SupportTicketStatusEnum,
+});
+export type UpdateSupportTicketStatusRequest = z.infer<
+  typeof UpdateSupportTicketStatusRequestSchema
+>;
+
 // ─── Engine Comparison ───────────────────────────────────────────────────────
 
 export const VectoriseAllResponseSchema = z.object({

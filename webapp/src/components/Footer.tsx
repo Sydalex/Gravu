@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
 const footerLinks = [
-  { label: 'Contact', href: 'mailto:Support@gravu.org' },
+  { label: 'Contact', href: 'mailto:Support@gravu.studio' },
   { label: 'Terms of Use', href: '/policy/terms' },
   { label: 'Copyright & Illegal Content', href: '/policy/content' },
   { label: 'Distance Sales & Consumer Info', href: '/policy/distance-sales' },

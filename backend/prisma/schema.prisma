@@ -30,6 +30,8 @@ model User {
   marketplaceDownloadsPeriodStart DateTime @default(now())
   trialDevices     TrialDevice[] @relation("TrialDeviceFirstUser")
   marketplaceAssetDownloads MarketplaceAssetDownload[]
+  supportTickets   SupportTicket[]
+  supportMessages  SupportMessage[] @relation("SupportMessageAuthor")
 }
 
 model Conversion {
@@ -142,4 +144,32 @@ model TrialDevice {
   freeTrialUsed Boolean  @default(false)
   createdAt     DateTime @default(now())
   lastSeenAt    DateTime @updatedAt
+}
+
+model SupportTicket {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   String
+  category  String
+  status    String           @default("open")
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  messages  SupportMessage[]
+
+  @@index([userId, updatedAt])
+  @@index([status, updatedAt])
+}
+
+model SupportMessage {
+  id           String        @id @default(cuid())
+  ticketId      String
+  ticket        SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorUserId  String?
+  authorUser    User?         @relation("SupportMessageAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
+  authorRole    String
+  body          String
+  createdAt     DateTime      @default(now())
+
+  @@index([ticketId, createdAt])
 }

@@ -2,19 +2,31 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { LogOut, Check, Zap, Pencil, Crown, CreditCard, Loader2, Plus, Shield, ArrowRight, Trash2 } from 'lucide-react';
+import { LogOut, Check, Zap, Pencil, Crown, CreditCard, Loader2, Plus, Shield, ArrowRight, Trash2, LifeBuoy, Send } from 'lucide-react';
 import { PageWrapper } from '@/components/PageWrapper';
 import { signOut, useSession } from '@/lib/auth-client';
 import { api } from '@/lib/api';
 import { useAppSignOut } from '@/hooks/use-app-sign-out';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/sonner';
+import {
+  formatSupportTicketCategory,
+  supportAuthorLabel,
+  supportCategories,
+  supportStatusClass,
+  supportStatusLabel,
+} from '@/lib/support';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import type { SubscriptionStatus } from '../../../backend/src/types';
+import type {
+  SubscriptionStatus,
+  SupportTicketCategory,
+  SupportTicketThread,
+} from '../../../backend/src/types';
 
 function getInitials(name?: string | null, email?: string | null): string {
   if (name) {
@@ -360,11 +372,21 @@ const Account = () => {
   const [editingName, setEditingName] = useState(false);
   const [displayName, setDisplayName] = useState(user?.name ?? '');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [supportSubject, setSupportSubject] = useState('');
+  const [supportCategory, setSupportCategory] = useState<SupportTicketCategory>('bug');
+  const [supportMessage, setSupportMessage] = useState('');
+  const [supportReplyDrafts, setSupportReplyDrafts] = useState<Record<string, string>>({});
 
   const { data: subscription, isLoading: subLoading } = useQuery({
     queryKey: ['subscription'],
     queryFn: () => api.get<SubscriptionStatus>('/api/payments/subscription'),
     staleTime: 30_000,
+  });
+
+  const { data: supportTickets = [], isLoading: supportLoading } = useQuery({
+    queryKey: ['support', 'tickets'],
+    queryFn: () => api.get<SupportTicketThread[]>('/api/support'),
+    staleTime: 10_000,
   });
 
   const upgradedToPro = new URLSearchParams(window.location.search).get('pro') === '1';
@@ -381,6 +403,45 @@ const Account = () => {
     },
     onError: (error) => {
       const message = error instanceof Error ? error.message : 'Failed to delete account.';
+      toast.error(message);
+    },
+  });
+
+  const createSupportTicketMutation = useMutation({
+    mutationFn: () =>
+      api.post<SupportTicketThread>('/api/support', {
+        subject: supportSubject.trim(),
+        category: supportCategory,
+        message: supportMessage.trim(),
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['support', 'tickets'] });
+      setSupportSubject('');
+      setSupportCategory('bug');
+      setSupportMessage('');
+      toast.success('Support ticket created');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Failed to create support ticket.';
+      toast.error(message);
+    },
+  });
+
+  const supportReplyMutation = useMutation({
+    mutationFn: (params: { ticketId: string; message: string }) =>
+      api.post<SupportTicketThread>(`/api/support/${params.ticketId}/messages`, {
+        message: params.message,
+      }),
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ['support', 'tickets'] });
+      setSupportReplyDrafts((current) => ({
+        ...current,
+        [variables.ticketId]: '',
+      }));
+      toast.success('Reply sent');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Failed to send support reply.';
       toast.error(message);
     },
   });
@@ -579,6 +640,217 @@ const Account = () => {
             <SubscriptionCard subscription={subscription} isLoading={subLoading} />
           </motion.div>
         </div>
+
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.24 }}
+          className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"
+        >
+          <div className="border border-neutral-200 bg-white p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400">
+                  Support
+                </p>
+                <h2 className="mt-2 text-xl font-semibold text-neutral-900">Open a ticket</h2>
+              </div>
+              <span className="flex h-10 w-10 items-center justify-center border border-orange-500/20 bg-orange-500/10">
+                <LifeBuoy className="h-4 w-4 text-orange-500" />
+              </span>
+            </div>
+
+            <p className="mt-3 font-mono text-[10px] leading-5 text-neutral-500">
+              Use this for billing, account, marketplace, or product issues. For direct email
+              contact you can still reach us at{" "}
+              <a
+                href="mailto:Support@gravu.studio"
+                className="text-neutral-900 underline underline-offset-2"
+              >
+                Support@gravu.studio
+              </a>
+              .
+            </p>
+
+            <div className="mt-6 space-y-4">
+              <label className="block">
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-neutral-400">
+                  Subject
+                </span>
+                <input
+                  value={supportSubject}
+                  onChange={(event) => setSupportSubject(event.target.value)}
+                  placeholder="What do you need help with?"
+                  className="mt-2 h-11 w-full border border-neutral-200 bg-neutral-50 px-3 font-mono text-[11px] text-neutral-900 outline-none transition-colors focus:border-orange-500"
+                />
+              </label>
+
+              <label className="block">
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-neutral-400">
+                  Category
+                </span>
+                <select
+                  value={supportCategory}
+                  onChange={(event) => setSupportCategory(event.target.value as SupportTicketCategory)}
+                  className="mt-2 h-11 w-full border border-neutral-200 bg-neutral-50 px-3 font-mono text-[11px] text-neutral-900 outline-none transition-colors focus:border-orange-500"
+                >
+                  {supportCategories.map((category) => (
+                    <option key={category.value} value={category.value}>
+                      {category.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-neutral-400">
+                  Message
+                </span>
+                <Textarea
+                  value={supportMessage}
+                  onChange={(event) => setSupportMessage(event.target.value)}
+                  placeholder="Describe the issue, what you expected, and anything already tried."
+                  className="mt-2 min-h-[140px] rounded-none border-neutral-200 bg-neutral-50 font-mono text-[11px] leading-5 text-neutral-900 focus-visible:ring-0"
+                />
+              </label>
+            </div>
+
+            <button
+              onClick={() => createSupportTicketMutation.mutate()}
+              disabled={
+                createSupportTicketMutation.isPending ||
+                supportSubject.trim().length < 3 ||
+                supportMessage.trim().length < 10
+              }
+              className="mt-5 flex w-full items-center justify-center gap-2 border border-neutral-900 bg-neutral-900 px-4 py-3 text-white transition-all hover:bg-neutral-800 disabled:opacity-50"
+            >
+              {createSupportTicketMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <LifeBuoy className="h-3.5 w-3.5" />
+              )}
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
+                Create ticket
+              </span>
+            </button>
+          </div>
+
+          <div className="border border-neutral-200 bg-white p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400">
+                  Ticket history
+                </p>
+                <h2 className="mt-2 text-xl font-semibold text-neutral-900">Your support threads</h2>
+              </div>
+              <p className="font-mono text-[10px] text-neutral-400">
+                {supportTickets.length} total
+              </p>
+            </div>
+
+            {supportLoading ? (
+              <div className="flex min-h-[220px] items-center justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
+              </div>
+            ) : supportTickets.length === 0 ? (
+              <div className="mt-6 border border-dashed border-neutral-200 bg-neutral-50 px-4 py-8 text-center">
+                <p className="font-mono text-[11px] text-neutral-500">
+                  No support tickets yet.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-6 space-y-4">
+                {supportTickets.map((ticket) => (
+                  <div key={ticket.id} className="border border-neutral-200 bg-neutral-50">
+                    <div className="flex flex-col gap-3 border-b border-neutral-200 px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="font-mono text-[11px] text-neutral-900">{ticket.subject}</p>
+                        <p className="mt-1 font-mono text-[10px] text-neutral-400">
+                          {formatSupportTicketCategory(ticket.category)} · Updated {formatDate(ticket.updatedAt)}
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex items-center self-start border px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.12em] ${supportStatusClass(ticket.status)}`}
+                      >
+                        {supportStatusLabel(ticket.status)}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3 px-4 py-4">
+                      {ticket.messages.map((message) => (
+                        <div
+                          key={message.id}
+                          className={`border px-3 py-3 ${
+                            message.authorRole === 'admin'
+                              ? 'border-neutral-200 bg-white'
+                              : 'border-orange-500/20 bg-orange-500/5'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-neutral-500">
+                              {supportAuthorLabel(message.authorRole)}
+                            </p>
+                            <p className="font-mono text-[10px] text-neutral-400">
+                              {formatDate(message.createdAt)}
+                            </p>
+                          </div>
+                          <p className="mt-2 whitespace-pre-wrap font-mono text-[11px] leading-5 text-neutral-700">
+                            {message.body}
+                          </p>
+                        </div>
+                      ))}
+
+                      <div className="border border-dashed border-neutral-200 bg-white px-3 py-3">
+                        <Textarea
+                          value={supportReplyDrafts[ticket.id] ?? ''}
+                          onChange={(event) =>
+                            setSupportReplyDrafts((current) => ({
+                              ...current,
+                              [ticket.id]: event.target.value,
+                            }))
+                          }
+                          placeholder={
+                            ticket.status === 'resolved'
+                              ? 'Add a follow-up message to reopen this ticket.'
+                              : 'Add more detail or respond to support.'
+                          }
+                          className="min-h-[110px] rounded-none border-neutral-200 bg-neutral-50 font-mono text-[11px] leading-5 text-neutral-900 focus-visible:ring-0"
+                        />
+                        <div className="mt-3 flex items-center justify-between gap-3">
+                          <p className="font-mono text-[9px] text-neutral-400">
+                            Replies stay attached to this ticket.
+                          </p>
+                          <button
+                            onClick={() =>
+                              supportReplyMutation.mutate({
+                                ticketId: ticket.id,
+                                message: (supportReplyDrafts[ticket.id] ?? '').trim(),
+                              })
+                            }
+                            disabled={
+                              supportReplyMutation.isPending ||
+                              (supportReplyDrafts[ticket.id] ?? '').trim().length === 0
+                            }
+                            className="flex items-center justify-center gap-2 border border-neutral-900 bg-neutral-900 px-3 py-2 text-white transition-all hover:bg-neutral-800 disabled:opacity-50"
+                          >
+                            {supportReplyMutation.isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Send className="h-3 w-3" />
+                            )}
+                            <span className="font-mono text-[9px] uppercase tracking-[0.1em]">
+                              Send reply
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </motion.section>
 
         {/* Session actions */}
         <motion.div

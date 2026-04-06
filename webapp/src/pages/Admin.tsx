@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -12,19 +13,28 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import {
+  formatSupportTicketCategory,
+  supportAuthorLabel,
+  supportStatusClass,
+  supportStatusLabel,
+} from "@/lib/support";
+import {
   Check,
   CreditCard,
   EyeOff,
   ExternalLink,
+  Inbox,
   Loader2,
   RefreshCw,
   Search,
+  Send,
   Shield,
   Sparkles,
   Trash2,
   Users,
   X,
 } from "lucide-react";
+import type { SupportTicketStatus, SupportTicketThread } from "../../../backend/src/types";
 
 interface AdminStats {
   totalUsers: number;
@@ -319,6 +329,9 @@ export default function Admin() {
   const [marketplaceDrafts, setMarketplaceDrafts] = useState<
     Record<string, { title: string; category: string }>
   >({});
+  const [selectedSupportTicketId, setSelectedSupportTicketId] = useState<string | null>(null);
+  const [supportReplyDraft, setSupportReplyDraft] = useState("");
+  const [supportStatusDraft, setSupportStatusDraft] = useState<SupportTicketStatus>("open");
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["admin", "stats"],
@@ -342,6 +355,15 @@ export default function Admin() {
   } = useQuery({
     queryKey: ["admin", "marketplace"],
     queryFn: () => api.get<MarketplaceReviewAsset[]>("/api/admin/marketplace"),
+  });
+
+  const {
+    data: supportTickets = [],
+    isLoading: supportLoading,
+    refetch: refetchSupport,
+  } = useQuery({
+    queryKey: ["admin", "support"],
+    queryFn: () => api.get<SupportTicketThread[]>("/api/admin/support"),
   });
 
   const allUsers = users ?? [];
@@ -372,14 +394,32 @@ export default function Admin() {
     }
   }, [filteredUsers, selectedUserId]);
 
+  useEffect(() => {
+    if (!supportTickets.length) {
+      setSelectedSupportTicketId(null);
+      return;
+    }
+
+    const exists = supportTickets.some((ticket) => ticket.id === selectedSupportTicketId);
+    if (!exists) {
+      setSelectedSupportTicketId(supportTickets[0].id);
+    }
+  }, [supportTickets, selectedSupportTicketId]);
+
   const selectedUser =
     filteredUsers.find((user) => user.id === selectedUserId) ??
     allUsers.find((user) => user.id === selectedUserId) ??
     null;
+  const selectedSupportTicket =
+    supportTickets.find((ticket) => ticket.id === selectedSupportTicketId) ?? null;
 
   useEffect(() => {
     setPlanDraft((selectedUser?.plan as AccountPlan | undefined) ?? "free");
   }, [selectedUser?.id, selectedUser?.plan]);
+
+  useEffect(() => {
+    setSupportStatusDraft(selectedSupportTicket?.status ?? "open");
+  }, [selectedSupportTicket?.id, selectedSupportTicket?.status]);
 
   const { data: selectedUserBilling, isLoading: selectedUserBillingLoading } = useQuery({
     queryKey: ["admin", "billing", "user", selectedUser?.id],
@@ -689,6 +729,35 @@ export default function Admin() {
     },
   });
 
+  const supportReplyMutation = useMutation({
+    mutationFn: (params: { ticketId: string; message: string }) =>
+      api.post<SupportTicketThread>(`/api/admin/support/${params.ticketId}/messages`, {
+        message: params.message,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "support"] });
+      setSupportReplyDraft("");
+      toast.success("Support reply sent");
+    },
+    onError: (error) => {
+      toast.error(formatMutationError(error));
+    },
+  });
+
+  const supportStatusMutation = useMutation({
+    mutationFn: (params: { ticketId: string; status: SupportTicketStatus }) =>
+      api.post<SupportTicketThread>(`/api/admin/support/${params.ticketId}/status`, {
+        status: params.status,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "support"] });
+      toast.success("Ticket status updated");
+    },
+    onError: (error) => {
+      toast.error(formatMutationError(error));
+    },
+  });
+
   const setMarketplaceDraft = (
     assetId: string,
     patch: Partial<{ title: string; category: string }>
@@ -836,6 +905,7 @@ export default function Admin() {
                   refetchUsers();
                   refetchBilling();
                   refetchMarketplace();
+                  refetchSupport();
                 }}
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
@@ -2175,6 +2245,221 @@ export default function Admin() {
               </div>
             </div>
           )}
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_400px]">
+          <div className="border border-[#e7e0d5] bg-[#fbfaf7]">
+            <div className="flex items-start justify-between gap-4 border-b border-[#dfd8cc] px-5 py-4 sm:px-6">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+                  Support Inbox
+                </p>
+                <h2 className="mt-2 text-[26px] font-black tracking-[-0.9px] text-[#332e24]">
+                  Tickets
+                </h2>
+              </div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#d8d0c5] bg-[#fffdf9] px-3 py-1 text-[11px] font-semibold text-[#6f695f]">
+                <Inbox className="h-3.5 w-3.5" />
+                {supportTickets.length} total
+              </span>
+            </div>
+
+            {supportLoading ? (
+              <div className="flex h-40 items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : supportTickets.length === 0 ? (
+              <div className="px-6 py-16 text-center">
+                <p className="text-[15px] font-medium text-[#332e24]">No support tickets yet.</p>
+                <p className="mt-2 text-[13px] text-muted-foreground">
+                  New tickets from the account page will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-[#e4ddd0]">
+                {supportTickets.map((ticket) => {
+                  const isSelected = ticket.id === selectedSupportTicket?.id;
+
+                  return (
+                    <button
+                      key={ticket.id}
+                      type="button"
+                      onClick={() => setSelectedSupportTicketId(ticket.id)}
+                      className={cn(
+                        "w-full px-5 py-4 text-left transition-colors sm:px-6",
+                        isSelected ? "bg-[#f6efe5]" : "hover:bg-[#f8f3ea]"
+                      )}
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="truncate text-[14px] font-semibold text-[#332e24]">
+                            {ticket.subject}
+                          </p>
+                          <p className="mt-1 truncate text-[12px] text-muted-foreground">
+                            {ticket.user.name} · {ticket.user.email}
+                          </p>
+                          <p className="mt-2 text-[11px] text-[#6f695f]">
+                            {formatSupportTicketCategory(ticket.category)} · Updated{" "}
+                            {formatDate(ticket.updatedAt)}
+                          </p>
+                        </div>
+                        <span
+                          className={cn(
+                            "inline-flex self-start border px-2.5 py-1 text-[10px] font-semibold",
+                            supportStatusClass(ticket.status)
+                          )}
+                        >
+                          {supportStatusLabel(ticket.status)}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <aside className="border border-[#e7e0d5] bg-[#fbfaf7] p-5 sm:p-6 xl:sticky xl:top-[84px] xl:h-fit">
+            {selectedSupportTicket ? (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+                      Selected Ticket
+                    </p>
+                    <h3 className="mt-2 text-[24px] font-black tracking-[-0.8px] text-[#332e24]">
+                      {selectedSupportTicket.subject}
+                    </h3>
+                  </div>
+                  <span
+                    className={cn(
+                      "inline-flex border px-2.5 py-1 text-[10px] font-semibold",
+                      supportStatusClass(selectedSupportTicket.status)
+                    )}
+                  >
+                    {supportStatusLabel(selectedSupportTicket.status)}
+                  </span>
+                </div>
+
+                <div className="mt-5 border border-[#e5dbc9] bg-[#fffdf9] p-4">
+                  <p className="text-[14px] font-medium text-[#332e24]">
+                    {selectedSupportTicket.user.name}
+                  </p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">
+                    {selectedSupportTicket.user.email}
+                  </p>
+                  <p className="mt-2 text-[12px] text-[#6f695f]">
+                    {formatSupportTicketCategory(selectedSupportTicket.category)} · Opened{" "}
+                    {formatDate(selectedSupportTicket.createdAt)}
+                  </p>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  {selectedSupportTicket.messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={cn(
+                        "border p-3",
+                        message.authorRole === "admin"
+                          ? "border-[#eadfce] bg-[#fffdf9]"
+                          : "border-[#ece5d8] bg-[#fcfaf6]"
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6f695f]">
+                          {supportAuthorLabel(message.authorRole)}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {formatDate(message.createdAt)}
+                        </p>
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap text-[12px] leading-6 text-[#332e24]">
+                        {message.body}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-5 space-y-3 border border-[#e5dbc9] bg-[#fffdf9] p-4">
+                  <label className="space-y-2">
+                    <span className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+                      Ticket status
+                    </span>
+                    <select
+                      value={supportStatusDraft}
+                      onChange={(event) =>
+                        setSupportStatusDraft(event.target.value as SupportTicketStatus)
+                      }
+                      className="h-11 w-full rounded-2xl border border-[#d8d0c5] bg-background px-4 text-[13px] text-[#332e24]"
+                    >
+                      <option value="open">Open</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="resolved">Resolved</option>
+                    </select>
+                  </label>
+
+                  <Button
+                    variant="outline"
+                    className="h-11 w-full rounded-2xl border-[#d8d0c5] bg-background"
+                    disabled={
+                      supportStatusMutation.isPending ||
+                      supportStatusDraft === selectedSupportTicket.status
+                    }
+                    onClick={() =>
+                      supportStatusMutation.mutate({
+                        ticketId: selectedSupportTicket.id,
+                        status: supportStatusDraft,
+                      })
+                    }
+                  >
+                    {supportStatusMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    Save Status
+                  </Button>
+
+                  <label className="space-y-2">
+                    <span className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+                      Reply
+                    </span>
+                    <Textarea
+                      value={supportReplyDraft}
+                      onChange={(event) => setSupportReplyDraft(event.target.value)}
+                      placeholder="Write the next response to this customer."
+                      className="min-h-[140px] rounded-[18px] border-[#d8d0c5] bg-background text-[13px] leading-6 text-[#332e24]"
+                    />
+                  </label>
+
+                  <Button
+                    className="h-11 w-full rounded-2xl"
+                    disabled={supportReplyMutation.isPending || supportReplyDraft.trim().length === 0}
+                    onClick={() =>
+                      supportReplyMutation.mutate({
+                        ticketId: selectedSupportTicket.id,
+                        message: supportReplyDraft.trim(),
+                      })
+                    }
+                  >
+                    {supportReplyMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="mr-2 h-4 w-4" />
+                    )}
+                    Send Reply
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex min-h-[320px] items-center justify-center border border-dashed border-[#d9d0c2] bg-[#fffdf9] p-6 text-center">
+                <div>
+                  <p className="text-[15px] font-medium text-[#332e24]">Select a ticket</p>
+                  <p className="mt-2 text-[13px] text-muted-foreground">
+                    Pick a support thread to review the conversation and reply.
+                  </p>
+                </div>
+              </div>
+            )}
+          </aside>
         </section>
       </main>
 
