@@ -7,8 +7,9 @@ import { PageWrapper } from '@/components/PageWrapper';
 import { useImageStore } from '@/lib/store';
 import { api } from '@/lib/api';
 import { buildDownloadFilename } from '@/lib/asset-naming';
-import { triggerBlobDownload, downloadTextFile } from '@/lib/download';
+import { triggerBlobDownload, downloadTextFile, renderSvgToPngBlob } from '@/lib/download';
 import { base64ToPngFile, vectorizeRaster } from '@/lib/vectorize';
+import { toast } from '@/components/ui/sonner';
 
 interface UpdateAssetPayload {
   svgContent?: string;
@@ -133,28 +134,18 @@ const Result = () => {
     }
   };
 
-  const handleSavePng = () => {
+  const handleSavePng = async () => {
     if (isVectorizeOnly && cachedSvg[current.subjectId]) {
-      const svg = cachedSvg[current.subjectId];
-      const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth || 800;
-        canvas.height = img.naturalHeight || 600;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0);
-          canvas.toBlob((blob) => {
-            if (blob) downloadBlob(blob, buildDownloadFilename(current.title, 'png'));
-          });
-        }
-        URL.revokeObjectURL(url);
-      };
-      img.src = url;
+      try {
+        const blob = await renderSvgToPngBlob(cachedSvg[current.subjectId], {
+          background: '#ffffff',
+          targetLongestEdge: 2400,
+        });
+        downloadBlob(blob, buildDownloadFilename(current.title, 'png'));
+      } catch (error) {
+        console.error('PNG export failed', error);
+        toast.error('PNG export failed. Try downloading SVG or DXF instead.');
+      }
     } else if (current.imageBase64) {
       const bytes = Uint8Array.from(atob(current.imageBase64), (c) => c.charCodeAt(0));
       downloadBlob(new Blob([bytes], { type: 'image/png' }), buildDownloadFilename(current.title, 'png'));
