@@ -97,6 +97,7 @@ interface BillingOverview {
   stripeEnabled: boolean;
   liveMode: boolean;
   activeConfig: {
+    activeLitePriceId: string | null;
     activeProPriceId: string | null;
     activeExpertPriceId: string | null;
     activeCreditsPackPriceId: string | null;
@@ -322,10 +323,9 @@ export default function Admin() {
   const [priceNickname, setPriceNickname] = useState("");
   const [priceCreditsAmount, setPriceCreditsAmount] = useState("");
 
+  const [configLitePriceId, setConfigLitePriceId] = useState("");
   const [configProPriceId, setConfigProPriceId] = useState("");
   const [configExpertPriceId, setConfigExpertPriceId] = useState("");
-  const [configCreditsPriceId, setConfigCreditsPriceId] = useState("");
-  const [configCreditsAmount, setConfigCreditsAmount] = useState("10");
   const [marketplaceDrafts, setMarketplaceDrafts] = useState<
     Record<string, { title: string; category: string }>
   >({});
@@ -429,10 +429,9 @@ export default function Admin() {
 
   useEffect(() => {
     if (!billing) return;
+    setConfigLitePriceId(billing.activeConfig.activeLitePriceId ?? "");
     setConfigProPriceId(billing.activeConfig.activeProPriceId ?? "");
     setConfigExpertPriceId(billing.activeConfig.activeExpertPriceId ?? "");
-    setConfigCreditsPriceId(billing.activeConfig.activeCreditsPackPriceId ?? "");
-    setConfigCreditsAmount(String(billing.activeConfig.activeCreditsPackAmount ?? 10));
   }, [billing]);
 
   const billingProducts = [...(billing?.products ?? [])].sort((a, b) => {
@@ -473,8 +472,6 @@ export default function Admin() {
 
   const recurringPrices =
     billingPrices.filter((price) => price.active && price.type === "recurring");
-  const oneTimePrices =
-    billingPrices.filter((price) => price.active && price.type === "one_time");
 
   const lowCreditCount = allUsers.filter((user) => !user.isAdmin && user.credits <= 3).length;
   const adminCount = allUsers.filter((user) => user.isAdmin).length;
@@ -518,7 +515,7 @@ export default function Admin() {
       }
 
       if (params.plan === "lite") {
-        toast.success("Lite activated. Lite does not include credits; add credits separately.");
+        toast.success("Lite activated.");
         return;
       }
 
@@ -594,10 +591,9 @@ export default function Admin() {
   const configMutation = useMutation({
     mutationFn: () =>
       api.post("/api/admin/billing/config", {
+        activeLitePriceId: configLitePriceId || null,
         activeProPriceId: configProPriceId || null,
         activeExpertPriceId: configExpertPriceId || null,
-        activeCreditsPackPriceId: configCreditsPriceId || null,
-        activeCreditsPackAmount: Number(configCreditsAmount),
       }),
     onSuccess: async () => {
       await Promise.all([
@@ -799,8 +795,7 @@ export default function Admin() {
     (priceMode !== "recurring" || !!priceInterval) &&
     (priceMode !== "one_time" || !priceCreditsAmount || Number(priceCreditsAmount) > 0);
   const canSaveConfig =
-    Number(configCreditsAmount) > 0 &&
-    (!!configProPriceId || !!configExpertPriceId || !!configCreditsPriceId);
+    !!configLitePriceId || !!configProPriceId || !!configExpertPriceId;
 
   const stripeUnavailableReason =
     "Stripe is not configured on this environment. Add STRIPE_SECRET in Coolify and redeploy.";
@@ -823,11 +818,9 @@ export default function Admin() {
 
   const configActionHint = !billing?.stripeEnabled
     ? stripeUnavailableReason
-    : !configProPriceId && !configExpertPriceId && !configCreditsPriceId
-      ? "Select at least one active recurring or credit-pack price to make the billing config usable."
-      : Number(configCreditsAmount) <= 0
-        ? "Credit pack amount must be greater than zero."
-        : "Saving this updates the prices used by the account-page checkout buttons.";
+    : !configLitePriceId && !configProPriceId && !configExpertPriceId
+      ? "Select at least one active recurring plan price to make the billing config usable."
+      : "Saving this updates the recurring plans used by the account-page checkout buttons. Any active one-time price with a credits amount appears automatically as a credit pack.";
 
   const promoActionHint = !billing?.stripeEnabled
     ? stripeUnavailableReason
@@ -1345,6 +1338,26 @@ export default function Admin() {
                 <div className="grid gap-4 md:grid-cols-3">
                   <label className="space-y-2">
                     <span className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
+                      Active Lite Price
+                    </span>
+                    <select
+                      value={configLitePriceId}
+                      onChange={(e) => setConfigLitePriceId(e.target.value)}
+                      className="h-11 w-full rounded-2xl border border-[#d8d0c5] bg-background px-4 text-[13px] text-[#332e24]"
+                    >
+                      <option value="">No active Lite price</option>
+                      {recurringPrices.map((price) => (
+                        <option key={price.id} value={price.id}>
+                          {(price.productName ?? price.nickname ?? price.id)} ·{" "}
+                          {formatMoney(price.unitAmount, price.currency)}
+                          {price.interval ? ` / ${price.interval}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
                       Active Pro Price
                     </span>
                     <select
@@ -1382,39 +1395,12 @@ export default function Admin() {
                       ))}
                     </select>
                   </label>
-
-                  <label className="space-y-2">
-                    <span className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
-                      Active Credit Pack Price
-                    </span>
-                    <select
-                      value={configCreditsPriceId}
-                      onChange={(e) => setConfigCreditsPriceId(e.target.value)}
-                      className="h-11 w-full rounded-2xl border border-[#d8d0c5] bg-background px-4 text-[13px] text-[#332e24]"
-                    >
-                      <option value="">No active credit pack</option>
-                      {oneTimePrices.map((price) => (
-                        <option key={price.id} value={price.id}>
-                          {(price.productName ?? price.nickname ?? price.id)} ·{" "}
-                          {formatMoney(price.unitAmount, price.currency)}
-                          {price.creditsAmount ? ` · ${price.creditsAmount} credits` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
                 </div>
 
-                <label className="block space-y-2">
-                  <span className="font-mono text-[10px] uppercase tracking-[1.8px] text-muted-foreground">
-                    Active Credit Pack Amount
-                  </span>
-                  <Input
-                    type="number"
-                    value={configCreditsAmount}
-                    onChange={(e) => setConfigCreditsAmount(e.target.value)}
-                    className="h-11 rounded-2xl border-[#d8d0c5] bg-background"
-                  />
-                </label>
+                <div className="rounded-[18px] border border-[#e7dfd2] bg-[#faf6ee] px-4 py-3 text-[12px] leading-5 text-[#6f6351]">
+                  Active one-time Stripe prices with a positive <span className="font-mono">creditsAmount</span> metadata value
+                  now appear automatically as credit-pack purchase buttons on the account page.
+                </div>
 
                 <Button
                   className="h-11 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90"

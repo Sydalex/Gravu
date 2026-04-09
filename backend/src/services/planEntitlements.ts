@@ -3,6 +3,7 @@ import { prisma } from "../prisma";
 export type AppPlan = "free" | "lite" | "pro" | "expert";
 
 type BillingConfigShape = {
+  activeLitePriceId?: string | null;
   activeProPriceId?: string | null;
   activeExpertPriceId?: string | null;
 };
@@ -19,28 +20,48 @@ type PlanEntitlement = {
   creditsOnInvoicePaid: number;
   marketplaceDownloadLimit: number | null;
   autoSubmitToMarketplace: boolean;
+  featureFlags: {
+    multiAngleBeta: boolean;
+    aiPromptRefinementBeta: boolean;
+  };
 };
 
 const PLAN_ENTITLEMENTS: Record<AppPlan, PlanEntitlement> = {
   free: {
     creditsOnInvoicePaid: 0,
-    marketplaceDownloadLimit: 5,
+    marketplaceDownloadLimit: 0,
     autoSubmitToMarketplace: true,
+    featureFlags: {
+      multiAngleBeta: false,
+      aiPromptRefinementBeta: false,
+    },
   },
   lite: {
-    creditsOnInvoicePaid: 0,
-    marketplaceDownloadLimit: 5,
+    creditsOnInvoicePaid: 20,
+    marketplaceDownloadLimit: 20,
     autoSubmitToMarketplace: true,
+    featureFlags: {
+      multiAngleBeta: false,
+      aiPromptRefinementBeta: false,
+    },
   },
   pro: {
     creditsOnInvoicePaid: 70,
-    marketplaceDownloadLimit: 30,
+    marketplaceDownloadLimit: 50,
     autoSubmitToMarketplace: true,
+    featureFlags: {
+      multiAngleBeta: false,
+      aiPromptRefinementBeta: false,
+    },
   },
   expert: {
     creditsOnInvoicePaid: 300,
     marketplaceDownloadLimit: null,
     autoSubmitToMarketplace: false,
+    featureFlags: {
+      multiAngleBeta: true,
+      aiPromptRefinementBeta: true,
+    },
   },
 };
 
@@ -54,7 +75,6 @@ export function normalizePlan(plan?: string | null): AppPlan | null {
 
 export function resolveAppPlan({
   manualPlan,
-  liteActivatedAt,
   subscriptionStatus,
   subscriptionPriceId,
   billingConfig,
@@ -66,6 +86,13 @@ export function resolveAppPlan({
 
   if (subscriptionStatus === "active" || subscriptionStatus === "trialing") {
     if (
+      billingConfig.activeLitePriceId &&
+      subscriptionPriceId === billingConfig.activeLitePriceId
+    ) {
+      return "lite";
+    }
+
+    if (
       billingConfig.activeExpertPriceId &&
       subscriptionPriceId === billingConfig.activeExpertPriceId
     ) {
@@ -73,10 +100,6 @@ export function resolveAppPlan({
     }
 
     return "pro";
-  }
-
-  if (liteActivatedAt) {
-    return "lite";
   }
 
   return "free";
@@ -108,6 +131,10 @@ export function getMonthlyPlanGrants(plan: AppPlan) {
   return {
     credits: entitlements.creditsOnInvoicePaid,
   };
+}
+
+export function getPlanFeatureFlags(plan: AppPlan) {
+  return getPlanEntitlements(plan).featureFlags;
 }
 
 function isSameCalendarMonth(a: Date, b: Date) {

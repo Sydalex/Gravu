@@ -15,6 +15,7 @@ import {
   getMarketplaceDownloadLimit,
   getMarketplaceDownloadsRemaining,
   getMonthlyPlanGrants,
+  getPlanFeatureFlags,
   resolveAppPlan,
   syncMarketplaceDownloadWindow,
 } from "../services/planEntitlements";
@@ -31,6 +32,40 @@ type Variables = {
 };
 
 export const paymentsRouter = new Hono<{ Variables: Variables }>();
+
+async function listActiveCreditPacks() {
+  if (!stripe) {
+    return [];
+  }
+
+  const prices = await stripe.prices.list({
+    active: true,
+    limit: 100,
+    expand: ["data.product"],
+  });
+
+  return prices.data
+    .filter((price) => !price.recurring)
+    .map((price) => {
+      const creditsRaw = price.metadata?.creditsAmount;
+      const credits = creditsRaw ? Number(creditsRaw) : NaN;
+      const product = typeof price.product === "string" ? null : price.product;
+      if (!Number.isFinite(credits) || credits <= 0) {
+        return null;
+      }
+
+      return {
+        priceId: price.id,
+        credits,
+        unitAmount: price.unit_amount ?? null,
+        currency: price.currency,
+        nickname: price.nickname ?? null,
+        productName: product?.name ?? null,
+      };
+    })
+    .filter((pack): pack is NonNullable<typeof pack> => !!pack)
+    .sort((a, b) => a.credits - b.credits || (a.unitAmount ?? 0) - (b.unitAmount ?? 0));
+}
 
 // Auth guard middleware
 paymentsRouter.use("*", async (c, next) => {
@@ -68,7 +103,7 @@ paymentsRouter.get("/subscription", async (c) => {
   const deviceToken = getOrCreateTrialDeviceToken(c);
   const deviceHash = hashTrialDeviceToken(deviceToken);
 
-  const [dbUser, subscription, syncedDownloads] = await Promise.all([
+  const [dbUser, subscription, syncedDownloads, creditPacks] = await Promise.all([
     prisma.user.findUnique({
       where: { id: user.id },
       select: {
@@ -86,6 +121,7 @@ paymentsRouter.get("/subscription", async (c) => {
       where: { userId: user.id },
     }),
     syncMarketplaceDownloadWindow(user.id),
+    listActiveCreditPacks(),
   ]);
 
   const deviceTrialUsed = await getDeviceTrialUsed(deviceHash);
@@ -124,12 +160,13 @@ paymentsRouter.get("/subscription", async (c) => {
     deviceTrialUsed,
     isAdmin: dbUser?.isAdmin ?? false,
     billingEnabled: !!stripe,
+    activeLitePriceId: billingConfig.activeLitePriceId ?? null,
     activeProPriceId: billingConfig.activeProPriceId ?? null,
     activeExpertPriceId: billingConfig.activeExpertPriceId ?? null,
-    activeCreditsPackPriceId: billingConfig.activeCreditsPackPriceId ?? null,
-    activeCreditsPackAmount: billingConfig.activeCreditsPackPriceId
-      ? billingConfig.activeCreditsPackAmount
-      : null,
+    activeCreditsPackPriceId: creditPacks[0]?.priceId ?? null,
+    activeCreditsPackAmount: creditPacks[0]?.credits ?? null,
+    creditPacks,
+    featureFlags: getPlanFeatureFlags(plan),
   };
 
   return c.json({ data: status });
@@ -373,7 +410,6 @@ paymentsRouter.post("/webhook", async (c) => {
             where: { stripeCustomerId: customerId },
             select: {
               id: true,
-              liteActivatedAt: true,
             },
           });
           if (dbUser) {
@@ -381,7 +417,6 @@ paymentsRouter.post("/webhook", async (c) => {
               where: { id: dbUser.id },
               data: {
                 credits: { increment: creditAmount },
-                liteActivatedAt: dbUser.liteActivatedAt ?? new Date(),
               },
             });
             console.log(`[webhook] Granted ${creditAmount} credits to user ${dbUser.id} for one-time purchase`);

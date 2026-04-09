@@ -46,6 +46,7 @@ const envSchema = z.object({
   // Stripe (optional – only required when billing features are enabled)
   STRIPE_SECRET: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_LITE_PRICE_ID: z.string().default("price_placeholder_lite"),
   STRIPE_PRO_PRICE_ID: z.string().default("price_placeholder_pro"),
   STRIPE_EXPERT_PRICE_ID: z.string().default("price_placeholder_expert"),
 });

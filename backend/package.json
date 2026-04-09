@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "bash ./scripts/dev-with-centerline.sh",
     "start": "bash ./scripts/start-with-centerline.sh",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "migrate:legacy-lite": "bun run ./scripts/migrate-legacy-lite.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

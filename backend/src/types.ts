@@ -277,10 +277,25 @@ export const SubscriptionStatusSchema = z.object({
   deviceTrialUsed: z.boolean(),
   isAdmin: z.boolean(),
   billingEnabled: z.boolean(),
+  activeLitePriceId: z.string().nullable(),
   activeProPriceId: z.string().nullable(),
   activeExpertPriceId: z.string().nullable(),
   activeCreditsPackPriceId: z.string().nullable(),
   activeCreditsPackAmount: z.number().nullable(),
+  creditPacks: z.array(
+    z.object({
+      priceId: z.string(),
+      credits: z.number().int().positive(),
+      unitAmount: z.number().nullable(),
+      currency: z.string(),
+      nickname: z.string().nullable(),
+      productName: z.string().nullable(),
+    })
+  ),
+  featureFlags: z.object({
+    multiAngleBeta: z.boolean(),
+    aiPromptRefinementBeta: z.boolean(),
+  }),
 });
 export type SubscriptionStatus = z.infer<typeof SubscriptionStatusSchema>;
 

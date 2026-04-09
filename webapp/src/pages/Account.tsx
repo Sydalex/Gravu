@@ -51,29 +51,45 @@ function formatDate(dateStr: string | null): string {
 const planFeatures: Record<SubscriptionStatus['plan'], string[]> = {
   free: [
     'One free successful process',
-    'Buy credits to continue on demand',
+    'Browse the marketplace before you commit',
+    'No marketplace downloads included during trial access',
     'Marketplace submissions go to review automatically',
-    '5 marketplace asset downloads each month',
+    'Buy credits on demand to keep going',
   ],
   lite: [
-    'Pay-as-you-go with credit purchases',
+    '20 credits added every month',
     'Marketplace submissions go to review automatically',
-    '5 marketplace asset downloads each month',
+    '20 marketplace asset downloads each month',
     'Photo to Vector and Vectorize Linework',
   ],
   pro: [
-    '70 credits added on each paid invoice',
+    '70 credits added every month',
     'Marketplace submissions go to review automatically',
-    '30 marketplace asset downloads each month',
+    '50 marketplace asset downloads each month',
     'Stripe billing management and extra credit purchases',
   ],
   expert: [
-    '300 credits added on each paid invoice',
+    '300 credits added every month',
     'Private by default; submit to marketplace only when you choose',
     'Unlimited marketplace asset downloads',
     'Highest-volume plan for heavy production use',
   ],
 };
+
+function getVisiblePlanFeatures(subscription: SubscriptionStatus | undefined) {
+  const plan = subscription?.plan ?? 'free';
+  const features = [...planFeatures[plan]];
+
+  if (subscription?.featureFlags.multiAngleBeta) {
+    features.push('Multi-Angle View (Beta)');
+  }
+
+  if (subscription?.featureFlags.aiPromptRefinementBeta) {
+    features.push('AI Prompt Refinement (Beta)');
+  }
+
+  return features;
+}
 
 function formatPlanLabel(plan?: SubscriptionStatus['plan'] | null): string {
   switch (plan) {
@@ -85,7 +101,7 @@ function formatPlanLabel(plan?: SubscriptionStatus['plan'] | null): string {
       return 'Gravu Expert';
     case 'free':
     default:
-      return 'Free Trial';
+      return 'Trial Access';
   }
 }
 
@@ -96,14 +112,16 @@ interface SubscriptionCardProps {
 
 const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) => {
   const currentPlan = subscription?.plan ?? 'free';
+  const isLite = currentPlan === 'lite';
   const isPro = currentPlan === 'pro';
   const isExpert = currentPlan === 'expert';
-  const isSubscriber = isPro || isExpert;
+  const isSubscriber = isLite || isPro || isExpert;
   const isCanceling = isSubscriber && subscription?.cancelAtPeriodEnd;
+  const hasManagedSubscription = !!subscription?.status && !!subscription?.stripeCustomerId;
+  const activeLitePriceId = subscription?.activeLitePriceId ?? null;
   const activeProPriceId = subscription?.activeProPriceId ?? null;
   const activeExpertPriceId = subscription?.activeExpertPriceId ?? null;
-  const activeCreditsPackPriceId = subscription?.activeCreditsPackPriceId ?? null;
-  const activeCreditsPackAmount = subscription?.activeCreditsPackAmount ?? null;
+  const creditPacks = subscription?.creditPacks ?? [];
 
   const checkoutMutation = useMutation({
     mutationFn: (params: { priceId: string; successParam: string }) =>
@@ -165,13 +183,13 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
             <Crown className="h-2.5 w-2.5" />
             Pro
           </span>
-        ) : currentPlan === 'lite' ? (
+        ) : isLite ? (
           <span className="border border-[#d6d0c5] bg-neutral-50 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.15em] text-neutral-600">
             Lite
           </span>
         ) : (
           <span className="border border-neutral-200 bg-neutral-50 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.15em] text-neutral-500">
-            Free Trial
+            Trial Access
           </span>
         )}
       </div>
@@ -212,6 +230,8 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
           <p className="mt-3 break-words font-mono text-sm font-semibold text-neutral-900">
             {subscription?.isAdmin || subscription?.marketplaceDownloadsRemaining === null
               ? 'Unlimited asset downloads'
+              : subscription?.marketplaceDownloadsLimit === 0
+                ? 'Browse only during trial'
               : `${subscription?.marketplaceDownloadsRemaining ?? 0} / ${subscription?.marketplaceDownloadsLimit ?? 0} assets left`}
           </p>
         </div>
@@ -219,7 +239,7 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
 
       {/* Features */}
       <ul className="space-y-2">
-        {planFeatures[currentPlan].map((feature) => (
+        {getVisiblePlanFeatures(subscription).map((feature) => (
           <li key={feature} className="flex items-center gap-2.5">
             <span
               className={`flex h-4 w-4 flex-shrink-0 items-center justify-center ${
@@ -237,24 +257,56 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
         ))}
       </ul>
 
+      {(subscription?.featureFlags.multiAngleBeta || subscription?.featureFlags.aiPromptRefinementBeta) && (
+        <p className="font-mono text-[9px] leading-5 text-neutral-400">
+          Expert beta tools are experimental and work best with isolated objects plus moderate viewpoint changes.
+        </p>
+      )}
+
       <div className="h-px bg-neutral-200" />
 
       {/* Action */}
       {isSubscriber ? (
         <div className="space-y-3">
-          <button
-            onClick={() => portalMutation.mutate()}
-            disabled={portalMutation.isPending}
-            className="flex w-full items-center justify-center gap-2 border border-neutral-300 bg-transparent px-4 py-3 text-neutral-700 transition-all hover:border-neutral-400 disabled:opacity-50"
-          >
-            {portalMutation.isPending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <CreditCard className="h-3.5 w-3.5" />
-            )}
-            <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Manage Billing</span>
-          </button>
-          {!isExpert && (
+          {hasManagedSubscription && (
+            <button
+              onClick={() => portalMutation.mutate()}
+              disabled={portalMutation.isPending}
+              className="flex w-full items-center justify-center gap-2 border border-neutral-300 bg-transparent px-4 py-3 text-neutral-700 transition-all hover:border-neutral-400 disabled:opacity-50"
+            >
+              {portalMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <CreditCard className="h-3.5 w-3.5" />
+              )}
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Manage Billing</span>
+            </button>
+          )}
+          {isLite && (
+            <>
+              <button
+                onClick={() =>
+                  activeProPriceId
+                    ? checkoutMutation.mutate({
+                        priceId: activeProPriceId,
+                        successParam: 'pro',
+                      })
+                    : null
+                }
+                disabled={checkoutMutation.isPending || !activeProPriceId}
+                className="flex w-full items-center justify-center gap-2 border border-orange-500 bg-orange-500 px-4 py-3 text-white transition-all hover:bg-orange-600 disabled:opacity-50"
+              >
+                {checkoutMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+                <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Upgrade to Pro</span>
+              </button>
+              {!activeProPriceId && (
+                <p className="text-center font-mono text-[9px] text-neutral-400">
+                  Pro plan is not configured yet.
+                </p>
+              )}
+            </>
+          )}
+          {(isLite || isPro) && (
             <>
               <button
                 onClick={() =>
@@ -279,27 +331,56 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
             </>
           )}
           {!subscription?.isAdmin && (
-            <button
-              onClick={() =>
-                activeCreditsPackPriceId && activeCreditsPackAmount
-                  ? buyMutation.mutate({
-                      credits: activeCreditsPackAmount,
-                      priceId: activeCreditsPackPriceId,
+            <div className="grid gap-2 sm:grid-cols-3">
+              {creditPacks.map((pack) => (
+                <button
+                  key={pack.priceId}
+                  onClick={() =>
+                    buyMutation.mutate({
+                      credits: pack.credits,
+                      priceId: pack.priceId,
                     })
-                  : null
-              }
-              disabled={buyMutation.isPending || !activeCreditsPackPriceId || !activeCreditsPackAmount}
-              className="flex w-full items-center justify-center gap-2 border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-neutral-600 transition-all hover:border-neutral-300 disabled:opacity-50"
-            >
-              {buyMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-              <span className="font-mono text-[9px] uppercase tracking-[0.1em]">
-                {activeCreditsPackAmount ? 'Buy credits' : 'Credit pack unavailable'}
-              </span>
-            </button>
+                  }
+                  disabled={buyMutation.isPending}
+                  className="flex w-full items-center justify-center gap-2 border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-neutral-600 transition-all hover:border-neutral-300 disabled:opacity-50"
+                >
+                  {buyMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                  <span className="font-mono text-[9px] uppercase tracking-[0.1em]">
+                    {`Buy ${pack.credits} credits`}
+                  </span>
+                </button>
+              ))}
+              {!creditPacks.length && (
+                <button
+                  disabled
+                  className="flex w-full items-center justify-center gap-2 border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-neutral-400 transition-all disabled:opacity-70"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span className="font-mono text-[9px] uppercase tracking-[0.1em]">
+                    Credit packs unavailable
+                  </span>
+                </button>
+              )}
+            </div>
           )}
         </div>
       ) : (
         <div className="space-y-3">
+          <button
+            onClick={() =>
+              activeLitePriceId
+                ? checkoutMutation.mutate({
+                    priceId: activeLitePriceId,
+                    successParam: 'lite',
+                  })
+                : null
+            }
+            disabled={checkoutMutation.isPending || !activeLitePriceId}
+            className="flex w-full items-center justify-center gap-2 border border-orange-500 bg-orange-500 px-4 py-3 text-white transition-all hover:bg-orange-600 disabled:opacity-50"
+          >
+            {checkoutMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+            <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Start Lite</span>
+          </button>
           <button
             onClick={() =>
               activeProPriceId
@@ -310,10 +391,10 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
                 : null
             }
             disabled={checkoutMutation.isPending || !activeProPriceId}
-            className="flex w-full items-center justify-center gap-2 border border-orange-500 bg-orange-500 px-4 py-3 text-white transition-all hover:bg-orange-600 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 border border-neutral-900 bg-neutral-900 px-4 py-3 text-white transition-all hover:bg-neutral-800 disabled:opacity-50"
           >
             {checkoutMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-            <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Upgrade to Pro</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Go Pro</span>
           </button>
           <button
             onClick={() =>
@@ -331,30 +412,46 @@ const SubscriptionCard = ({ subscription, isLoading }: SubscriptionCardProps) =>
             <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Go Expert</span>
           </button>
           <p className="text-center font-mono text-[9px] text-neutral-400">
-            {activeProPriceId && activeExpertPriceId
-              ? 'Free and Lite accounts can keep buying credits, or move into Pro and Expert for recurring monthly entitlements.'
-              : activeProPriceId
+            {activeLitePriceId && activeProPriceId && activeExpertPriceId
+              ? 'Trial access can continue with credit packs, or move into Lite, Pro, or Expert for recurring monthly entitlements.'
+              : activeLitePriceId && activeProPriceId
                 ? 'Expert plan is not configured yet.'
-                : 'No active Pro price configured yet.'}
+                : activeLitePriceId
+                  ? 'Pro and Expert plans are not configured yet.'
+                  : 'No active Lite price configured yet.'}
           </p>
           {!subscription?.isAdmin && (
-            <button
-              onClick={() =>
-                activeCreditsPackPriceId && activeCreditsPackAmount
-                  ? buyMutation.mutate({
-                      credits: activeCreditsPackAmount,
-                      priceId: activeCreditsPackPriceId,
+            <div className="grid gap-2 sm:grid-cols-3">
+              {creditPacks.map((pack) => (
+                <button
+                  key={pack.priceId}
+                  onClick={() =>
+                    buyMutation.mutate({
+                      credits: pack.credits,
+                      priceId: pack.priceId,
                     })
-                  : null
-              }
-              disabled={buyMutation.isPending || !activeCreditsPackPriceId || !activeCreditsPackAmount}
-              className="flex w-full items-center justify-center gap-2 border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-neutral-600 transition-all hover:border-neutral-300 disabled:opacity-50"
-            >
-              {buyMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-              <span className="font-mono text-[9px] uppercase tracking-[0.1em]">
-                {activeCreditsPackAmount ? 'Buy credits' : 'Credit pack unavailable'}
-              </span>
-            </button>
+                  }
+                  disabled={buyMutation.isPending}
+                  className="flex w-full items-center justify-center gap-2 border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-neutral-600 transition-all hover:border-neutral-300 disabled:opacity-50"
+                >
+                  {buyMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                  <span className="font-mono text-[9px] uppercase tracking-[0.1em]">
+                    {`Buy ${pack.credits} credits`}
+                  </span>
+                </button>
+              ))}
+              {!creditPacks.length && (
+                <button
+                  disabled
+                  className="flex w-full items-center justify-center gap-2 border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-neutral-400 transition-all disabled:opacity-70"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span className="font-mono text-[9px] uppercase tracking-[0.1em]">
+                    Credit packs unavailable
+                  </span>
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}

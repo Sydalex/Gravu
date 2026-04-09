@@ -42,8 +42,14 @@ export const previewSubscription: SubscriptionStatus = {
   deviceTrialUsed: true,
   isAdmin: false,
   billingEnabled: false,
+  activeLitePriceId: null,
   activeProPriceId: null,
   activeExpertPriceId: null,
   activeCreditsPackPriceId: null,
   activeCreditsPackAmount: null,
+  creditPacks: [],
+  featureFlags: {
+    multiAngleBeta: false,
+    aiPromptRefinementBeta: false,
+  },
 };

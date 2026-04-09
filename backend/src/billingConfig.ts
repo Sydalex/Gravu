@@ -1,6 +1,12 @@
 import { prisma } from "./prisma";
 import { env } from "./env";
 
+function configuredEnvLitePriceId() {
+  return env.STRIPE_LITE_PRICE_ID !== "price_placeholder_lite"
+    ? env.STRIPE_LITE_PRICE_ID
+    : null;
+}
+
 function configuredEnvProPriceId() {
   return env.STRIPE_PRO_PRICE_ID !== "price_placeholder_pro"
     ? env.STRIPE_PRO_PRICE_ID
@@ -19,6 +25,7 @@ export async function getBillingConfig() {
     update: {},
     create: {
       id: "default",
+      activeLitePriceId: configuredEnvLitePriceId(),
       activeProPriceId: configuredEnvProPriceId(),
       activeExpertPriceId: configuredEnvExpertPriceId(),
       activeCreditsPackAmount: 10,
@@ -27,6 +34,7 @@ export async function getBillingConfig() {
 
   return {
     ...config,
+    activeLitePriceId: config.activeLitePriceId ?? configuredEnvLitePriceId(),
     activeProPriceId: config.activeProPriceId ?? configuredEnvProPriceId(),
     activeExpertPriceId: config.activeExpertPriceId ?? configuredEnvExpertPriceId(),
   };

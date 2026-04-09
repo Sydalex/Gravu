@@ -88,6 +88,7 @@ const CreatePriceSchema = z
   });
 
 const UpdateBillingConfigSchema = z.object({
+  activeLitePriceId: z.string().min(1).nullable().optional(),
   activeProPriceId: z.string().min(1).nullable().optional(),
   activeExpertPriceId: z.string().min(1).nullable().optional(),
   activeCreditsPackPriceId: z.string().min(1).nullable().optional(),
@@ -173,10 +174,15 @@ async function clearArchivedPricesFromBillingConfig(priceIds: string[]) {
   if (!config) return;
 
   const update: {
+    activeLitePriceId?: string | null;
     activeProPriceId?: string | null;
     activeExpertPriceId?: string | null;
     activeCreditsPackPriceId?: string | null;
   } = {};
+
+  if (config.activeLitePriceId && priceIds.includes(config.activeLitePriceId)) {
+    update.activeLitePriceId = null;
+  }
 
   if (config.activeProPriceId && priceIds.includes(config.activeProPriceId)) {
     update.activeProPriceId = null;
@@ -668,12 +674,13 @@ adminRouter.post(
   "/billing/config",
   zValidator("json", UpdateBillingConfigSchema),
   async (c) => {
-    const { activeProPriceId, activeExpertPriceId, activeCreditsPackPriceId, activeCreditsPackAmount } =
+    const { activeLitePriceId, activeProPriceId, activeExpertPriceId, activeCreditsPackPriceId, activeCreditsPackAmount } =
       c.req.valid("json");
 
     const updated = await prisma.billingConfig.upsert({
       where: { id: "default" },
       update: {
+        ...(activeLitePriceId !== undefined ? { activeLitePriceId } : {}),
         ...(activeProPriceId !== undefined ? { activeProPriceId } : {}),
         ...(activeExpertPriceId !== undefined ? { activeExpertPriceId } : {}),
         ...(activeCreditsPackPriceId !== undefined
@@ -685,6 +692,7 @@ adminRouter.post(
       },
       create: {
         id: "default",
+        activeLitePriceId: activeLitePriceId ?? null,
         activeProPriceId: activeProPriceId ?? null,
         activeExpertPriceId: activeExpertPriceId ?? null,
         activeCreditsPackPriceId: activeCreditsPackPriceId ?? null,

@@ -267,7 +267,7 @@ const Upload = () => {
               Free trial unavailable.
             </DialogTitle>
             <DialogDescription className="font-mono text-[11px] leading-5 text-[#6c6354]">
-              This account or device has already used the free process. Upgrade to Pro or buy credits before starting another vector conversion.
+              This account or device has already used the free process. Start Lite, upgrade higher, or buy credits before starting another vector conversion.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:justify-start">
