@@ -8,9 +8,9 @@ export function base64ToPngFile(base64: string, filename: string): File {
 
 // Shared export vectorization helper.
 // Used by:
-// - Result Export Vectorization: saved/generated linework PNG -> SVG/DXF.
-// - Vectorize Linework Only: uploaded drawing -> SVG/DXF immediately.
-// Not used by the Photo-to-Vector Generation step itself.
+// - Path 1 result exports: saved/generated linework PNG -> SVG/DXF.
+// - Path 2: uploaded drawing -> SVG/DXF immediately.
+// Not used by Path 1's photo-to-linework generation step itself.
 export async function vectorizeRaster(
   imageFile: File,
   mode: VectorizeMode,

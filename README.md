@@ -18,8 +18,8 @@ All image and vector data is stored as base64 in the SQLite database — no exte
 
 ## Features
 
-- **Photo to Vector (Full AI Pipeline)** — upload a photo → Gemini detects subjects → select subjects and view angle → AI generates architectural linework → export SVG/DXF/PNG
-- **Vectorize Linework Only** — upload an existing line drawing → local centerline vectorizer → export SVG/DXF/PNG
+- **Path 1: Photo to Vector** — upload a photo → Gemini detects subjects → select subjects and view angle → AI generates architectural linework → export SVG/DXF/PNG
+- **Path 2: Vectorize Linework** — upload an existing line drawing → local centerline vectorizer → export SVG/DXF/PNG
 - Email + password auth and email OTP fallback (Better Auth)
 - Stripe subscription and credits system (optional)
 - "Convert once, store forever" — results are cached in the database
@@ -28,9 +28,9 @@ All image and vector data is stored as base64 in the SQLite database — no exte
 
 ## Conversion Flow Map
 
-Use these names consistently when debugging or changing the app.
+Use these names consistently when debugging or changing the app. `Path 1` and `Path 2` are the two user-facing product paths. `Result Export Vectorization` is the shared export step, not a third path.
 
-### 1. Photo-to-Vector Generation Flow
+### Path 1: Photo-to-Vector Generation
 
 Store value: `flowType = "full"`
 
@@ -44,7 +44,7 @@ Steps:
 
 Important boundary: this flow does not create DXF/DWG by itself. It creates the raster linework that later gets vectorized.
 
-### 2. Result Export Vectorization Step
+### Shared Export Step: Result Export Vectorization
 
 Purpose: turn a saved/generated linework PNG into SVG/DXF for download.
 
@@ -59,7 +59,7 @@ Steps:
 
 Important boundary: if a Photo-to-Vector result looks good as PNG but the DXF/DWG differs, debug this export vectorization step, not the photo-to-vector generation prompt.
 
-### 3. Vectorize Linework Only Flow
+### Path 2: Vectorize Linework Only
 
 Store value: `flowType = "vectorize_only"`
 
@@ -73,7 +73,7 @@ Steps:
 5. Outline mode uses `POST /api/convert/vectorise-outline`.
 6. Save the original preview plus generated SVG/DXF in conversion history.
 
-### 4. Utility Conversion Endpoints
+### Utility Conversion Endpoints
 
 These are helpers, not product flows:
 - `POST /api/convert/dxf-to-svg` — render a DXF result back into browser-viewable SVG.
@@ -222,8 +222,8 @@ Handled by Better Auth — sign-up, sign-in, OTP, session, logout.
 ### Conversion
 - `POST /api/convert/dxf-to-svg` — DXF → SVG
 - `POST /api/convert/svg-to-dxf` — SVG → DXF (local)
-- `POST /api/convert/vectorise-ai` — Centre Line export vectorization via Python sidecar; used by both result exports and Vectorize Linework Only
-- `POST /api/convert/vectorise-outline` — Outline export vectorization; used by Vectorize Linework Only and saved conversion re-vectorization
+- `POST /api/convert/vectorise-ai` — Centre Line export vectorization via Python sidecar; used by Path 1 result exports and Path 2
+- `POST /api/convert/vectorise-outline` — Outline export vectorization; used by Path 2 and saved conversion re-vectorization
 - `POST /api/convert/vectorise` — VTracer vectorization (experimental)
 - `POST /api/convert/compose` — combine images side-by-side
 
@@ -374,7 +374,7 @@ docker compose --env-file .env.staging up -d --build
 | No HTTPS / TLS | 🔴 Blocks auth | Better Auth sets `secure` cookies in `NODE_ENV=production`; must be served over HTTPS |
 | `PUBLIC_URL` not set | 🔴 Blocks auth | CORS and Better Auth callbacks will fail |
 | No SMTP config | 🟡 Degrades UX | OTP codes logged to console only — fine for private staging, broken for real users |
-| No `GEMINI_API_KEY` | 🟡 Partial feature | "Photo → Vector" AI flow disabled; "Vectorize Linework" still works |
+| No `GEMINI_API_KEY` | 🟡 Partial feature | Path 1 disabled; Path 2 still works |
 | No Stripe config | 🟢 Optional | Billing endpoints return 503; rest of app is unaffected |
 
 ---

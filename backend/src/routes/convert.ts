@@ -1704,9 +1704,9 @@ convertRouter.post("/vectorise-all", async (c) => {
 
 // ─── Export Vectorization Routes ─────────────────────────────────────────────
 // These routes generate SVG/DXF from linework PNGs. They are used by both
-// Result Export Vectorization and Vectorize Linework Only. They are separate
-// from Photo-to-Vector Generation (`POST /api/ai/generate-linework`), which
-// only creates the cleaned raster linework PNG.
+// Path 1 result exports and Path 2. They are separate from Path 1 generation
+// (`POST /api/ai/generate-linework`), which only creates the cleaned raster
+// linework PNG.
 
 convertRouter.post("/vectorise-outline", async (c) => {
   const user = c.get("user");

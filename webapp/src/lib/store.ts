@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
-// `full` is Photo-to-Vector Generation: photo -> AI linework PNG.
-// `vectorize_only` is Vectorize Linework Only: drawing -> SVG/DXF immediately.
+// Path 1 (`full`) is Photo-to-Vector Generation: photo -> AI linework PNG.
+// Path 2 (`vectorize_only`) is Vectorize Linework: drawing -> SVG/DXF immediately.
 export type FlowType = 'full' | 'vectorize_only';
 export type ProcessingMode = 'extract_all' | 'keep_together';
 export type ViewAngle = 'perspective' | 'top' | 'side' | 'custom';

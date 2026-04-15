@@ -59,7 +59,7 @@ const Index = () => {
           transition={{ delay: 0.6, duration: 0.6 }}
           className="mt-12 flex flex-col gap-4 sm:flex-row sm:gap-6"
         >
-          {/* Photo to Vector */}
+          {/* Path 1: Photo to Vector */}
           <button
             onClick={() => handleFlow('full')}
             className="group relative flex flex-col items-center gap-3 rounded-none border border-neutral-300 bg-transparent px-10 py-8 transition-all hover:border-orange-500 hover:bg-orange-500/5"
@@ -71,7 +71,7 @@ const Index = () => {
             </span>
           </button>
 
-          {/* Vectorize Linework */}
+          {/* Path 2: Vectorize Linework */}
           <button
             onClick={() => handleFlow('vectorize_only')}
             className="group relative flex flex-col items-center gap-3 rounded-none border border-neutral-300 bg-transparent px-10 py-8 transition-all hover:border-orange-500 hover:bg-orange-500/5"
