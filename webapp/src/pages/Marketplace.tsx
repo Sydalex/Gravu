@@ -224,7 +224,7 @@ const Marketplace = () => {
                       <img
                         src={`data:image/png;base64,${item.previewBase64}`}
                         alt={item.title}
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain p-4"
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center">

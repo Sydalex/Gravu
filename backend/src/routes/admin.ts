@@ -994,8 +994,8 @@ adminRouter.get("/marketplace", async (c) => {
       title: asset.marketplaceTitle ?? asset.conversion.name ?? `Asset ${asset.subjectId}`,
       category: asset.marketplaceCategory ?? "Uncategorized",
       previewBase64: asset.imageBase64,
-      hasSvg: !!asset.svgContent,
-      hasDxf: !!asset.dxfContent,
+      hasSvg: !!asset.svgContent || !!asset.imageBase64,
+      hasDxf: !!asset.dxfContent || !!asset.imageBase64,
       createdAt: asset.createdAt.toISOString(),
       flowType: asset.conversion.flowType,
       owner: {
@@ -1060,8 +1060,8 @@ adminRouter.post(
         title: updated.marketplaceTitle ?? updated.conversion.name ?? `Asset ${updated.subjectId}`,
         category: updated.marketplaceCategory ?? "Uncategorized",
         previewBase64: updated.imageBase64,
-        hasSvg: !!updated.svgContent,
-        hasDxf: !!updated.dxfContent,
+        hasSvg: !!updated.svgContent || !!updated.imageBase64,
+        hasDxf: !!updated.dxfContent || !!updated.imageBase64,
         createdAt: updated.createdAt.toISOString(),
         flowType: updated.conversion.flowType,
         owner: {

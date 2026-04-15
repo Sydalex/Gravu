@@ -1934,7 +1934,7 @@ export default function Admin() {
                                 <img
                                   src={`data:image/png;base64,${asset.previewBase64}`}
                                   alt={asset.title}
-                                  className="h-full w-full object-cover"
+                                  className="h-full w-full object-contain p-2"
                                 />
                               ) : (
                                 <div className="flex h-full items-center justify-center text-[11px] text-muted-foreground">
@@ -2094,7 +2094,7 @@ export default function Admin() {
                                 <img
                                   src={`data:image/png;base64,${asset.previewBase64}`}
                                   alt={asset.title}
-                                  className="h-full w-full object-cover"
+                                  className="h-full w-full object-contain p-2"
                                 />
                               ) : (
                                 <div className="flex h-full items-center justify-center text-[11px] text-muted-foreground">

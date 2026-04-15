@@ -12,6 +12,11 @@ import {
   resolveAppPlan,
   syncMarketplaceDownloadWindow,
 } from "../services/planEntitlements";
+import {
+  DEFAULT_OUTLINE_SETTINGS,
+  convertSvgToDxfString,
+  traceOutlineSvgFromBuffer,
+} from "../services/outlineVectorizer";
 
 const marketplaceRouter = new Hono<{
   Variables: {
@@ -19,6 +24,68 @@ const marketplaceRouter = new Hono<{
     session: typeof auth.$Infer.Session.session | null;
   };
 }>();
+
+type MarketplaceDownloadableAsset = {
+  id: string;
+  imageBase64: string | null;
+  svgContent: string | null;
+  dxfContent: string | null;
+};
+
+function canGenerateMarketplaceVectors(asset: MarketplaceDownloadableAsset) {
+  return !!asset.imageBase64;
+}
+
+async function ensureMarketplaceVectorFormats(asset: MarketplaceDownloadableAsset) {
+  if (asset.svgContent && asset.dxfContent) {
+    return {
+      svgContent: asset.svgContent,
+      dxfContent: asset.dxfContent,
+    };
+  }
+
+  if (!asset.imageBase64) {
+    throw new Error("Asset has no PNG source for automatic vector export");
+  }
+
+  // Marketplace export generation is a system-side operation. It should not
+  // consume credits from the uploader or the downloader.
+  const outlined = await traceOutlineSvgFromBuffer(
+    Buffer.from(asset.imageBase64, "base64"),
+    DEFAULT_OUTLINE_SETTINGS,
+  );
+  const generatedDxf = convertSvgToDxfString(outlined.svg);
+  const updateData: { svgContent?: string; dxfContent?: string } = {};
+
+  if (!asset.svgContent) {
+    updateData.svgContent = outlined.svg;
+  }
+
+  if (!asset.dxfContent) {
+    updateData.dxfContent = generatedDxf;
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    return {
+      svgContent: asset.svgContent,
+      dxfContent: asset.dxfContent,
+    };
+  }
+
+  const updated = await prisma.conversionAsset.update({
+    where: { id: asset.id },
+    data: updateData,
+    select: {
+      svgContent: true,
+      dxfContent: true,
+    },
+  });
+
+  return {
+    svgContent: updated.svgContent ?? asset.svgContent ?? outlined.svg,
+    dxfContent: updated.dxfContent ?? asset.dxfContent ?? generatedDxf,
+  };
+}
 
 marketplaceRouter.get("/", async (c) => {
   const assets = await prisma.conversionAsset.findMany({
@@ -49,8 +116,8 @@ marketplaceRouter.get("/", async (c) => {
       previewBase64: asset.imageBase64,
       flowType: asset.conversion.flowType,
       createdAt: asset.createdAt.toISOString(),
-      hasSvg: !!asset.svgContent,
-      hasDxf: !!asset.dxfContent,
+      hasSvg: !!asset.svgContent || canGenerateMarketplaceVectors(asset),
+      hasDxf: !!asset.dxfContent || canGenerateMarketplaceVectors(asset),
       downloadCount: asset.marketplaceDownloadCount,
     })),
   });
@@ -200,15 +267,37 @@ marketplaceRouter.post(
       );
     }
 
+    let svgContent = asset.svgContent;
+    let dxfContent = asset.dxfContent;
+
+    if ((format === "svg" && !svgContent) || (format === "dxf" && !dxfContent)) {
+      try {
+        const ensured = await ensureMarketplaceVectorFormats(asset);
+        svgContent = ensured.svgContent;
+        dxfContent = ensured.dxfContent;
+      } catch (error) {
+        console.error("[marketplace-download] Failed to auto-generate vector formats:", error);
+        return c.json(
+          {
+            error: {
+              message: "Could not generate this marketplace format automatically.",
+              code: "FORMAT_GENERATION_FAILED",
+            },
+          },
+          500,
+        );
+      }
+    }
+
     if (format === "png" && !asset.imageBase64) {
       return c.json({ error: { message: "PNG unavailable", code: "FORMAT_UNAVAILABLE" } }, 404);
     }
 
-    if (format === "svg" && !asset.svgContent) {
+    if (format === "svg" && !svgContent) {
       return c.json({ error: { message: "SVG unavailable", code: "FORMAT_UNAVAILABLE" } }, 404);
     }
 
-    if (format === "dxf" && !asset.dxfContent) {
+    if (format === "dxf" && !dxfContent) {
       return c.json({ error: { message: "DXF unavailable", code: "FORMAT_UNAVAILABLE" } }, 404);
     }
 
@@ -247,11 +336,11 @@ marketplaceRouter.post(
         : format === "svg"
           ? {
               mimeType: "image/svg+xml",
-              content: asset.svgContent!,
+              content: svgContent!,
             }
           : {
               mimeType: "application/dxf",
-              content: asset.dxfContent!,
+              content: dxfContent!,
             };
 
     return c.json({
