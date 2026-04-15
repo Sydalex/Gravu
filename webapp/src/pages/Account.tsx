@@ -477,7 +477,8 @@ const Account = () => {
   const { data: subscription, isLoading: subLoading } = useQuery({
     queryKey: ['subscription'],
     queryFn: () => api.get<SubscriptionStatus>('/api/payments/subscription'),
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const { data: supportTickets = [], isLoading: supportLoading } = useQuery({

@@ -11,7 +11,8 @@ export function NavBar() {
   const { data: subscription } = useQuery({
     queryKey: ['subscription'],
     queryFn: () => api.get<SubscriptionStatus>('/api/payments/subscription'),
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');

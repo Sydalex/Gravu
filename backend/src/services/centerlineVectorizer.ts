@@ -35,10 +35,15 @@ export async function vectorizeCenterline(
     simplification?: SimplificationLevel;
     exportMode?: CenterlineExportMode;
     preserveDetail?: boolean;
+    includeFill?: boolean;
   } = {},
 ): Promise<{ dxf: string }> {
   const baseUrl = getCenterlineVectorizerUrl();
-  const endpoint = `${baseUrl.replace(/\/+$/, "")}/vectorize/dxf?include_fill=false`;
+  const includeFill = options.includeFill !== false;
+  const params = new URLSearchParams({
+    include_fill: includeFill ? "true" : "false",
+  });
+  const endpoint = `${baseUrl.replace(/\/+$/, "")}/vectorize/dxf?${params.toString()}`;
   const simplification = options.simplification ?? "mid";
   const exportMode = options.exportMode ?? "hybrid";
   const preserveDetail = options.preserveDetail === true;
@@ -53,7 +58,7 @@ export async function vectorizeCenterline(
 
   try {
     console.log(
-      `[centerlineVectorizer] Calling ${endpoint} with simplification=${simplification}, exportMode=${exportMode}, preserveDetail=${preserveDetail}`
+      `[centerlineVectorizer] Calling ${endpoint} with simplification=${simplification}, exportMode=${exportMode}, preserveDetail=${preserveDetail}, includeFill=${includeFill}`
     );
 
     const response = await fetch(endpoint, {

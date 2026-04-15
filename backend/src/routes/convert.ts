@@ -37,6 +37,7 @@ type Variables = {
 };
 
 const simplificationLevels: SimplificationLevel[] = ["low", "mid", "high"];
+const CENTERLINE_PREPROCESS_MAX_DIMENSION = 2048;
 
 const convertRouter = new Hono<{ Variables: Variables }>();
 
@@ -134,7 +135,10 @@ async function callGeminiImageTransform(
 async function prepareBinaryLinework(inputBuffer: Buffer) {
   return sharp(inputBuffer)
     .flatten({ background: "#ffffff" })
-    .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+    .resize(CENTERLINE_PREPROCESS_MAX_DIMENSION, CENTERLINE_PREPROCESS_MAX_DIMENSION, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
     .grayscale()
     .normalize()
     .sharpen()
@@ -146,7 +150,10 @@ async function prepareBinaryLinework(inputBuffer: Buffer) {
 async function prepareConservativeCenterlineInput(inputBuffer: Buffer) {
   return sharp(inputBuffer)
     .flatten({ background: "#ffffff" })
-    .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+    .resize(CENTERLINE_PREPROCESS_MAX_DIMENSION, CENTERLINE_PREPROCESS_MAX_DIMENSION, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
     .grayscale()
     .png()
     .toBuffer();
@@ -155,7 +162,10 @@ async function prepareConservativeCenterlineInput(inputBuffer: Buffer) {
 async function thinBinaryLinework(inputBuffer: Buffer) {
   return sharp(inputBuffer)
     .flatten({ background: "#ffffff" })
-    .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+    .resize(CENTERLINE_PREPROCESS_MAX_DIMENSION, CENTERLINE_PREPROCESS_MAX_DIMENSION, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
     .grayscale()
     .normalize()
     .threshold(145)
@@ -1629,8 +1639,11 @@ convertRouter.post("/vectorise-all", async (c) => {
   }
 });
 
-// ─── POST /vectorise-ai ──────────────────────────────────────────────────────
-// Production DXF path backed by the raster-dxf-centerline service.
+// ─── Export Vectorization Routes ─────────────────────────────────────────────
+// These routes generate SVG/DXF from linework PNGs. They are used by both
+// Result Export Vectorization and Vectorize Linework Only. They are separate
+// from Photo-to-Vector Generation (`POST /api/ai/generate-linework`), which
+// only creates the cleaned raster linework PNG.
 
 convertRouter.post("/vectorise-outline", async (c) => {
   const user = c.get("user");

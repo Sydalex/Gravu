@@ -26,6 +26,62 @@ All image and vector data is stored as base64 in the SQLite database — no exte
 
 ---
 
+## Conversion Flow Map
+
+Use these names consistently when debugging or changing the app.
+
+### 1. Photo-to-Vector Generation Flow
+
+Store value: `flowType = "full"`
+
+Purpose: turn a real photo into a cleaned black-and-white linework PNG.
+
+Steps:
+1. Upload photo.
+2. Detect subjects with `POST /api/ai/detect-subjects`.
+3. Generate linework with `POST /api/ai/generate-linework`.
+4. Save the generated linework PNG in conversion history.
+
+Important boundary: this flow does not create DXF/DWG by itself. It creates the raster linework that later gets vectorized.
+
+### 2. Result Export Vectorization Step
+
+Purpose: turn a saved/generated linework PNG into SVG/DXF for download.
+
+Where it runs: result page export buttons and saved conversion detail export buttons.
+
+Steps:
+1. Load the saved linework PNG.
+2. Call `vectorizeRaster(...)` in `webapp/src/lib/vectorize.ts`.
+3. Centre Line mode calls `POST /api/convert/vectorise-ai`.
+4. Outline mode calls `POST /api/convert/vectorise-outline`.
+5. Centre Line DXF is converted back to SVG preview with `POST /api/convert/dxf-to-svg`.
+
+Important boundary: if a Photo-to-Vector result looks good as PNG but the DXF/DWG differs, debug this export vectorization step, not the photo-to-vector generation prompt.
+
+### 3. Vectorize Linework Only Flow
+
+Store value: `flowType = "vectorize_only"`
+
+Purpose: take an already-existing drawing or linework image and immediately generate SVG/DXF.
+
+Steps:
+1. Upload drawing.
+2. Normalize upload with `POST /api/trace/upload`.
+3. Call `vectorizeRaster(...)`.
+4. Centre Line mode uses the same `POST /api/convert/vectorise-ai` export path as the result export step.
+5. Outline mode uses `POST /api/convert/vectorise-outline`.
+6. Save the original preview plus generated SVG/DXF in conversion history.
+
+### 4. Utility Conversion Endpoints
+
+These are helpers, not product flows:
+- `POST /api/convert/dxf-to-svg` — render a DXF result back into browser-viewable SVG.
+- `POST /api/convert/svg-to-dxf` — local SVG-to-DXF utility.
+- `POST /api/convert/vectorise` — older VTracer vectorization path, currently experimental.
+
+---
+
 ## Local Development
 
 ### Requirements
@@ -67,7 +123,19 @@ bunx prisma migrate deploy   # apply migrations
 bunx prisma db push
 ```
 
-### 4. Start the backend (Terminal 1)
+### 4. Start everything locally
+
+From the repo root:
+
+```bash
+bun run dev
+```
+
+This starts the backend, the Python centerline sidecar, and the Vite frontend together. Open `http://localhost:8000` to test before deploying.
+
+If you need separate terminals for debugging, use the manual steps below instead.
+
+### 5. Start the backend manually (Terminal 1)
 
 ```bash
 cd backend
@@ -81,7 +149,7 @@ This script:
 4. Waits for `/health` to respond
 5. Starts the Bun backend with hot reload on port 3000
 
-### 5. Start the frontend (Terminal 2)
+### 6. Start the frontend manually (Terminal 2)
 
 ```bash
 cd webapp
@@ -149,12 +217,13 @@ Handled by Better Auth — sign-up, sign-in, OTP, session, logout.
 
 ### AI (Gemini)
 - `POST /api/ai/detect-subjects` — detect objects in image
-- `POST /api/ai/generate-linework` — convert photo to architectural linework
+- `POST /api/ai/generate-linework` — Photo-to-Vector generation step; converts photo to cleaned linework PNG, not DXF/DWG
 
 ### Conversion
 - `POST /api/convert/dxf-to-svg` — DXF → SVG
 - `POST /api/convert/svg-to-dxf` — SVG → DXF (local)
-- `POST /api/convert/vectorise-ai` — production DXF via Python sidecar
+- `POST /api/convert/vectorise-ai` — Centre Line export vectorization via Python sidecar; used by both result exports and Vectorize Linework Only
+- `POST /api/convert/vectorise-outline` — Outline export vectorization; used by Vectorize Linework Only and saved conversion re-vectorization
 - `POST /api/convert/vectorise` — VTracer vectorization (experimental)
 - `POST /api/convert/compose` — combine images side-by-side
 

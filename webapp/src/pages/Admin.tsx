@@ -478,18 +478,22 @@ export default function Admin() {
 
   const creditsMutation = useMutation({
     mutationFn: (params: { userId: string; amount: number; operation: "add" | "set" }) =>
-      api.post(`/api/admin/users/${params.userId}/credits`, {
-        amount: params.amount,
-        operation: params.operation,
-      }),
-    onSuccess: async () => {
+      api.post<{ id: string; credits: number; vectorizeCredits: number }>(
+        `/api/admin/users/${params.userId}/credits`,
+        {
+          amount: params.amount,
+          operation: params.operation,
+        }
+      ),
+    onSuccess: async (result) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
         queryClient.invalidateQueries({ queryKey: ["admin", "stats"] }),
+        queryClient.invalidateQueries({ queryKey: ["subscription"] }),
       ]);
       setCreditDialogUser(null);
       setCreditAmount("");
-      toast.success("Credits updated");
+      toast.success(`Credits updated. New balance: ${result.credits}`);
     },
     onError: (error) => {
       toast.error(formatMutationError(error));

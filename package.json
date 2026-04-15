@@ -1,0 +1,8 @@
+{
+  "name": "gravu",
+  "private": true,
+  "scripts": {
+    "dev": "bash ./scripts/dev-local.sh",
+    "build:webapp": "bun --cwd ./webapp run build"
+  }
+}

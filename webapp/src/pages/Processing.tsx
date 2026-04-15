@@ -55,7 +55,7 @@ const Processing = () => {
     if (!flowType || !imageUri || startedRef.current) return;
     startedRef.current = true;
 
-    const processFullFlow = async () => {
+    const processPhotoToVectorGenerationFlow = async () => {
       setStatus('analyzing');
       setProgress(15);
 
@@ -67,6 +67,8 @@ const Processing = () => {
       setStatus('generating');
       setProgress(30);
 
+      // Photo-to-Vector Generation: this creates the cleaned linework PNG only.
+      // SVG/DXF export vectorization happens later from the Result page.
       const result = await api.post<LineworkResult>('/api/ai/generate-linework', {
         imageBase64,
         subjects: allSubjects,
@@ -112,7 +114,7 @@ const Processing = () => {
       navigate('/result', { replace: true });
     };
 
-    const processVectorizeFlow = async () => {
+    const processLineworkVectorizeOnlyFlow = async () => {
       setStatus('uploading');
       setProgress(10);
 
@@ -138,6 +140,8 @@ const Processing = () => {
       setStatus('vectorizing');
       setProgress(30);
 
+      // Vectorize Linework Only: this skips AI photo generation and immediately
+      // creates SVG/DXF from the uploaded drawing.
       const vectorized = await vectorizeRaster(
         base64ToPngFile(uploadedBase64, 'image.png'),
         vectorizeMode,
@@ -187,9 +191,9 @@ const Processing = () => {
     const run = async () => {
       try {
         if (flowType === 'full') {
-          await processFullFlow();
+          await processPhotoToVectorGenerationFlow();
         } else {
-          await processVectorizeFlow();
+          await processLineworkVectorizeOnlyFlow();
         }
       } catch (err) {
         setQuotaExceeded(err instanceof ApiError && err.status === 402);

@@ -61,6 +61,17 @@ function getImageGenerationModel(): string {
   return env.GEMINI_IMAGE_MODEL?.trim() || "gemini-3-pro-image-preview";
 }
 
+async function finalizeGeneratedLinework(imageBase64: string): Promise<string> {
+  const buffer = Buffer.from(imageBase64, "base64");
+  const normalized = await sharp(buffer)
+    .flatten({ background: "#ffffff" })
+    .resize(2048, 2048, { fit: "inside" })
+    .png({ compressionLevel: 9 })
+    .toBuffer();
+
+  return normalized.toString("base64");
+}
+
 async function callGemini(
   model: string,
   contents: GeminiContent[],
@@ -117,7 +128,7 @@ function getSubjectHints(description: string): string[] {
 
   if (hasAny(["person", "people", "human", "rider", "riders", "man", "woman", "child", "cyclist", "skier"])) {
     hints.push(
-      "People/riders: reduce to sparse silhouette/pose lines only; no face detail, fingers, clothing structure/folds, straps, or buckles; avoid closed outline loops when a single gesture line or single contour is sufficient."
+      "People/riders: preserve the observed silhouette, limb contours, hand and shoe positions, and major clothing or gear boundaries; remove only face detail, tiny fingers, texture folds, straps, or buckles that are not structurally important."
     );
   }
 
@@ -147,7 +158,7 @@ function getSubjectHints(description: string): string[] {
 
   if (hints.length === 0) {
     hints.push(
-      "Generic simplification: preserve only outer contour and a small number of major internal structural lines; remove micro-detail, texture marks, and repeated tiny features."
+      "Generic simplification: preserve the outer contour plus important internal structural lines; remove texture marks, repeated tiny features, and detail that does not change object identity."
     );
   }
 
@@ -249,8 +260,8 @@ ABSOLUTE VECTORIZATION CONSTRAINTS (mandatory):
 5. Prefer clean, separable, continuous strokes over realism.
 6. No dense clusters of tiny lines, no overlapping short strokes.
 7. Keep clear white space between nearby lines.
-8. If two nearby details would crowd linework, replace them with one cleaner representative contour.
-9. If a detail is smaller than about 4 stroke widths, omit it.
+8. If two nearby texture details would crowd linework, replace them with one cleaner representative contour.
+9. Keep details that define object identity, pose, attachment points, or functional structure; omit only tiny noise and texture.
 10. Remove all unselected or out-of-scope objects.
 
 TRACING FIDELITY RULES (strict):
@@ -290,8 +301,9 @@ HUMAN FIGURE RULES (strict):
 - Keep interior human detail minimal and only when essential for recognition, but do not lose the real body proportions or pose.
 
 MICRO-DETAIL REMOVAL (strict):
-- No tiny fasteners, straps, clamps, seams, cutouts, rigging filigree, texture lines, or repetitive micro-parts.
-- No decorative detail that does not change recognizable silhouette/pose.
+- No tiny texture lines, decorative noise, repeated micro-parts, or surface marks.
+- Keep small parts only when they define attachment, function, recognizable silhouette, or pose.
+- No decorative detail that does not change recognizable silhouette, function, or pose.
 
 ${isolateConstraint}${selectedScopeConstraint}${hintBlock}`;
 }
@@ -528,9 +540,10 @@ aiRouter.post("/generate-linework", async (c) => {
 
       if (imagePart) {
         const imageData = imagePart.inlineData?.data ?? imagePart.inline_data?.data ?? "";
+        const finalizedImageData = await finalizeGeneratedLinework(imageData);
         results.push({
           subjectId: 0,
-          imageBase64: imageData,
+          imageBase64: finalizedImageData,
         });
         console.log("[generate-linework] Got image result for keep_together");
       } else {
@@ -590,9 +603,10 @@ aiRouter.post("/generate-linework", async (c) => {
 
           if (imagePart) {
             const imageData = imagePart.inlineData?.data ?? imagePart.inline_data?.data ?? "";
+            const finalizedImageData = await finalizeGeneratedLinework(imageData);
             results.push({
               subjectId: subject.id,
-              imageBase64: imageData,
+              imageBase64: finalizedImageData,
             });
             console.log(
               `[generate-linework] Got image result for subject ${subject.id}`

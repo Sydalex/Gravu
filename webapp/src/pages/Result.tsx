@@ -68,6 +68,8 @@ const Result = () => {
       if (existing) return { subjectId, dxf: existing };
       const item = resultImages?.find((r) => r.subjectId === subjectId);
       if (!item?.imageBase64) throw new Error('No image data for this subject');
+      // Result Export Vectorization: this is the SVG/DXF step for saved or
+      // generated PNG linework, including Photo-to-Vector results.
       const vectorized = await vectorizeRaster(
         base64ToPngFile(item.imageBase64, buildDownloadFilename(item.title, 'png')),
         vectorizeMode,
@@ -89,6 +91,8 @@ const Result = () => {
       if (existing) return { subjectId, svg: existing, dxf: undefined as string | undefined };
       const item = resultImages?.find((r) => r.subjectId === subjectId);
       if (!item?.imageBase64) throw new Error('No image data for this subject');
+      // Result Export Vectorization: same export path as DXF, with an SVG
+      // preview reconstructed from the centerline DXF when needed.
       const vectorized = await vectorizeRaster(
         base64ToPngFile(item.imageBase64, buildDownloadFilename(item.title, 'png')),
         vectorizeMode,

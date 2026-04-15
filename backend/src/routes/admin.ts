@@ -11,7 +11,7 @@ import {
   resolveAppPlan,
   syncMarketplaceDownloadWindow,
 } from "../services/planEntitlements";
-import { getUnifiedCredits } from "../services/credits";
+import { getUnifiedCredits, normalizeLegacyCredits } from "../services/credits";
 import {
   mapSupportTicket,
   supportTicketInclude,
@@ -31,8 +31,16 @@ export const adminRouter = new Hono<{ Variables: Variables }>();
 const PlanEnum = z.enum(["free", "lite", "pro", "expert"]);
 
 const AdjustCreditsSchema = z.object({
-  amount: z.number(),
+  amount: z.number().int().min(0).max(10_000),
   operation: z.enum(["add", "set"]),
+}).superRefine((value, ctx) => {
+  if (value.operation === "add" && value.amount <= 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["amount"],
+      message: "Credits to add must be greater than zero",
+    });
+  }
 });
 
 const UpdateUserPlanSchema = z.object({
@@ -357,16 +365,24 @@ adminRouter.post(
     const { id } = c.req.param();
     const { amount, operation } = c.req.valid("json");
 
+    await normalizeLegacyCredits(id);
+
     const updated = await prisma.user.update({
       where: { id },
-      data: {
-        credits: operation === "add" ? { increment: amount } : amount,
-        vectorizeCredits: 0,
-      },
-      select: { id: true, credits: true },
+      data:
+        operation === "add"
+          ? { credits: { increment: amount } }
+          : { credits: amount, vectorizeCredits: 0 },
+      select: { id: true, credits: true, vectorizeCredits: true },
     });
 
-    return c.json({ data: updated });
+    return c.json({
+      data: {
+        id: updated.id,
+        credits: getUnifiedCredits(updated),
+        vectorizeCredits: updated.vectorizeCredits,
+      },
+    });
   }
 );
 
