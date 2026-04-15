@@ -289,7 +289,7 @@ const Result = () => {
                   <img
                     src={`data:image/png;base64,${item.imageBase64}`}
                     alt={`Subject ${i + 1}`}
-                    className="h-16 w-16 object-cover"
+                    className="h-16 w-16 object-contain p-1"
                   />
                 ) : (
                   <div className="flex h-16 w-16 items-center justify-center bg-neutral-100 font-mono text-xs text-neutral-400">

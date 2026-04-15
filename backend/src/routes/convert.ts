@@ -338,7 +338,7 @@ Important examples:
 // ─── DXF Parsing Helpers ────────────────────────────────────────────────────
 
 interface DxfEntity {
-  type: string;
+  type: "LINE" | "CIRCLE" | "ARC" | "LWPOLYLINE" | "POLYLINE" | "SPLINE";
   // LINE
   x1?: number;
   y1?: number;
@@ -369,7 +369,8 @@ function readPair(lines: string[], i: number): { code: number; value: string } {
 }
 
 /**
- * Basic DXF parser that handles LINE, POLYLINE, LWPOLYLINE, CIRCLE, ARC entities.
+ * Basic DXF parser that handles LINE, POLYLINE, LWPOLYLINE, SPLINE, CIRCLE,
+ * ARC entities.
  * DXF files use group code / value pairs. We parse the ENTITIES section.
  */
 function parseDxfEntities(dxfContent: string): DxfEntity[] {
@@ -421,6 +422,10 @@ function parseDxfEntities(dxfContent: string): DxfEntity[] {
         i = result.nextIndex;
       } else if (entityType === "POLYLINE") {
         const result = parsePolyline(lines, i + 2);
+        entities.push(result.entity);
+        i = result.nextIndex;
+      } else if (entityType === "SPLINE") {
+        const result = parseSpline(lines, i + 2);
         entities.push(result.entity);
         i = result.nextIndex;
       } else {
@@ -601,6 +606,62 @@ function parsePolyline(
   return { entity, nextIndex: i };
 }
 
+function parseSpline(
+  lines: string[],
+  startIdx: number
+): { entity: DxfEntity; nextIndex: number } {
+  const fitPoints: Array<{ x: number; y: number }> = [];
+  const controlPoints: Array<{ x: number; y: number }> = [];
+  let i = startIdx;
+  let currentFitX: number | null = null;
+  let currentControlX: number | null = null;
+  let closed = false;
+
+  while (i < lines.length - 1) {
+    const { code, value } = readPair(lines, i);
+    if (code === 0) break;
+
+    switch (code) {
+      case 70: {
+        const flags = parseInt(value, 10);
+        closed = (flags & 1) === 1;
+        break;
+      }
+      case 10:
+        currentControlX = parseFloat(value);
+        break;
+      case 20:
+        if (currentControlX !== null) {
+          controlPoints.push({ x: currentControlX, y: parseFloat(value) });
+          currentControlX = null;
+        }
+        break;
+      case 11:
+        currentFitX = parseFloat(value);
+        break;
+      case 21:
+        if (currentFitX !== null) {
+          fitPoints.push({ x: currentFitX, y: parseFloat(value) });
+          currentFitX = null;
+        }
+        break;
+    }
+
+    i += 2;
+  }
+
+  return {
+    entity: {
+      type: "SPLINE",
+      // Prefer fit points because the sidecar DXF emits them as the visible
+      // curve path. Fall back to control points for other DXF producers.
+      vertices: fitPoints.length >= 2 ? fitPoints : controlPoints,
+      closed,
+    },
+    nextIndex: i,
+  };
+}
+
 /**
  * Convert parsed DXF entities to SVG string
  */
@@ -638,6 +699,7 @@ function entitiesToSvg(entities: DxfEntity[]): string {
         break;
       case "LWPOLYLINE":
       case "POLYLINE":
+      case "SPLINE":
         for (const v of e.vertices ?? []) {
           updateBounds(v.x, v.y);
         }
@@ -700,7 +762,8 @@ function entitiesToSvg(entities: DxfEntity[]): string {
       }
 
       case "LWPOLYLINE":
-      case "POLYLINE": {
+      case "POLYLINE":
+      case "SPLINE": {
         const verts = e.vertices ?? [];
         if (verts.length >= 2) {
           const points = verts.map((v) => `${v.x},${v.y}`).join(" ");

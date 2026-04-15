@@ -176,13 +176,13 @@ const Library = () => {
                       <img
                         src={`data:image/png;base64,${item.thumbnailBase64}`}
                         alt={item.name ?? 'Conversion'}
-                        className="w-full h-full object-cover"
+                        className="h-full w-full object-contain p-4"
                       />
                     ) : item.originalImageBase64 ? (
                       <img
                         src={`data:image/png;base64,${item.originalImageBase64}`}
                         alt={item.name ?? 'Conversion'}
-                        className="w-full h-full object-cover"
+                        className="h-full w-full object-contain p-4"
                       />
                     ) : (
                       <FlowTypeIcon flowType={item.flowType} />
