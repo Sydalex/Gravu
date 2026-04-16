@@ -1,11 +1,15 @@
 import { isPreviewAuthBypassEnabled, previewSubscription } from "@/lib/preview-mode";
+import { getUserFacingErrorMessage } from "@/lib/user-facing-errors";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "";
 
 class ApiError extends Error {
+  public technicalMessage: string;
+
   constructor(message: string, public status: number, public data?: unknown) {
-    super(message);
+    super(getUserFacingErrorMessage({ message, status, data }));
     this.name = "ApiError";
+    this.technicalMessage = message;
   }
 }
 

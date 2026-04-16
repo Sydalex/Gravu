@@ -23,11 +23,15 @@ import TermsOfUse from "./pages/TermsOfUse";
 import ContentPolicy from "./pages/ContentPolicy";
 import DistanceSales from "./pages/DistanceSales";
 import LegalNotice from "./pages/LegalNotice";
+import ErrorPage from "./pages/ErrorPage";
+import Refurbishing from "./pages/Refurbishing";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import Landing from "./pages/Landing";
 import { AdminRoute } from "@/components/AdminRoute";
 import { BouncingOrb } from "@/components/BouncingOrb";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+import { GlobalErrorNotifications } from "@/components/GlobalErrorNotifications";
 
 const queryClient = new QueryClient();
 
@@ -37,34 +41,39 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <BouncingOrb />
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/welcome" element={<Landing />} />
-          <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
-          <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
-          <Route path="/verify-otp" element={<GuestRoute><VerifyOtp /></GuestRoute>} />
-          <Route path="/app" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-          <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
-          <Route path="/selection" element={<ProtectedRoute><Selection /></ProtectedRoute>} />
-          <Route path="/processing" element={<ProtectedRoute><Processing /></ProtectedRoute>} />
-          <Route path="/result" element={<ProtectedRoute><Result /></ProtectedRoute>} />
-          <Route path="/marketplace" element={<ProtectedRoute><Marketplace /></ProtectedRoute>} />
-          <Route path="/archive" element={<ProtectedRoute><Library /></ProtectedRoute>} />
-          <Route path="/archive/:id" element={<ProtectedRoute><LibraryDetail /></ProtectedRoute>} />
-          <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
-          <Route path="/library/:id" element={<ProtectedRoute><LibraryDetail /></ProtectedRoute>} />
-          <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
-          <Route path="/policy/terms" element={<TermsOfUse />} />
-          <Route path="/policy/content" element={<ContentPolicy />} />
-          <Route path="/policy/distance-sales" element={<DistanceSales />} />
-          <Route path="/policy/refunds" element={<Policy />} />
-          <Route path="/policy/privacy" element={<PrivacyPolicy />} />
-          <Route path="/policy/legal-notice" element={<LegalNotice />} />
-          <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <GlobalErrorNotifications />
+        <AppErrorBoundary>
+          <BouncingOrb />
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/welcome" element={<Landing />} />
+            <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
+            <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
+            <Route path="/verify-otp" element={<GuestRoute><VerifyOtp /></GuestRoute>} />
+            <Route path="/app" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
+            <Route path="/selection" element={<ProtectedRoute><Selection /></ProtectedRoute>} />
+            <Route path="/processing" element={<ProtectedRoute><Processing /></ProtectedRoute>} />
+            <Route path="/result" element={<ProtectedRoute><Result /></ProtectedRoute>} />
+            <Route path="/marketplace" element={<ProtectedRoute><Marketplace /></ProtectedRoute>} />
+            <Route path="/archive" element={<ProtectedRoute><Library /></ProtectedRoute>} />
+            <Route path="/archive/:id" element={<ProtectedRoute><LibraryDetail /></ProtectedRoute>} />
+            <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
+            <Route path="/library/:id" element={<ProtectedRoute><LibraryDetail /></ProtectedRoute>} />
+            <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+            <Route path="/policy/terms" element={<TermsOfUse />} />
+            <Route path="/policy/content" element={<ContentPolicy />} />
+            <Route path="/policy/distance-sales" element={<DistanceSales />} />
+            <Route path="/policy/refunds" element={<Policy />} />
+            <Route path="/policy/privacy" element={<PrivacyPolicy />} />
+            <Route path="/policy/legal-notice" element={<LegalNotice />} />
+            <Route path="/error" element={<ErrorPage />} />
+            <Route path="/refurbishing" element={<Refurbishing />} />
+            <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AppErrorBoundary>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

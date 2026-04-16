@@ -13,10 +13,9 @@ import {
   syncMarketplaceDownloadWindow,
 } from "../services/planEntitlements";
 import {
-  DEFAULT_OUTLINE_SETTINGS,
-  convertSvgToDxfString,
-  traceOutlineSvgFromBuffer,
-} from "../services/outlineVectorizer";
+  canGenerateMarketplaceVectors,
+  ensureMarketplaceVectorFormats,
+} from "../services/marketplaceVectorFormats";
 
 const marketplaceRouter = new Hono<{
   Variables: {
@@ -24,68 +23,6 @@ const marketplaceRouter = new Hono<{
     session: typeof auth.$Infer.Session.session | null;
   };
 }>();
-
-type MarketplaceDownloadableAsset = {
-  id: string;
-  imageBase64: string | null;
-  svgContent: string | null;
-  dxfContent: string | null;
-};
-
-function canGenerateMarketplaceVectors(asset: MarketplaceDownloadableAsset) {
-  return !!asset.imageBase64;
-}
-
-async function ensureMarketplaceVectorFormats(asset: MarketplaceDownloadableAsset) {
-  if (asset.svgContent && asset.dxfContent) {
-    return {
-      svgContent: asset.svgContent,
-      dxfContent: asset.dxfContent,
-    };
-  }
-
-  if (!asset.imageBase64) {
-    throw new Error("Asset has no PNG source for automatic vector export");
-  }
-
-  // Marketplace export generation is a system-side operation. It should not
-  // consume credits from the uploader or the downloader.
-  const outlined = await traceOutlineSvgFromBuffer(
-    Buffer.from(asset.imageBase64, "base64"),
-    DEFAULT_OUTLINE_SETTINGS,
-  );
-  const generatedDxf = convertSvgToDxfString(outlined.svg);
-  const updateData: { svgContent?: string; dxfContent?: string } = {};
-
-  if (!asset.svgContent) {
-    updateData.svgContent = outlined.svg;
-  }
-
-  if (!asset.dxfContent) {
-    updateData.dxfContent = generatedDxf;
-  }
-
-  if (Object.keys(updateData).length === 0) {
-    return {
-      svgContent: asset.svgContent,
-      dxfContent: asset.dxfContent,
-    };
-  }
-
-  const updated = await prisma.conversionAsset.update({
-    where: { id: asset.id },
-    data: updateData,
-    select: {
-      svgContent: true,
-      dxfContent: true,
-    },
-  });
-
-  return {
-    svgContent: updated.svgContent ?? asset.svgContent ?? outlined.svg,
-    dxfContent: updated.dxfContent ?? asset.dxfContent ?? generatedDxf,
-  };
-}
 
 marketplaceRouter.get("/", async (c) => {
   const assets = await prisma.conversionAsset.findMany({
@@ -209,6 +146,13 @@ marketplaceRouter.post(
         where: {
           id: assetId,
           marketplaceStatus: "listed",
+        },
+        include: {
+          conversion: {
+            select: {
+              flowType: true,
+            },
+          },
         },
       }),
       syncMarketplaceDownloadWindow(user.id),

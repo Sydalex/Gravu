@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { useImageStore, type Subject } from '@/lib/store';
 import { api } from '@/lib/api';
+import { getUserFacingErrorMessage } from '@/lib/user-facing-errors';
 import type { SubscriptionStatus } from '../../../backend/src/types';
 
 interface DetectResponse {
@@ -221,7 +222,9 @@ const Selection = () => {
                 animate={{ opacity: 1 }}
                 className="border border-red-200 bg-red-50 px-4 py-3 font-mono text-xs text-red-600"
               >
-                {detectMutation.error?.message ?? 'Failed to detect subjects. Please try again.'}
+                {getUserFacingErrorMessage(detectMutation.error, {
+                  fallback: 'We could not detect subjects from this image. Please try another image or send a support ticket.',
+                })}
               </motion.div>
             )}
 

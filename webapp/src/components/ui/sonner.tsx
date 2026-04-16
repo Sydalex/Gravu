@@ -1,7 +1,19 @@
 import { useTheme } from "next-themes";
-import { Toaster as Sonner, toast } from "sonner";
+import { Toaster as Sonner, toast as sonnerToast } from "sonner";
+import { getUserFacingErrorMessage } from "@/lib/user-facing-errors";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
+
+const toast = Object.assign(
+  (...args: Parameters<typeof sonnerToast>) => sonnerToast(...args),
+  sonnerToast,
+  {
+    error: (
+      message: Parameters<typeof sonnerToast.error>[0],
+      data?: Parameters<typeof sonnerToast.error>[1],
+    ) => sonnerToast.error(getUserFacingErrorMessage(message), data),
+  },
+);
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme();

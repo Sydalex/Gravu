@@ -17,9 +17,9 @@ import type { auth } from "../auth";
 import { prisma } from "../prisma";
 import { env } from "../env";
 import {
-  vectorizeCenterline,
   type SimplificationLevel,
 } from "../services/centerlineVectorizer";
+import { vectorizeLineworkWithCenterline } from "../services/centerlineLinework";
 import {
   DEFAULT_OUTLINE_SETTINGS,
   convertSvgToDxfString,
@@ -1814,23 +1814,16 @@ convertRouter.post("/vectorise-ai", async (c) => {
     );
 
     const inputBuffer = Buffer.from(await imageFile.arrayBuffer());
-    const preprocessed = await preprocessLineworkForCenterline(inputBuffer);
-    console.log(
-      `[vectorise-ai] Line cleanup path: ${preprocessed.aiUsed ? "ai_preprocess" : "binary_fallback"}`
-    );
-
-    // Call centerline vectorizer service (raster-dxf-centerline)
-    const result = await vectorizeCenterline(preprocessed.vectorizerBuffer, {
-      simplification: preprocessed.vectorizerOptions?.simplification ?? simplification,
-      exportMode: preprocessed.vectorizerOptions?.exportMode,
-      preserveDetail: preprocessed.vectorizerOptions?.preserveDetail,
+    const result = await vectorizeLineworkWithCenterline(inputBuffer, {
+      simplification,
+      logPrefix: "vectorise-ai",
     });
 
     console.log(`[vectorise-ai] Success, DXF length: ${result.dxf.length}`);
     return c.json({
       data: {
         dxf: result.dxf,
-        preprocessedImageBase64: preprocessed.previewBase64,
+        preprocessedImageBase64: result.preprocessedImageBase64,
         trialConsumed,
       },
     });

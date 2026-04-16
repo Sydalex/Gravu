@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { authClient } from '@/lib/auth-client';
 import { isPreviewAuthBypassEnabled } from '@/lib/preview-mode';
+import { getUserFacingErrorMessage } from '@/lib/user-facing-errors';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 
 const Register = () => {
@@ -29,7 +30,7 @@ const Register = () => {
     const result = await authClient.signUp.email({ email: normalizedEmail, password, name: name.trim() });
     if (result.error) {
       setLoading(false);
-      setError(result.error.message || 'Failed to create account');
+      setError(getUserFacingErrorMessage(result.error, { fallback: 'We could not create the account. Please check the details and try again.' }));
     } else {
       if (isPreviewAuthBypassEnabled()) {
         setLoading(false);
@@ -46,7 +47,9 @@ const Register = () => {
           email: normalizedEmail,
           mode: 'email-verification',
           initialError: otpResult.error
-            ? otpResult.error.message || 'We created your account, but the verification code could not be sent yet. Please use resend.'
+            ? getUserFacingErrorMessage(otpResult.error, {
+                fallback: 'We created your account, but the verification code could not be sent yet. Please use resend.',
+              })
             : undefined,
         },
       });

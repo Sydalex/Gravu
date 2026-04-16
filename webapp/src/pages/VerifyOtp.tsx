@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { authClient, signOut } from '@/lib/auth-client';
 import { api } from '@/lib/api';
 import { isPreviewAuthBypassEnabled } from '@/lib/preview-mode';
+import { getUserFacingErrorMessage } from '@/lib/user-facing-errors';
 import { PageWrapper } from '@/components/PageWrapper';
 
 const VerifyOtp = () => {
@@ -55,7 +56,10 @@ const VerifyOtp = () => {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        errorMessage = payload?.message || payload?.error?.message || 'Invalid verification code';
+        errorMessage = getUserFacingErrorMessage(
+          payload?.error ?? payload,
+          { fallback: 'Invalid verification code.' },
+        );
       } else {
         await signOut().catch(() => undefined);
         navigate(`/login?verified=1&email=${encodeURIComponent(email.trim())}`, { replace: true });
@@ -67,7 +71,7 @@ const VerifyOtp = () => {
       });
 
       if (result.error) {
-        errorMessage = result.error.message || 'Invalid verification code';
+        errorMessage = getUserFacingErrorMessage(result.error, { fallback: 'Invalid verification code.' });
       } else {
         navigate('/app');
       }
@@ -99,7 +103,7 @@ const VerifyOtp = () => {
     setResending(false);
 
     if (result.error) {
-      setError(result.error.message || "Failed to resend code");
+      setError(getUserFacingErrorMessage(result.error, { fallback: 'We could not resend the code. Please try again.' }));
     } else {
       setResent(true);
       setTimeout(() => setResent(false), 3000);

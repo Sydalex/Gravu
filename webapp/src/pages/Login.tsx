@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { authClient } from '@/lib/auth-client';
 import { isPreviewAuthBypassEnabled } from '@/lib/preview-mode';
+import { getUserFacingErrorMessage } from '@/lib/user-facing-errors';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 
 const Login = () => {
@@ -26,7 +27,7 @@ const Login = () => {
     const result = await authClient.signIn.email({ email: email.trim(), password });
     setLoading(false);
     if (result.error) {
-      setError(result.error.message || 'Invalid email or password');
+      setError(getUserFacingErrorMessage(result.error, { fallback: 'Invalid email or password.' }));
     } else {
       navigate('/app');
     }
@@ -39,7 +40,7 @@ const Login = () => {
     const result = await authClient.emailOtp.sendVerificationOtp({ email: email.trim(), type: 'sign-in' });
     setOtpLoading(false);
     if (result.error) {
-      setError(result.error.message || 'Failed to send verification code');
+      setError(getUserFacingErrorMessage(result.error, { fallback: 'We could not send the verification code. Please try again.' }));
     } else {
       if (isPreviewAuthBypassEnabled()) {
         navigate('/app');

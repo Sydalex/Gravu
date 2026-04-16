@@ -16,6 +16,10 @@ import {
   mapSupportTicket,
   supportTicketInclude,
 } from "../services/supportTickets";
+import {
+  canGenerateMarketplaceVectors,
+  ensureMarketplaceVectorFormats,
+} from "../services/marketplaceVectorFormats";
 import type { auth } from "../auth";
 import {
   CreateSupportTicketMessageRequestSchema,
@@ -994,8 +998,8 @@ adminRouter.get("/marketplace", async (c) => {
       title: asset.marketplaceTitle ?? asset.conversion.name ?? `Asset ${asset.subjectId}`,
       category: asset.marketplaceCategory ?? "Uncategorized",
       previewBase64: asset.imageBase64,
-      hasSvg: !!asset.svgContent || !!asset.imageBase64,
-      hasDxf: !!asset.dxfContent || !!asset.imageBase64,
+      hasSvg: !!asset.svgContent || canGenerateMarketplaceVectors(asset),
+      hasDxf: !!asset.dxfContent || canGenerateMarketplaceVectors(asset),
       createdAt: asset.createdAt.toISOString(),
       flowType: asset.conversion.flowType,
       owner: {
@@ -1017,7 +1021,13 @@ adminRouter.post(
 
     const existing = await prisma.conversionAsset.findUnique({
       where: { id },
-      select: { id: true },
+      include: {
+        conversion: {
+          select: {
+            flowType: true,
+          },
+        },
+      },
     });
 
     if (!existing) {
@@ -1025,6 +1035,25 @@ adminRouter.post(
         { error: { message: "Marketplace asset not found", code: "NOT_FOUND" } },
         404
       );
+    }
+
+    if (status === "listed") {
+      try {
+        // System-side marketplace preparation: image-only Path 1 submissions
+        // are centerline-vectorized before going live, without charging a user.
+        await ensureMarketplaceVectorFormats(existing);
+      } catch (error) {
+        console.error("[admin-marketplace] Failed to prepare vector formats:", error);
+        return c.json(
+          {
+            error: {
+              message: "Could not prepare SVG/DXF formats for this marketplace asset.",
+              code: "MARKETPLACE_VECTOR_PREP_FAILED",
+            },
+          },
+          500,
+        );
+      }
     }
 
     const updated = await prisma.conversionAsset.update({
@@ -1060,8 +1089,8 @@ adminRouter.post(
         title: updated.marketplaceTitle ?? updated.conversion.name ?? `Asset ${updated.subjectId}`,
         category: updated.marketplaceCategory ?? "Uncategorized",
         previewBase64: updated.imageBase64,
-        hasSvg: !!updated.svgContent || !!updated.imageBase64,
-        hasDxf: !!updated.dxfContent || !!updated.imageBase64,
+        hasSvg: !!updated.svgContent || canGenerateMarketplaceVectors(updated),
+        hasDxf: !!updated.dxfContent || canGenerateMarketplaceVectors(updated),
         createdAt: updated.createdAt.toISOString(),
         flowType: updated.conversion.flowType,
         owner: {

@@ -5,6 +5,7 @@ import { useImageStore } from '@/lib/store';
 import { api, ApiError } from '@/lib/api';
 import { buildCombinedSelectionTitle, normalizeAssetTitle, stripExtension } from '@/lib/asset-naming';
 import { base64ToPngFile, vectorizeRaster } from '@/lib/vectorize';
+import { getUserFacingErrorMessage } from '@/lib/user-facing-errors';
 import type { CreateConversionResponse } from '../../../backend/src/types';
 
 interface LineworkResult {
@@ -197,13 +198,7 @@ const Processing = () => {
         }
       } catch (err) {
         setQuotaExceeded(err instanceof ApiError && err.status === 402);
-        const message =
-          err instanceof ApiError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : 'An unexpected error occurred';
-        setError(message);
+        setError(getUserFacingErrorMessage(err));
       }
     };
 
