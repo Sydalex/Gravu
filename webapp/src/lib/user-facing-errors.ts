@@ -8,7 +8,7 @@ type ErrorLike = {
 const DEFAULT_ERROR_MESSAGE =
   "Something did not complete. Please try again, or send a support ticket if it keeps happening.";
 const REDEPLOY_MESSAGE =
-  "This page is being refurbished. A new version is being installed, so please refresh in a moment.";
+  "We'll be right back. Gravu is being updated right now, so please refresh in a moment.";
 
 const TECHNICAL_ERROR_PATTERNS = [
   /\b(type|reference|syntax|range|eval|uri)error\b/i,
@@ -26,6 +26,7 @@ const TECHNICAL_ERROR_PATTERNS = [
 const REDEPLOY_ERROR_PATTERNS = [
   /\b(loading chunk|chunkloaderror|dynamically imported module|preloaderror)\b/i,
   /\b(gateway timeout|bad gateway|service unavailable|temporarily unavailable)\b/i,
+  /\b(no available server|server unavailable)\b/i,
   /\b(new version|redeploy|deployment|maintenance)\b/i,
 ];
 

@@ -38,11 +38,11 @@ function safeStringify(value: unknown) {
 function copyForKind(kind: CuratedErrorKind) {
   if (kind === "refurbishing") {
     return {
-      eyebrow: "Refurbishing",
+      eyebrow: "Updating Gravu",
       code: "503",
-      title: "This page is being refurbished.",
+      title: "We'll be right back.",
       description:
-        "A new version of Gravu is being installed. Refresh in a moment and your work should continue normally.",
+        "Gravu is being updated right now. Refresh in a moment and your work should continue normally.",
       primaryLabel: "Refresh page",
       reportLabel: "Still stuck? Send ticket",
     };

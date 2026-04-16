@@ -24,9 +24,12 @@ services:
     # do NOT bind a host port (would conflict with Traefik on port 80/443).
     expose:
       - "80"
+    # Start after the backend container is created so nginx can resolve
+    # the service name, but do not wait for backend health. This lets the
+    # static frontend come up during warmup instead of leaving the proxy
+    # with no app container to serve.
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     networks:
       - default
       - coolify
