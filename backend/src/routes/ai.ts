@@ -116,6 +116,19 @@ async function callGemini(
 
 // ─── Prompt builder helpers ────────────────────────────────────────────────
 
+// Prompt profile IDs make prompt iterations traceable in logs and easy to
+// compare against Desktop snapshots or revert by commit if output quality drops.
+const PROMPT_PROFILE_IDS = {
+  illustration: "illustration-sparse-prevector-v2",
+  vectorworksCenterline: "vectorworks-centerline-sparse-prevector-v3",
+} as const;
+
+function getPromptProfileId(outputMode: OutputMode): string {
+  return outputMode === "vectorworks_centerline"
+    ? PROMPT_PROFILE_IDS.vectorworksCenterline
+    : PROMPT_PROFILE_IDS.illustration;
+}
+
 /**
  * Category-aware simplification hints for vectorworks_centerline mode.
  * Returns aggressive guidance tuned for cleaner downstream CAD vectorization.
@@ -128,7 +141,7 @@ function getSubjectHints(description: string): string[] {
 
   if (hasAny(["person", "people", "human", "rider", "riders", "man", "woman", "child", "cyclist", "skier"])) {
     hints.push(
-      "People/riders: preserve the observed silhouette, limb contours, hand and shoe positions, and major clothing or gear boundaries; remove only face detail, tiny fingers, texture folds, straps, or buckles that are not structurally important."
+      "People/riders: preserve the observed silhouette, limb contours, hand and shoe positions, and only the main clothing or gear boundaries needed to read the pose; keep only prominent identity-defining face accessories or outlines such as glasses, beard outline, mustache outline, or strong headwear boundaries; omit eyes, pupils, nostrils, lips, teeth, eyebrows, wrinkles, and other interior facial detail unless they are unusually large and structurally obvious in the source; remove shoelaces, stitching, zipper teeth, drawstrings, pocket creases, quilt lines, seam texture, and secondary backpack strap fragments; if a strap, lace, or cord is essential for readability, reduce it to one clean long contour or one simple stroke only."
     );
   }
 
@@ -191,6 +204,8 @@ CRITICAL CONSTRAINTS — you must obey every one:
 6. Draw only the essential outlines and major structural edges. Omit fine surface detail, texture marks, and decorative complexity.
 7. Prefer long, continuous, unbroken strokes. Avoid clusters of tiny lines.
 8. Leave large interior areas completely white — do not fill them with texture or pattern.
+9. For human faces, keep only prominent identity-defining external features such as glasses, beard outline, mustache outline, or major headwear boundaries. Omit eyes, pupils, nostrils, lips, teeth, eyebrows, wrinkles, and other small interior facial marks.
+10. For clothing and wearable gear, keep only the main outer contour and a few major openings or overlaps. Omit shoelaces, seams, stitching, zipper teeth, drawstrings, pocket creases, quilt lines, small wrinkles, and secondary backpack straps. If one of those elements is necessary, represent it with one clean long contour only.
 
 The result must look like it could be directly auto-traced into clean vector paths with no cleanup needed.
 
@@ -263,6 +278,7 @@ ABSOLUTE VECTORIZATION CONSTRAINTS (mandatory):
 8. If two nearby texture details would crowd linework, replace them with one cleaner representative contour.
 9. Keep details that define object identity, pose, attachment points, or functional structure; omit only tiny noise and texture.
 10. Remove all unselected or out-of-scope objects.
+11. Prefer sparse pre-CAD contour drawing over illustrative richness. If a detail would create several short strokes, remove it or replace it with one cleaner contour.
 
 TRACING FIDELITY RULES (strict):
 - Treat the source image like a tracing underlay. Follow the observed outer contour and observed internal structure directly.
@@ -299,11 +315,18 @@ HUMAN FIGURE RULES (strict):
 - Do not reduce a person to a gesture-only drawing when a clear outer contour is visible in the source.
 - Closed outer contours are allowed and preferred when needed to preserve the observed silhouette faithfully.
 - Keep interior human detail minimal and only when essential for recognition, but do not lose the real body proportions or pose.
+- For faces, default to contour-only treatment with no eyes, pupils, nostrils, lips, teeth, eyebrows, wrinkles, or other interior facial drawing.
+- Only keep prominent identity-defining face features or accessories when they are large and obvious in the source, such as glasses, beard outline, mustache outline, or major headwear boundaries.
+- Do not invent portrait detail, expression lines, makeup detail, eyelashes, or stylized face rendering.
+- Simplify clothing to the outer garment silhouette plus only a few major openings, overlaps, and attachment points.
+- Remove shoelaces, zipper teeth, seam texture, quilting, stitching, drawstrings, tiny pocket folds, cuff wrinkles, and other short garment marks that do not change silhouette or pose.
+- Remove secondary backpack straps and fragmented strap details unless they materially clarify attachment; if a strap or cord must remain, render it as one clean long contour or one simple stroke, never as a cluster of short marks.
 
 MICRO-DETAIL REMOVAL (strict):
 - No tiny texture lines, decorative noise, repeated micro-parts, or surface marks.
 - Keep small parts only when they define attachment, function, recognizable silhouette, or pose.
 - No decorative detail that does not change recognizable silhouette, function, or pose.
+- Prefer deleting tiny folds and accessory fragments rather than approximating them with several broken mini-strokes.
 
 ${isolateConstraint}${selectedScopeConstraint}${hintBlock}`;
 }
@@ -451,6 +474,9 @@ aiRouter.post("/generate-linework", async (c) => {
 
     console.log(
       `[generate-linework] mode=${processingMode}, outputMode=${outputMode}, viewAngle=${viewAngle}, subjects=${subjects?.length ?? 0}, selected=${selectedSubjects?.length ?? 0}`
+    );
+    console.log(
+      `[generate-linework] promptProfile=${getPromptProfileId(outputMode)}`
     );
 
     const apiKey = getApiKey();
