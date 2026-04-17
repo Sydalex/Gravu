@@ -119,8 +119,8 @@ async function callGemini(
 // Prompt profile IDs make prompt iterations traceable in logs and easy to
 // compare against Desktop snapshots or revert by commit if output quality drops.
 const PROMPT_PROFILE_IDS = {
-  illustration: "illustration-sparse-prevector-v3",
-  vectorworksCenterline: "vectorworks-centerline-entourage-v4",
+  illustration: "illustration-sparse-prevector-v4",
+  vectorworksCenterline: "vectorworks-centerline-entourage-v5",
 } as const;
 
 function getPromptProfileId(outputMode: OutputMode): string {
@@ -141,13 +141,13 @@ function getSubjectHints(description: string): string[] {
 
   if (hasAny(["person", "people", "human", "rider", "riders", "man", "woman", "child", "cyclist", "skier"])) {
     hints.push(
-      "People/riders: preserve the observed silhouette, limb contours, hand and shoe positions, and only the main clothing or gear boundaries needed to read the pose; keep only prominent identity-defining face accessories or outlines such as glasses, beard outline, mustache outline, or strong headwear boundaries; omit eyes, pupils, nostrils, lips, teeth, eyebrows, wrinkles, and other interior facial detail unless they are unusually large and structurally obvious in the source; remove shoelaces, stitching, zipper teeth, drawstrings, pocket creases, quilt lines, seam texture, and secondary backpack strap fragments; if a strap, lace, or cord is essential for readability, reduce it to one clean long contour or one simple stroke only."
+      "People/riders: preserve the observed silhouette, limb contours, hand and shoe positions, and only the main clothing or gear boundaries needed to read the pose; keep only prominent identity-defining face accessories or outlines such as glasses, beard outline, mustache outline, or strong headwear boundaries; omit eyes, pupils, nostrils, lips, teeth, eyebrows, wrinkles, and other interior facial detail unless they are unusually large and structurally obvious in the source; remove shoelaces, stitching, zipper teeth, drawstrings, pocket creases, quilt lines, seam texture, and secondary backpack strap fragments; if a strap, lace, or cord is essential for readability, reduce it to one clean long contour or one simple stroke only; keep the same apparent line thickness for silhouette, hair, face accessories, garment overlaps, straps, and shoe lines."
     );
   }
 
   if (hasAny(["walk", "walking", "pedestrian", "standing", "strolling", "profile", "side view", "entourage"])) {
     hints.push(
-      "Entourage / walking figures: treat hair as one outer mass with at most one interior separation line; for side-view, rear-view, or distant walking figures use no interior face lines unless glasses are large and dominant; simplify coats, jackets, trousers, and sleeves to the silhouette plus only one or two major opening or overlap lines; simplify shoes to the outer contour plus at most one sole line; remove cuff lines, hem lines, seam lines, layered shoe construction, and minor garment folds."
+      "Entourage / walking figures: treat hair as one outer mass with at most one interior separation line; for side-view, rear-view, or distant walking figures use no interior face lines unless glasses are large and dominant; simplify coats, jackets, trousers, and sleeves to the silhouette plus only one or two major opening or overlap lines; simplify shoes to the outer contour plus at most one sole line; remove cuff lines, hem lines, seam lines, layered shoe construction, and minor garment folds; keep every remaining contour at the same apparent line thickness with no heavier outer outline and no thinner interior detail."
     );
   }
 
@@ -203,7 +203,7 @@ function buildIllustrationPrompt(opts: {
 
 CRITICAL CONSTRAINTS — you must obey every one:
 1. ONLY two tones: pure black (#000000) lines and pure white (#FFFFFF) background. No grey, no colour, no anti-aliased edges.
-2. Uniform thin stroke weight throughout — every line the same thickness.
+2. Uniform thin stroke weight throughout — every line the same thickness, including silhouette, hair, facial accessories, garment overlaps, straps, and shoe soles.
 3. ZERO shading, fills, gradients, hatching, crosshatch, stippling, or dot textures.
 4. ZERO grey tones or soft edges — every pixel is either solid black or solid white.
 5. Faithfully reproduce the silhouette, proportions, and spatial layout of the original image. Do NOT invent, rearrange, or reimagine anything.
@@ -277,7 +277,7 @@ VIEW REQUIREMENT:
 ABSOLUTE VECTORIZATION CONSTRAINTS (mandatory):
 1. Pure black lines (#000000) on pure white background (#FFFFFF) only.
 2. No grayscale, no color, no soft edges, no anti-aliased edges.
-3. Use one global stroke width everywhere. Do not intentionally vary line thickness by importance, depth, or material.
+3. Use one global stroke width everywhere. Do not intentionally vary line thickness by importance, depth, material, contour role, or whether a line is interior or exterior.
 4. No shading, no fills, no hatching, no texture, no sketch marks.
 5. Prefer clean, separable, continuous strokes over realism.
 6. No dense clusters of tiny lines, no overlapping short strokes.
@@ -332,6 +332,7 @@ HUMAN FIGURE RULES (strict):
 - For side-view, rear-view, or distant entourage figures, use no interior face lines unless glasses or another accessory is unusually large and essential.
 - Simplify coats, jackets, trousers, and sleeves to the silhouette plus only one or two major opening or overlap lines.
 - Simplify shoes to the outer contour plus at most one sole line; remove layered sole construction and lace detail entirely.
+- Keep the same apparent line thickness across outer contour, hair, overlap lines, and shoe lines; never use a heavier silhouette or a finer interior line.
 
 MICRO-DETAIL REMOVAL (strict):
 - No tiny texture lines, decorative noise, repeated micro-parts, or surface marks.
