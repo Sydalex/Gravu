@@ -119,8 +119,8 @@ async function callGemini(
 // Prompt profile IDs make prompt iterations traceable in logs and easy to
 // compare against Desktop snapshots or revert by commit if output quality drops.
 const PROMPT_PROFILE_IDS = {
-  illustration: "illustration-sparse-prevector-v4",
-  vectorworksCenterline: "vectorworks-centerline-entourage-v5",
+  illustration: "illustration-sparse-prevector-v5",
+  vectorworksCenterline: "vectorworks-centerline-entourage-v6",
 } as const;
 
 function getPromptProfileId(outputMode: OutputMode): string {
@@ -147,7 +147,7 @@ function getSubjectHints(description: string): string[] {
 
   if (hasAny(["walk", "walking", "pedestrian", "standing", "strolling", "profile", "side view", "entourage"])) {
     hints.push(
-      "Entourage / walking figures: treat hair as one outer mass with at most one interior separation line; for side-view, rear-view, or distant walking figures use no interior face lines unless glasses are large and dominant; simplify coats, jackets, trousers, and sleeves to the silhouette plus only one or two major opening or overlap lines; simplify shoes to the outer contour plus at most one sole line; remove cuff lines, hem lines, seam lines, layered shoe construction, and minor garment folds; keep every remaining contour at the same apparent line thickness with no heavier outer outline and no thinner interior detail."
+      "Entourage / walking figures: treat hair as one outer mass with at most one interior separation line; for side-view, rear-view, or distant walking figures use zero interior face lines unless glasses are large and dominant; simplify coats, jackets, trousers, and sleeves to the silhouette plus at most two major opening or overlap lines total; simplify shoes to the outer contour plus at most one sole line; remove cuff lines, hem lines, seam lines, layered shoe construction, and minor garment folds; keep every remaining contour at the same apparent line thickness with no heavier outer outline and no thinner interior detail; all stroke ends must be blunt and uniform, never tapered, pointed, brush-like, or calligraphic."
     );
   }
 
@@ -212,7 +212,8 @@ CRITICAL CONSTRAINTS — you must obey every one:
 8. Leave large interior areas completely white — do not fill them with texture or pattern.
 9. For human faces, keep only prominent identity-defining external features such as glasses, beard outline, mustache outline, or major headwear boundaries. Omit eyes, pupils, nostrils, lips, teeth, eyebrows, wrinkles, and other small interior facial marks.
 10. For clothing and wearable gear, keep only the main outer contour and a few major openings or overlaps. Omit shoelaces, seams, stitching, zipper teeth, drawstrings, pocket creases, quilt lines, small wrinkles, and secondary backpack straps. If one of those elements is necessary, represent it with one clean long contour only.
-11. For standing or walking people used as entourage, treat hair as one outer mass, use no interior face lines in side or rear views, keep garments to silhouette plus one or two major overlap lines, and keep shoes to outer contour plus at most one sole line.
+11. For standing or walking people used as entourage, treat hair as one outer mass with a maximum of one interior hair line, use zero interior face lines in side or rear views, keep garments to the silhouette plus a maximum of two interior overlap lines total, and keep shoes to outer contour plus a maximum of one sole line.
+12. Every stroke must keep blunt, uniform ends. Do not taper lines to points and do not use brush-like or calligraphic terminals. If uncertain, omit the detail instead of drawing a thin pointed ending.
 
 The result must look like it could be directly auto-traced into clean vector paths with no cleanup needed.
 
@@ -286,6 +287,7 @@ ABSOLUTE VECTORIZATION CONSTRAINTS (mandatory):
 9. Keep details that define object identity, pose, attachment points, or functional structure; omit only tiny noise and texture.
 10. Remove all unselected or out-of-scope objects.
 11. Prefer sparse pre-CAD contour drawing over illustrative richness. If a detail would create several short strokes, remove it or replace it with one cleaner contour.
+12. All stroke terminals must stay blunt and uniform. Never taper a line into a pointed tip.
 
 TRACING FIDELITY RULES (strict):
 - Treat the source image like a tracing underlay. Follow the observed outer contour and observed internal structure directly.
@@ -328,17 +330,19 @@ HUMAN FIGURE RULES (strict):
 - Simplify clothing to the outer garment silhouette plus only a few major openings, overlaps, and attachment points.
 - Remove shoelaces, zipper teeth, seam texture, quilting, stitching, drawstrings, tiny pocket folds, cuff wrinkles, and other short garment marks that do not change silhouette or pose.
 - Remove secondary backpack straps and fragmented strap details unless they materially clarify attachment; if a strap or cord must remain, render it as one clean long contour or one simple stroke, never as a cluster of short marks.
-- For walking, standing, or entourage-style figures, treat hair as one outer mass with at most one interior separation line.
-- For side-view, rear-view, or distant entourage figures, use no interior face lines unless glasses or another accessory is unusually large and essential.
-- Simplify coats, jackets, trousers, and sleeves to the silhouette plus only one or two major opening or overlap lines.
-- Simplify shoes to the outer contour plus at most one sole line; remove layered sole construction and lace detail entirely.
+- For walking, standing, or entourage-style figures, treat hair as one outer mass with a maximum of one interior separation line.
+- For side-view, rear-view, or distant entourage figures, use zero interior face lines unless glasses or another accessory is unusually large and essential.
+- Simplify coats, jackets, trousers, and sleeves to the silhouette plus a maximum of two major opening or overlap lines total.
+- Simplify shoes to the outer contour plus a maximum of one sole line; remove layered sole construction and lace detail entirely.
 - Keep the same apparent line thickness across outer contour, hair, overlap lines, and shoe lines; never use a heavier silhouette or a finer interior line.
+- All visible stroke ends must remain blunt and uniform. No pointed line endings, no tapered brush behavior, and no hairline tips.
 
 MICRO-DETAIL REMOVAL (strict):
 - No tiny texture lines, decorative noise, repeated micro-parts, or surface marks.
 - Keep small parts only when they define attachment, function, recognizable silhouette, or pose.
 - No decorative detail that does not change recognizable silhouette, function, or pose.
 - Prefer deleting tiny folds and accessory fragments rather than approximating them with several broken mini-strokes.
+- If a detail cannot be rendered with the same stroke thickness and blunt line ending as the rest of the drawing, omit it.
 
 ${isolateConstraint}${selectedScopeConstraint}${hintBlock}`;
 }
