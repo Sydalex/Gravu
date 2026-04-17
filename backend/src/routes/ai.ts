@@ -119,8 +119,8 @@ async function callGemini(
 // Prompt profile IDs make prompt iterations traceable in logs and easy to
 // compare against Desktop snapshots or revert by commit if output quality drops.
 const PROMPT_PROFILE_IDS = {
-  illustration: "illustration-sparse-prevector-v2",
-  vectorworksCenterline: "vectorworks-centerline-sparse-prevector-v3",
+  illustration: "illustration-sparse-prevector-v3",
+  vectorworksCenterline: "vectorworks-centerline-entourage-v4",
 } as const;
 
 function getPromptProfileId(outputMode: OutputMode): string {
@@ -142,6 +142,12 @@ function getSubjectHints(description: string): string[] {
   if (hasAny(["person", "people", "human", "rider", "riders", "man", "woman", "child", "cyclist", "skier"])) {
     hints.push(
       "People/riders: preserve the observed silhouette, limb contours, hand and shoe positions, and only the main clothing or gear boundaries needed to read the pose; keep only prominent identity-defining face accessories or outlines such as glasses, beard outline, mustache outline, or strong headwear boundaries; omit eyes, pupils, nostrils, lips, teeth, eyebrows, wrinkles, and other interior facial detail unless they are unusually large and structurally obvious in the source; remove shoelaces, stitching, zipper teeth, drawstrings, pocket creases, quilt lines, seam texture, and secondary backpack strap fragments; if a strap, lace, or cord is essential for readability, reduce it to one clean long contour or one simple stroke only."
+    );
+  }
+
+  if (hasAny(["walk", "walking", "pedestrian", "standing", "strolling", "profile", "side view", "entourage"])) {
+    hints.push(
+      "Entourage / walking figures: treat hair as one outer mass with at most one interior separation line; for side-view, rear-view, or distant walking figures use no interior face lines unless glasses are large and dominant; simplify coats, jackets, trousers, and sleeves to the silhouette plus only one or two major opening or overlap lines; simplify shoes to the outer contour plus at most one sole line; remove cuff lines, hem lines, seam lines, layered shoe construction, and minor garment folds."
     );
   }
 
@@ -206,6 +212,7 @@ CRITICAL CONSTRAINTS — you must obey every one:
 8. Leave large interior areas completely white — do not fill them with texture or pattern.
 9. For human faces, keep only prominent identity-defining external features such as glasses, beard outline, mustache outline, or major headwear boundaries. Omit eyes, pupils, nostrils, lips, teeth, eyebrows, wrinkles, and other small interior facial marks.
 10. For clothing and wearable gear, keep only the main outer contour and a few major openings or overlaps. Omit shoelaces, seams, stitching, zipper teeth, drawstrings, pocket creases, quilt lines, small wrinkles, and secondary backpack straps. If one of those elements is necessary, represent it with one clean long contour only.
+11. For standing or walking people used as entourage, treat hair as one outer mass, use no interior face lines in side or rear views, keep garments to silhouette plus one or two major overlap lines, and keep shoes to outer contour plus at most one sole line.
 
 The result must look like it could be directly auto-traced into clean vector paths with no cleanup needed.
 
@@ -321,6 +328,10 @@ HUMAN FIGURE RULES (strict):
 - Simplify clothing to the outer garment silhouette plus only a few major openings, overlaps, and attachment points.
 - Remove shoelaces, zipper teeth, seam texture, quilting, stitching, drawstrings, tiny pocket folds, cuff wrinkles, and other short garment marks that do not change silhouette or pose.
 - Remove secondary backpack straps and fragmented strap details unless they materially clarify attachment; if a strap or cord must remain, render it as one clean long contour or one simple stroke, never as a cluster of short marks.
+- For walking, standing, or entourage-style figures, treat hair as one outer mass with at most one interior separation line.
+- For side-view, rear-view, or distant entourage figures, use no interior face lines unless glasses or another accessory is unusually large and essential.
+- Simplify coats, jackets, trousers, and sleeves to the silhouette plus only one or two major opening or overlap lines.
+- Simplify shoes to the outer contour plus at most one sole line; remove layered sole construction and lace detail entirely.
 
 MICRO-DETAIL REMOVAL (strict):
 - No tiny texture lines, decorative noise, repeated micro-parts, or surface marks.
