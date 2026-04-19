@@ -119,6 +119,33 @@ const UpdateMarketplaceAssetSchema = z.object({
   category: z.string().trim().min(2).max(80).optional(),
 });
 
+const MARKETPLACE_FORMAT_PREP_TIMEOUT_MS = 55_000;
+
+class MarketplaceFormatPrepTimeoutError extends Error {
+  constructor() {
+    super("Preparing this marketplace format took too long.");
+    this.name = "MarketplaceFormatPrepTimeoutError";
+  }
+}
+
+async function withMarketplaceFormatTimeout<T>(promise: Promise<T>) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(
+      () => reject(new MarketplaceFormatPrepTimeoutError()),
+      MARKETPLACE_FORMAT_PREP_TIMEOUT_MS
+    );
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
 function requireStripeConfigured() {
   return !!stripe;
 }
@@ -991,24 +1018,30 @@ adminRouter.get("/marketplace", async (c) => {
   });
 
   return c.json({
-    data: assets.map((asset) => ({
-      id: asset.id,
-      conversionId: asset.conversionId,
-      subjectId: asset.subjectId,
-      marketplaceStatus: asset.marketplaceStatus,
-      title: asset.marketplaceTitle ?? asset.conversion.name ?? `Asset ${asset.subjectId}`,
-      category: asset.marketplaceCategory ?? "Uncategorized",
-      previewBase64: asset.imageBase64,
-      hasSvg: !!asset.svgContent || canGenerateMarketplaceVectors(asset),
-      hasDxf: !!asset.dxfContent || canGenerateMarketplaceVectors(asset),
-      createdAt: asset.createdAt.toISOString(),
-      flowType: asset.conversion.flowType,
-      owner: {
-        id: asset.conversion.user.id,
-        email: asset.conversion.user.email,
-        name: asset.conversion.user.name,
-      },
-    })),
+    data: assets.map((asset) => {
+      const canGenerateVectors = canGenerateMarketplaceVectors(asset);
+
+      return {
+        id: asset.id,
+        conversionId: asset.conversionId,
+        subjectId: asset.subjectId,
+        marketplaceStatus: asset.marketplaceStatus,
+        title: asset.marketplaceTitle ?? asset.conversion.name ?? `Asset ${asset.subjectId}`,
+        category: asset.marketplaceCategory ?? "Uncategorized",
+        previewBase64: asset.imageBase64,
+        hasSvg: !!asset.svgContent,
+        hasDxf: !!asset.dxfContent,
+        canGenerateSvg: !asset.svgContent && canGenerateVectors,
+        canGenerateDxf: !asset.dxfContent && canGenerateVectors,
+        createdAt: asset.createdAt.toISOString(),
+        flowType: asset.conversion.flowType,
+        owner: {
+          id: asset.conversion.user.id,
+          email: asset.conversion.user.email,
+          name: asset.conversion.user.name,
+        },
+      };
+    }),
   });
 });
 
@@ -1044,11 +1077,23 @@ adminRouter.post(
 
     if ((format === "svg" && !svgContent) || (format === "dxf" && !dxfContent)) {
       try {
-        const ensured = await ensureMarketplaceVectorFormats(asset);
+        const ensured = await withMarketplaceFormatTimeout(ensureMarketplaceVectorFormats(asset));
         svgContent = ensured.svgContent;
         dxfContent = ensured.dxfContent;
       } catch (error) {
         console.error("[admin-marketplace-download] Failed to prepare vector format:", error);
+        if (error instanceof MarketplaceFormatPrepTimeoutError) {
+          return c.json(
+            {
+              error: {
+                message: "Preparing this marketplace format took too long. Try again, or review the PNG/SVG first.",
+                code: "MARKETPLACE_FORMAT_PREP_TIMEOUT",
+              },
+            },
+            504,
+          );
+        }
+
         return c.json(
           {
             error: {
@@ -1149,14 +1194,7 @@ adminRouter.post(
       },
     });
 
-    if (status === "listed" && (!updated.svgContent || !updated.dxfContent)) {
-      // Approval should not block on centerline generation. Marketplace downloads
-      // can still lazy-generate formats, and admins can explicitly test formats
-      // through the review download endpoint before approval.
-      void ensureMarketplaceVectorFormats(updated).catch((error) => {
-        console.error("[admin-marketplace] Background vector prep failed:", error);
-      });
-    }
+    const canGenerateVectors = canGenerateMarketplaceVectors(updated);
 
     return c.json({
       data: {
@@ -1167,8 +1205,10 @@ adminRouter.post(
         title: updated.marketplaceTitle ?? updated.conversion.name ?? `Asset ${updated.subjectId}`,
         category: updated.marketplaceCategory ?? "Uncategorized",
         previewBase64: updated.imageBase64,
-        hasSvg: !!updated.svgContent || canGenerateMarketplaceVectors(updated),
-        hasDxf: !!updated.dxfContent || canGenerateMarketplaceVectors(updated),
+        hasSvg: !!updated.svgContent,
+        hasDxf: !!updated.dxfContent,
+        canGenerateSvg: !updated.svgContent && canGenerateVectors,
+        canGenerateDxf: !updated.dxfContent && canGenerateVectors,
         createdAt: updated.createdAt.toISOString(),
         flowType: updated.conversion.flowType,
         owner: {

@@ -148,6 +148,8 @@ interface MarketplaceReviewAsset {
   previewBase64: string | null;
   hasSvg: boolean;
   hasDxf: boolean;
+  canGenerateSvg: boolean;
+  canGenerateDxf: boolean;
   createdAt: string;
   flowType: string;
   owner: {
@@ -161,6 +163,8 @@ type FilterId = "all" | "admins" | "paid" | "low-credits";
 type PromoDuration = "once" | "forever" | "repeating";
 type PriceMode = "recurring" | "one_time";
 type AccountPlan = "free" | "lite" | "pro" | "expert";
+
+const MARKETPLACE_REVIEW_DOWNLOAD_TIMEOUT_MS = 60_000;
 
 const filters: Array<{ id: FilterId; label: string }> = [
   { id: "all", label: "All Users" },
@@ -205,6 +209,23 @@ function formatPromoDuration(duration: string | null, durationInMonths: number |
 
 function formatMutationError(error: unknown) {
   return error instanceof Error ? error.message : "Request failed";
+}
+
+function isAbortError(error: unknown) {
+  return (
+    (error instanceof DOMException && error.name === "AbortError") ||
+    (error instanceof Error && error.name === "AbortError")
+  );
+}
+
+function marketplaceFormatStateLabel(
+  label: "SVG" | "DXF",
+  hasFormat: boolean,
+  canGenerate: boolean
+) {
+  if (hasFormat) return `${label} ready`;
+  if (canGenerate) return `${label} can generate`;
+  return `No ${label}`;
 }
 
 function getStripeDashboardUrl(liveMode?: boolean) {
@@ -751,11 +772,31 @@ export default function Admin() {
   });
 
   const marketplaceDownloadMutation = useMutation({
-    mutationFn: (params: { assetId: string; format: "png" | "svg" | "dxf" }) =>
-      api.post<MarketplaceDownloadResponse>(
-        `/api/admin/marketplace/assets/${params.assetId}/download`,
-        { format: params.format }
-      ),
+    mutationFn: async (params: { assetId: string; format: "png" | "svg" | "dxf" }) => {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(
+        () => controller.abort(),
+        MARKETPLACE_REVIEW_DOWNLOAD_TIMEOUT_MS
+      );
+
+      try {
+        return await api.post<MarketplaceDownloadResponse>(
+          `/api/admin/marketplace/assets/${params.assetId}/download`,
+          { format: params.format },
+          { signal: controller.signal }
+        );
+      } catch (error) {
+        if (isAbortError(error)) {
+          throw new Error(
+            `${params.format.toUpperCase()} generation took too long. Try again, or review another format first.`
+          );
+        }
+
+        throw error;
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    },
     onSuccess: async (payload) => {
       triggerMarketplaceReviewDownload(payload);
       await queryClient.invalidateQueries({ queryKey: ["admin", "marketplace"] });
@@ -824,8 +865,8 @@ export default function Admin() {
       available: boolean;
     }> = [
       { format: "png", label: "PNG", available: !!asset.previewBase64 },
-      { format: "svg", label: "SVG", available: asset.hasSvg },
-      { format: "dxf", label: "DXF", available: asset.hasDxf },
+      { format: "svg", label: "SVG", available: asset.hasSvg || asset.canGenerateSvg },
+      { format: "dxf", label: "DXF", available: asset.hasDxf || asset.canGenerateDxf },
     ];
 
     return (
@@ -861,7 +902,8 @@ export default function Admin() {
           })}
         </div>
         <p className="text-[11px] leading-5 text-muted-foreground">
-          SVG and DXF are generated and cached here if they do not exist yet.
+          Missing SVG or DXF files are generated on demand and cached here. First DXF
+          generation can take up to a minute.
         </p>
       </div>
     );
@@ -2089,8 +2131,12 @@ export default function Admin() {
                               </div>
 
                               <div className="flex flex-wrap gap-2 text-[11px] text-[#6f695f]">
-                                <span>{asset.hasSvg ? "SVG ready" : "No SVG"}</span>
-                                <span>{asset.hasDxf ? "DXF ready" : "No DXF"}</span>
+                                <span>
+                                  {marketplaceFormatStateLabel("SVG", asset.hasSvg, asset.canGenerateSvg)}
+                                </span>
+                                <span>
+                                  {marketplaceFormatStateLabel("DXF", asset.hasDxf, asset.canGenerateDxf)}
+                                </span>
                                 <span>{formatDate(asset.createdAt)}</span>
                               </div>
 
@@ -2251,8 +2297,12 @@ export default function Admin() {
                               </div>
 
                               <div className="flex flex-wrap gap-2 text-[11px] text-[#6f695f]">
-                                <span>{asset.hasSvg ? "SVG ready" : "No SVG"}</span>
-                                <span>{asset.hasDxf ? "DXF ready" : "No DXF"}</span>
+                                <span>
+                                  {marketplaceFormatStateLabel("SVG", asset.hasSvg, asset.canGenerateSvg)}
+                                </span>
+                                <span>
+                                  {marketplaceFormatStateLabel("DXF", asset.hasDxf, asset.canGenerateDxf)}
+                                </span>
                                 <span>{formatDate(asset.createdAt)}</span>
                               </div>
 
