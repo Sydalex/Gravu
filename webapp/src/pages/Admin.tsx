@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { buildDownloadFilename } from "@/lib/asset-naming";
+import { downloadBase64File, downloadTextFile } from "@/lib/download";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +23,7 @@ import {
 import {
   Check,
   CreditCard,
+  Download,
   EyeOff,
   ExternalLink,
   Inbox,
@@ -34,7 +37,11 @@ import {
   Users,
   X,
 } from "lucide-react";
-import type { SupportTicketStatus, SupportTicketThread } from "../../../backend/src/types";
+import type {
+  MarketplaceDownloadResponse,
+  SupportTicketStatus,
+  SupportTicketThread,
+} from "../../../backend/src/types";
 
 interface AdminStats {
   totalUsers: number;
@@ -222,6 +229,17 @@ function marketplaceStatusClass(status: MarketplaceReviewAsset["marketplaceStatu
     return "border-[#ddd8ea] bg-[#f5f1fb] text-[#7055a6]";
   }
   return "border-[#e8dcc2] bg-[#f7f0e3] text-[#8f6a1d]";
+}
+
+function triggerMarketplaceReviewDownload(payload: MarketplaceDownloadResponse) {
+  const filename = buildDownloadFilename(payload.title, payload.format);
+
+  if (payload.format === "png") {
+    downloadBase64File(payload.content, filename, payload.mimeType);
+    return;
+  }
+
+  downloadTextFile(payload.content, filename, payload.mimeType);
 }
 
 function PlanBadge({ plan, isAdmin }: { plan: string; isAdmin: boolean }) {
@@ -715,14 +733,32 @@ export default function Admin() {
       status: "pending_review" | "listed" | "rejected" | "private";
       title?: string;
       category?: string;
-    }) => api.post(`/api/admin/marketplace/assets/${payload.assetId}`, payload),
-    onSuccess: async () => {
+    }) => api.post<MarketplaceReviewAsset>(`/api/admin/marketplace/assets/${payload.assetId}`, payload),
+    onSuccess: async (updatedAsset) => {
+      queryClient.setQueryData<MarketplaceReviewAsset[]>(["admin", "marketplace"], (current) =>
+        current?.map((asset) => (asset.id === updatedAsset.id ? updatedAsset : asset)) ?? current
+      );
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["admin", "marketplace"] }),
         queryClient.invalidateQueries({ queryKey: ["marketplace"] }),
         queryClient.invalidateQueries({ queryKey: ["conversion"] }),
       ]);
       toast.success("Marketplace moderation updated");
+    },
+    onError: (error) => {
+      toast.error(formatMutationError(error));
+    },
+  });
+
+  const marketplaceDownloadMutation = useMutation({
+    mutationFn: (params: { assetId: string; format: "png" | "svg" | "dxf" }) =>
+      api.post<MarketplaceDownloadResponse>(
+        `/api/admin/marketplace/assets/${params.assetId}/download`,
+        { format: params.format }
+      ),
+    onSuccess: async (payload) => {
+      triggerMarketplaceReviewDownload(payload);
+      await queryClient.invalidateQueries({ queryKey: ["admin", "marketplace"] });
     },
     onError: (error) => {
       toast.error(formatMutationError(error));
@@ -776,6 +812,60 @@ export default function Admin() {
       title: asset.title,
       category: asset.category,
     };
+
+  const renderMarketplaceDownloadButtons = (asset: MarketplaceReviewAsset) => {
+    const activeDownload =
+      marketplaceDownloadMutation.variables?.assetId === asset.id
+        ? marketplaceDownloadMutation.variables.format
+        : null;
+    const formats: Array<{
+      format: "png" | "svg" | "dxf";
+      label: string;
+      available: boolean;
+    }> = [
+      { format: "png", label: "PNG", available: !!asset.previewBase64 },
+      { format: "svg", label: "SVG", available: asset.hasSvg },
+      { format: "dxf", label: "DXF", available: asset.hasDxf },
+    ];
+
+    return (
+      <div className="space-y-2">
+        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+          Test downloads
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {formats.map((item) => {
+            const isActive = marketplaceDownloadMutation.isPending && activeDownload === item.format;
+            return (
+              <Button
+                key={item.format}
+                type="button"
+                variant="outline"
+                className="h-8 rounded-2xl border-[#d8d0c5] bg-background px-3 font-mono text-[10px] uppercase tracking-[0.12em]"
+                disabled={!item.available || marketplaceDownloadMutation.isPending}
+                onClick={() =>
+                  marketplaceDownloadMutation.mutate({
+                    assetId: asset.id,
+                    format: item.format,
+                  })
+                }
+              >
+                {isActive ? (
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-3.5 w-3.5" />
+                )}
+                {item.label}
+              </Button>
+            );
+          })}
+        </div>
+        <p className="text-[11px] leading-5 text-muted-foreground">
+          SVG and DXF are generated and cached here if they do not exist yet.
+        </p>
+      </div>
+    );
+  };
 
   const handleCredits = (operation: "add" | "set") => {
     if (!creditDialogUser || !creditAmount) return;
@@ -2004,6 +2094,8 @@ export default function Admin() {
                                 <span>{formatDate(asset.createdAt)}</span>
                               </div>
 
+                              {renderMarketplaceDownloadButtons(asset)}
+
                               <div className="flex flex-wrap gap-2">
                                 <Button
                                   className="h-9 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90"
@@ -2163,6 +2255,8 @@ export default function Admin() {
                                 <span>{asset.hasDxf ? "DXF ready" : "No DXF"}</span>
                                 <span>{formatDate(asset.createdAt)}</span>
                               </div>
+
+                              {renderMarketplaceDownloadButtons(asset)}
 
                               <div className="flex flex-wrap gap-2">
                                 <Button

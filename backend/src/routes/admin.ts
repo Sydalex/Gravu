@@ -23,6 +23,7 @@ import {
 import type { auth } from "../auth";
 import {
   CreateSupportTicketMessageRequestSchema,
+  MarketplaceDownloadRequestSchema,
   UpdateSupportTicketStatusRequestSchema,
 } from "../types";
 
@@ -1013,6 +1014,93 @@ adminRouter.get("/marketplace", async (c) => {
 
 // POST /api/admin/marketplace/assets/:id — moderate marketplace item
 adminRouter.post(
+  "/marketplace/assets/:id/download",
+  zValidator("json", MarketplaceDownloadRequestSchema),
+  async (c) => {
+    const { id } = c.req.param();
+    const { format } = c.req.valid("json");
+
+    const asset = await prisma.conversionAsset.findUnique({
+      where: { id },
+      include: {
+        conversion: {
+          select: {
+            flowType: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!asset) {
+      return c.json(
+        { error: { message: "Marketplace asset not found", code: "NOT_FOUND" } },
+        404
+      );
+    }
+
+    let svgContent = asset.svgContent;
+    let dxfContent = asset.dxfContent;
+
+    if ((format === "svg" && !svgContent) || (format === "dxf" && !dxfContent)) {
+      try {
+        const ensured = await ensureMarketplaceVectorFormats(asset);
+        svgContent = ensured.svgContent;
+        dxfContent = ensured.dxfContent;
+      } catch (error) {
+        console.error("[admin-marketplace-download] Failed to prepare vector format:", error);
+        return c.json(
+          {
+            error: {
+              message: "Could not prepare this marketplace format for review.",
+              code: "MARKETPLACE_FORMAT_PREP_FAILED",
+            },
+          },
+          500,
+        );
+      }
+    }
+
+    if (format === "png" && !asset.imageBase64) {
+      return c.json({ error: { message: "PNG unavailable", code: "FORMAT_UNAVAILABLE" } }, 404);
+    }
+
+    if (format === "svg" && !svgContent) {
+      return c.json({ error: { message: "SVG unavailable", code: "FORMAT_UNAVAILABLE" } }, 404);
+    }
+
+    if (format === "dxf" && !dxfContent) {
+      return c.json({ error: { message: "DXF unavailable", code: "FORMAT_UNAVAILABLE" } }, 404);
+    }
+
+    const payload =
+      format === "png"
+        ? {
+            mimeType: "image/png",
+            content: asset.imageBase64!,
+          }
+        : format === "svg"
+          ? {
+              mimeType: "image/svg+xml",
+              content: svgContent!,
+            }
+          : {
+              mimeType: "application/dxf",
+              content: dxfContent!,
+            };
+
+    return c.json({
+      data: {
+        title: asset.marketplaceTitle ?? asset.conversion.name ?? `Asset ${asset.subjectId}`,
+        format,
+        mimeType: payload.mimeType,
+        content: payload.content,
+      },
+    });
+  }
+);
+
+adminRouter.post(
   "/marketplace/assets/:id",
   zValidator("json", UpdateMarketplaceAssetSchema),
   async (c) => {
@@ -1035,25 +1123,6 @@ adminRouter.post(
         { error: { message: "Marketplace asset not found", code: "NOT_FOUND" } },
         404
       );
-    }
-
-    if (status === "listed") {
-      try {
-        // System-side marketplace preparation: image-only Path 1 submissions
-        // are centerline-vectorized before going live, without charging a user.
-        await ensureMarketplaceVectorFormats(existing);
-      } catch (error) {
-        console.error("[admin-marketplace] Failed to prepare vector formats:", error);
-        return c.json(
-          {
-            error: {
-              message: "Could not prepare SVG/DXF formats for this marketplace asset.",
-              code: "MARKETPLACE_VECTOR_PREP_FAILED",
-            },
-          },
-          500,
-        );
-      }
     }
 
     const updated = await prisma.conversionAsset.update({
@@ -1079,6 +1148,15 @@ adminRouter.post(
         },
       },
     });
+
+    if (status === "listed" && (!updated.svgContent || !updated.dxfContent)) {
+      // Approval should not block on centerline generation. Marketplace downloads
+      // can still lazy-generate formats, and admins can explicitly test formats
+      // through the review download endpoint before approval.
+      void ensureMarketplaceVectorFormats(updated).catch((error) => {
+        console.error("[admin-marketplace] Background vector prep failed:", error);
+      });
+    }
 
     return c.json({
       data: {

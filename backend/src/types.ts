@@ -84,6 +84,10 @@ export type ProcessingMode = z.infer<typeof ProcessingModeEnum>;
 export const OutputModeEnum = z.enum(["illustration", "vectorworks_centerline"]);
 export type OutputMode = z.infer<typeof OutputModeEnum>;
 
+/** User-facing detail level used to balance fidelity vs lighter exports */
+export const DetailLevelEnum = z.enum(["low", "mid", "high"]);
+export type DetailLevel = z.infer<typeof DetailLevelEnum>;
+
 /** Request body for POST /api/ai/generate-linework */
 export const GenerateLineworkRequestSchema = z.object({
   imageBase64: z.string().min(1, "imageBase64 is required"),
@@ -93,6 +97,7 @@ export const GenerateLineworkRequestSchema = z.object({
   customViewDescription: z.string().optional(),
   processingMode: ProcessingModeEnum,
   outputMode: OutputModeEnum.optional().default("illustration"),
+  detailLevel: DetailLevelEnum.optional().default("mid"),
 });
 export type GenerateLineworkRequest = z.infer<typeof GenerateLineworkRequestSchema>;
 

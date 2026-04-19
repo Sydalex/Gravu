@@ -126,7 +126,7 @@ const optimizeUploadImage = async (file: File, flowType: 'full' | 'vectorize_onl
 
 const simplificationOptions: Array<{ value: SimplificationLevel; label: string }> = [
   { value: 'low', label: 'Low' },
-  { value: 'mid', label: 'Mid' },
+  { value: 'mid', label: 'Medium' },
   { value: 'high', label: 'High' },
 ];
 
@@ -255,6 +255,38 @@ const Upload = () => {
     return null;
   }
 
+  const showDetailSelector = flowType === 'full' || vectorizeMode === 'centerline';
+
+  const detailSelector = (
+    <div>
+      <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400">
+        Detail
+      </p>
+      <div className="flex gap-2">
+        {simplificationOptions.map((option) => {
+          const active = simplificationLevel === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setSimplificationLevel(option.value)}
+              className={`flex-1 border px-4 py-3 font-mono text-xs uppercase tracking-[0.1em] transition-all ${
+                active
+                  ? 'border-orange-500 bg-orange-500/10 text-orange-600'
+                  : 'border-neutral-300 text-neutral-500 hover:border-neutral-400'
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-3 font-mono text-[10px] leading-5 text-neutral-400">
+        Higher detail keeps more lines and can create heavier files.
+      </p>
+    </div>
+  );
+
   return (
     <PageWrapper className="flex flex-col items-center justify-center px-6 pt-20 pb-12">
       <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
@@ -307,6 +339,17 @@ const Upload = () => {
           </h1>
         </motion.div>
 
+        {flowType === 'full' && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="mb-8"
+          >
+            {detailSelector}
+          </motion.div>
+        )}
+
         {/* Vectorization settings */}
         {flowType === 'vectorize_only' && (
           <motion.div
@@ -343,31 +386,8 @@ const Upload = () => {
               </div>
             </div>
 
-            {vectorizeMode === 'centerline' ? (
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-400 mb-3">
-                  Detail Level
-                </p>
-                <div className="flex gap-2">
-                  {simplificationOptions.map((option) => {
-                    const active = simplificationLevel === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setSimplificationLevel(option.value)}
-                        className={`flex-1 border px-4 py-3 font-mono text-xs uppercase tracking-[0.1em] transition-all ${
-                          active
-                            ? 'border-orange-500 bg-orange-500/10 text-orange-600'
-                            : 'border-neutral-300 text-neutral-500 hover:border-neutral-400'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+            {showDetailSelector ? (
+              detailSelector
             ) : (
               <p className="font-mono text-[10px] leading-5 text-neutral-400">
                 Outline mode keeps the original contours and skips the centerline simplification controls.

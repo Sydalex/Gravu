@@ -76,6 +76,7 @@ const Processing = () => {
         selectedSubjects: selectedIds,
         processingMode: 'keep_together',
         outputMode: 'vectorworks_centerline',
+        detailLevel: simplificationLevel,
         viewAngle: 'perspective',
       });
 

@@ -7,6 +7,7 @@ import {
   GenerateLineworkRequestSchema,
   type Subject,
   type OutputMode,
+  type DetailLevel,
   type DetectSubjectsResponse,
   type GenerateLineworkResponse,
   type LineworkResult,
@@ -119,14 +120,37 @@ async function callGemini(
 // Prompt profile IDs make prompt iterations traceable in logs and easy to
 // compare against Desktop snapshots or revert by commit if output quality drops.
 const PROMPT_PROFILE_IDS = {
-  illustration: "illustration-sparse-prevector-v5",
-  vectorworksCenterline: "vectorworks-centerline-entourage-v6",
+  illustration: "illustration-sparse-prevector-v7",
+  vectorworksCenterline: "vectorworks-centerline-entourage-v7",
 } as const;
 
 function getPromptProfileId(outputMode: OutputMode): string {
   return outputMode === "vectorworks_centerline"
     ? PROMPT_PROFILE_IDS.vectorworksCenterline
     : PROMPT_PROFILE_IDS.illustration;
+}
+
+function buildDetailPromptBlock(detailLevel: DetailLevel): string {
+  switch (detailLevel) {
+    case "low":
+      return `DETAIL LEVEL: LOW
+- Aggressively simplify the image before vectorization.
+- Keep only silhouette and the most important structural lines.
+- Remove optional folds, secondary overlaps, minor accessories, and decorative internal marks.
+- Prefer lighter CAD output even if that means omitting subtle visual detail.`;
+    case "high":
+      return `DETAIL LEVEL: HIGH
+- Keep more of the important internal structure while still staying vector-ready.
+- Allow a few more meaningful overlaps and interior contours when they improve readability.
+- Do not reintroduce texture, sketch detail, or dense clusters of short marks.
+- Higher detail may lead to heavier export files, so only keep lines that still feel essential.`;
+    case "mid":
+    default:
+      return `DETAIL LEVEL: MEDIUM
+- Balance clean vector-ready output with readable internal structure.
+- Keep major overlaps and attachment lines, but still remove minor texture and decorative detail.
+- Prefer simpler linework when uncertain.`;
+  }
 }
 
 /**
@@ -192,8 +216,9 @@ function buildIllustrationPrompt(opts: {
   viewDescription: string;
   subjectFilter?: string;
   isolateSubject?: string;
+  detailLevel: DetailLevel;
 }): string {
-  const { viewDescription, subjectFilter, isolateSubject } = opts;
+  const { viewDescription, subjectFilter, isolateSubject, detailLevel } = opts;
 
   const focusLine = isolateSubject
     ? `\n\nFocus ONLY on this subject: "${isolateSubject}". Trace only that subject from the photo, leave everything else pure white.`
@@ -215,6 +240,8 @@ CRITICAL CONSTRAINTS — you must obey every one:
 11. For standing or walking people used as entourage, treat hair as one outer mass with a maximum of one interior hair line, use zero interior face lines in side or rear views, keep garments to the silhouette plus a maximum of two interior overlap lines total, and keep shoes to outer contour plus a maximum of one sole line.
 12. Every stroke must keep blunt, uniform ends. Do not taper lines to points and do not use brush-like or calligraphic terminals. If uncertain, omit the detail instead of drawing a thin pointed ending.
 
+${buildDetailPromptBlock(detailLevel)}
+
 The result must look like it could be directly auto-traced into clean vector paths with no cleanup needed.
 
 View angle: ${viewDescription}${focusLine}`;
@@ -230,6 +257,7 @@ function buildVectorworksCenterlinePrompt(opts: {
   enforceSelectedOnly?: boolean;
   isolateSubject?: string;
   subjectHints?: string[];
+  detailLevel: DetailLevel;
 }): string {
   const {
     viewDescription,
@@ -237,6 +265,7 @@ function buildVectorworksCenterlinePrompt(opts: {
     enforceSelectedOnly,
     isolateSubject,
     subjectHints,
+    detailLevel,
   } = opts;
 
   const selectedScopeConstraint = isolateSubject
@@ -288,6 +317,8 @@ ABSOLUTE VECTORIZATION CONSTRAINTS (mandatory):
 10. Remove all unselected or out-of-scope objects.
 11. Prefer sparse pre-CAD contour drawing over illustrative richness. If a detail would create several short strokes, remove it or replace it with one cleaner contour.
 12. All stroke terminals must stay blunt and uniform. Never taper a line into a pointed tip.
+
+${buildDetailPromptBlock(detailLevel)}
 
 TRACING FIDELITY RULES (strict):
 - Treat the source image like a tracing underlay. Follow the observed outer contour and observed internal structure directly.
@@ -486,10 +517,11 @@ aiRouter.post("/generate-linework", async (c) => {
       customViewDescription,
       processingMode,
       outputMode,
+      detailLevel,
     } = parseResult.data;
 
     console.log(
-      `[generate-linework] mode=${processingMode}, outputMode=${outputMode}, viewAngle=${viewAngle}, subjects=${subjects?.length ?? 0}, selected=${selectedSubjects?.length ?? 0}`
+      `[generate-linework] mode=${processingMode}, outputMode=${outputMode}, detailLevel=${detailLevel}, viewAngle=${viewAngle}, subjects=${subjects?.length ?? 0}, selected=${selectedSubjects?.length ?? 0}`
     );
     console.log(
       `[generate-linework] promptProfile=${getPromptProfileId(outputMode)}`
@@ -552,6 +584,7 @@ aiRouter.post("/generate-linework", async (c) => {
         viewDescription,
         selectedDescs,
         enforceSelectedOnly,
+        detailLevel,
       });
 
       console.log("[generate-linework] Sending keep_together request");
@@ -614,6 +647,7 @@ aiRouter.post("/generate-linework", async (c) => {
         const prompt = buildPromptForMode(outputMode, {
           viewDescription,
           isolateSubject: subject.description,
+          detailLevel,
         });
 
         console.log(
@@ -707,6 +741,7 @@ function buildPromptForMode(
     selectedDescs?: string[];
     enforceSelectedOnly?: boolean;
     isolateSubject?: string;
+    detailLevel: DetailLevel;
   }
 ): string {
   if (outputMode === "vectorworks_centerline") {
@@ -723,6 +758,7 @@ function buildPromptForMode(
       selectedDescs: opts.selectedDescs,
       enforceSelectedOnly: opts.enforceSelectedOnly,
       isolateSubject: opts.isolateSubject,
+      detailLevel: opts.detailLevel,
       subjectHints: subjectHints.length > 0 ? subjectHints : undefined,
     });
   }
@@ -739,6 +775,7 @@ IMPORTANT: ONLY trace these subjects: ${opts.selectedDescs.join(", ")}. Remove e
     viewDescription: opts.viewDescription,
     subjectFilter,
     isolateSubject: opts.isolateSubject,
+    detailLevel: opts.detailLevel,
   });
 }
 

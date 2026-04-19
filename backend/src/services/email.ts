@@ -46,15 +46,17 @@ export async function sendTransactionalEmail({
   }
 
   const from = getConfiguredFromAddress();
-  const { data, error } = await resend.emails.send({
-    from,
-    to: [to],
-    subject,
-    text,
-    html,
-    replyTo: [from],
-    idempotencyKey,
-  });
+  const { data, error } = await resend.emails.send(
+    {
+      from,
+      to: [to],
+      subject,
+      text,
+      html,
+      replyTo: [from],
+    },
+    idempotencyKey ? { idempotencyKey } : undefined,
+  );
 
   if (error) {
     console.error("[email] Resend send failed", {

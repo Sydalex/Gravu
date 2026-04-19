@@ -50,6 +50,7 @@ async function listActiveCreditPacks() {
       const creditsRaw = price.metadata?.creditsAmount;
       const credits = creditsRaw ? Number(creditsRaw) : NaN;
       const product = typeof price.product === "string" ? null : price.product;
+      const productName = product && "name" in product ? product.name : null;
       if (!Number.isFinite(credits) || credits <= 0) {
         return null;
       }
@@ -60,7 +61,7 @@ async function listActiveCreditPacks() {
         unitAmount: price.unit_amount ?? null,
         currency: price.currency,
         nickname: price.nickname ?? null,
-        productName: product?.name ?? null,
+        productName,
       };
     })
     .filter((pack): pack is NonNullable<typeof pack> => !!pack)
@@ -367,12 +368,14 @@ paymentsRouter.post("/webhook", async (c) => {
       // Only handle subscription invoices (not one-time purchases)
       const subscriptionRef = invoice.parent?.subscription_details?.subscription ?? null;
       if (!subscriptionRef) break;
+      const subscriptionId =
+        typeof subscriptionRef === "string" ? subscriptionRef : subscriptionRef.id;
       const customerId = invoice.customer as string;
       const dbUser = await prisma.user.findFirst({
         where: { stripeCustomerId: customerId },
       });
       if (!dbUser) break;
-      const stripeSubscription = await stripe!.subscriptions.retrieve(subscriptionRef);
+      const stripeSubscription = await stripe!.subscriptions.retrieve(subscriptionId);
       const subscriptionPriceId = stripeSubscription.items.data[0]?.price?.id ?? null;
       const billingConfig = await getBillingConfig();
       const plan = resolveAppPlan({
