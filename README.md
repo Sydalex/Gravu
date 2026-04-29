@@ -102,7 +102,8 @@ Edit `backend/.env` and set at minimum:
 |----------|----------|-------|
 | `BETTER_AUTH_SECRET` | ✅ | Any long random string |
 | `BETTER_AUTH_URL` | For production | Base URL of the backend (e.g. `https://api.example.com`); defaults to `http://localhost:3000` in dev |
-| `GEMINI_API_KEY` | For AI routes | Google AI Studio key |
+| `OPENAI_API_KEY` | For AI routes | OpenAI image generation key. Used first when present |
+| `GEMINI_API_KEY` | For AI routes | Google AI Studio key. Used for subject detection and as fallback |
 | `SMTP_HOST` | For email OTP | If blank, OTP is printed to server console |
 | `STRIPE_SECRET` | For billing | If blank, billing endpoints return 503 |
 | `ALLOWED_ORIGIN` | For production | Your frontend URL (e.g. `https://app.example.com`) |
@@ -175,6 +176,12 @@ ALLOWED_ORIGIN=
 # Leave blank for localhost-only dev (defaults to http://localhost:3000)
 BETTER_AUTH_URL=
 
+AI_IMAGE_PROVIDER=auto
+OPENAI_API_KEY=
+OPENAI_IMAGE_MODEL=gpt-image-2
+OPENAI_IMAGE_QUALITY=medium
+OPENAI_IMAGE_SIZE=auto
+OPENAI_IMAGE_INPUT_FIDELITY=high
 GEMINI_API_KEY=
 CENTERLINE_VECTORIZER_URL=http://127.0.0.1:8001
 
@@ -302,7 +309,7 @@ None that block local development. The following are production-only requirement
 - **`BETTER_AUTH_URL`** — set to the public backend URL (e.g. `https://api.example.com`) so Better Auth can construct correct callback/redirect URLs. In development the default of `http://localhost:3000` is used automatically.
 - **`ALLOWED_ORIGIN`** — set to the public frontend URL so CORS allows cross-origin cookie delivery.
 - **Persistent `DATABASE_URL`** — make sure `dev.db` (or the configured SQLite path) is on persistent storage in a container/VM deployment.
-- **Gemini API key** — `GEMINI_API_KEY` is required only for the AI pipeline (subject detection, linework generation). All local vectorization works without it.
+- **AI image keys** — `OPENAI_API_KEY` is used first for Path 1 linework generation when present. `GEMINI_API_KEY` still handles subject detection and remains the linework fallback. All local vectorization works without either key.
 - **Stripe** — `STRIPE_SECRET` / `STRIPE_WEBHOOK_SECRET` are required only for billing. Endpoints return HTTP 503 when not configured.
 
 ---
@@ -332,7 +339,8 @@ Because nginx proxies `/api/` requests from the frontend to the backend (same pu
 | `PUBLIC_URL` | ✅ | Public HTTPS URL, e.g. `https://gravu.example.com` — used for Better Auth callbacks and CORS |
 | `BETTER_AUTH_SECRET` | ✅ | Any long random string (`openssl rand -hex 32`) |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | Recommended | Without these, OTP codes are printed to the backend logs only |
-| `GEMINI_API_KEY` | Optional | Required only for the full AI pipeline (subject detection + linework). Vectorize-only flow works without it |
+| `OPENAI_API_KEY` | Optional | Used first for Path 1 linework generation when present |
+| `GEMINI_API_KEY` | Optional | Required for subject detection and used as the linework fallback. Vectorize-only flow works without it |
 | `STRIPE_SECRET` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRO_PRICE_ID` | Optional | Billing endpoints return HTTP 503 when not set |
 
 ### Deploy on Coolify
@@ -344,7 +352,7 @@ Because nginx proxies `/api/` requests from the frontend to the backend (same pu
    PUBLIC_URL=https://your-app.example.com
    BETTER_AUTH_SECRET=<generate with: openssl rand -hex 32>
    ```
-   Add SMTP and Gemini variables as needed.
+   Add SMTP and AI provider variables as needed.
 4. Coolify will build all three images and start the services in dependency order.
 5. Expose the `frontend` service (port 80) through Coolify's built-in Traefik proxy for HTTPS.
 
@@ -361,7 +369,8 @@ docker compose --env-file .env.staging up -d --build
 - [ ] `PUBLIC_URL` set to the HTTPS URL the app will be served on
 - [ ] `BETTER_AUTH_SECRET` rotated to a fresh random value
 - [ ] SMTP credentials set (or accept that OTP codes only appear in logs)
-- [ ] `GEMINI_API_KEY` set if the AI pipeline is needed
+- [ ] `OPENAI_API_KEY` set for GPT image linework generation, or `GEMINI_API_KEY` set for the fallback-only AI pipeline
+- [ ] `GEMINI_API_KEY` set if subject detection is needed
 - [ ] `STRIPE_*` set if billing is required; otherwise leave blank
 - [ ] `sqlite_data` Docker volume confirmed on persistent host storage (not tmpfs)
 - [ ] Coolify/Traefik TLS certificate issued for the public domain
@@ -374,7 +383,7 @@ docker compose --env-file .env.staging up -d --build
 | No HTTPS / TLS | 🔴 Blocks auth | Better Auth sets `secure` cookies in `NODE_ENV=production`; must be served over HTTPS |
 | `PUBLIC_URL` not set | 🔴 Blocks auth | CORS and Better Auth callbacks will fail |
 | No SMTP config | 🟡 Degrades UX | OTP codes logged to console only — fine for private staging, broken for real users |
-| No `GEMINI_API_KEY` | 🟡 Partial feature | Path 1 disabled; Path 2 still works |
+| No `OPENAI_API_KEY` or `GEMINI_API_KEY` | 🟡 Partial feature | Path 1 disabled; Path 2 still works |
 | No Stripe config | 🟢 Optional | Billing endpoints return 503; rest of app is unaffected |
 
 ---

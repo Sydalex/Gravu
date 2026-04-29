@@ -17,6 +17,17 @@ const envSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_IMAGE_MODEL: z.string().optional().default("gemini-3-pro-image-preview"),
 
+  // OpenAI image generation/editing API
+  AI_IMAGE_PROVIDER: z.enum(["auto", "openai", "gemini"]).optional().default("auto"),
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_IMAGE_MODEL: z.string().optional().default("gpt-image-2"),
+  OPENAI_IMAGE_QUALITY: z.enum(["low", "medium", "high", "auto"]).optional().default("medium"),
+  OPENAI_IMAGE_SIZE: z
+    .enum(["auto", "1024x1024", "1536x1024", "1024x1536"])
+    .optional()
+    .default("auto"),
+  OPENAI_IMAGE_INPUT_FIDELITY: z.enum(["high", "low"]).optional().default("high"),
+
   // Vectoriser.AI API
   VECTORISER_AI_API_ID: z.string().optional(),
   VECTORISER_AI_API_SECRET: z.string().optional(),

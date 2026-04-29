@@ -25,7 +25,7 @@ type Variables = {
 
 const aiRouter = new Hono<{ Variables: Variables }>();
 
-// ─── Gemini API helpers ─────────────────────────────────────────────────────
+// ─── Image model API helpers ────────────────────────────────────────────────
 
 interface GeminiPart {
   text?: string;
@@ -54,12 +54,48 @@ interface GeminiResponse {
   error?: { message: string; code: number };
 }
 
-function getApiKey(): string | null {
+interface OpenAIImageEditResponse {
+  data?: Array<{
+    b64_json?: string;
+    url?: string;
+  }>;
+  error?: {
+    message?: string;
+    type?: string;
+    code?: string;
+  };
+}
+
+type ImageGenerationProvider = "openai" | "gemini";
+
+function getGeminiApiKey(): string | null {
   return env.GEMINI_API_KEY ?? null;
 }
 
-function getImageGenerationModel(): string {
+function getGeminiImageGenerationModel(): string {
   return env.GEMINI_IMAGE_MODEL?.trim() || "gemini-3-pro-image-preview";
+}
+
+function getOpenAiApiKey(): string | null {
+  return env.OPENAI_API_KEY ?? null;
+}
+
+function getOpenAiImageGenerationModel(): string {
+  return env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-2";
+}
+
+function getPreferredImageGenerationProvider(): ImageGenerationProvider {
+  if (env.AI_IMAGE_PROVIDER === "openai") return "openai";
+  if (env.AI_IMAGE_PROVIDER === "gemini") return "gemini";
+  return getOpenAiApiKey() ? "openai" : "gemini";
+}
+
+function getFallbackImageGenerationProvider(
+  provider: ImageGenerationProvider
+): ImageGenerationProvider | null {
+  if (provider === "openai" && getGeminiApiKey()) return "gemini";
+  if (provider === "gemini" && getOpenAiApiKey()) return "openai";
+  return null;
 }
 
 const LINEWORK_INPUT_MAX_DIMENSION = 1536;
@@ -147,7 +183,7 @@ async function callGemini(
   apiVersion = "v1beta",
   signal?: AbortSignal
 ): Promise<GeminiResponse> {
-  const apiKey = getApiKey();
+  const apiKey = getGeminiApiKey();
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is not set");
   }
@@ -184,6 +220,174 @@ async function callGemini(
   }
 
   return data;
+}
+
+async function callOpenAiImageEdit(
+  prompt: string,
+  imageBase64: string,
+  imageMimeType: string,
+  signal?: AbortSignal
+): Promise<string> {
+  const apiKey = getOpenAiApiKey();
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is not set");
+  }
+
+  const model = getOpenAiImageGenerationModel();
+  const startedAt = Date.now();
+  const sourceImageBuffer = Buffer.from(imageBase64, "base64");
+  const imageBlob = new Blob([sourceImageBuffer], { type: imageMimeType });
+  const formData = new FormData();
+  formData.append("model", model);
+  formData.append("prompt", prompt);
+  formData.append("image[]", imageBlob, "source.jpg");
+  formData.append("n", "1");
+  formData.append("size", env.OPENAI_IMAGE_SIZE);
+  formData.append("quality", env.OPENAI_IMAGE_QUALITY);
+  formData.append("background", "opaque");
+  formData.append("output_format", "png");
+
+  if (!model.startsWith("gpt-image-2")) {
+    formData.append("input_fidelity", env.OPENAI_IMAGE_INPUT_FIDELITY);
+  }
+
+  console.log(`[openai-image] Calling model: ${model}`);
+
+  const response = await fetch("https://api.openai.com/v1/images/edits", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: formData,
+    signal,
+  });
+
+  const responseText = await response.text();
+  let data: OpenAIImageEditResponse;
+  try {
+    data = JSON.parse(responseText) as OpenAIImageEditResponse;
+  } catch {
+    throw new Error(
+      `OpenAI image API returned a non-JSON response (${response.status}): ${responseText.slice(0, 500)}`
+    );
+  }
+
+  if (!response.ok) {
+    const message = data.error?.message ?? JSON.stringify(data).slice(0, 500);
+    console.error(`[openai-image] API error (${response.status}): ${message}`);
+    throw new Error(`OpenAI image API returned ${response.status}: ${message}`);
+  }
+
+  if (data.error) {
+    const message = data.error.message ?? "Unknown OpenAI image API error";
+    console.error(`[openai-image] Response error: ${message}`);
+    throw new Error(`OpenAI image API error: ${message}`);
+  }
+
+  const imageData = data.data?.[0]?.b64_json;
+  if (imageData) {
+    console.log(`[openai-image] Model ${model} completed in ${Date.now() - startedAt}ms`);
+    return imageData;
+  }
+
+  const outputImageUrl = data.data?.[0]?.url;
+  if (!outputImageUrl) {
+    throw new Error("OpenAI image API did not return an image output.");
+  }
+
+  const imageResponse = await fetch(outputImageUrl, { signal });
+  if (!imageResponse.ok) {
+    throw new Error(`Failed to download OpenAI image output: ${imageResponse.status}`);
+  }
+  const outputImageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+  console.log(`[openai-image] Model ${model} completed in ${Date.now() - startedAt}ms`);
+  return outputImageBuffer.toString("base64");
+}
+
+async function generateLineworkImageWithGemini(
+  prompt: string,
+  preparedImage: Awaited<ReturnType<typeof prepareImageForLineworkGeneration>>,
+  signal?: AbortSignal
+): Promise<string> {
+  const model = getGeminiImageGenerationModel();
+  const generationConfig = {
+    responseModalities: ["IMAGE"],
+    temperature: 0,
+  };
+
+  const geminiResponse = await callGemini(
+    model,
+    [
+      {
+        parts: [
+          { text: prompt },
+          {
+            inline_data: {
+              mime_type: preparedImage.mimeType,
+              data: preparedImage.base64,
+            },
+          },
+        ],
+      },
+    ],
+    generationConfig,
+    "v1beta",
+    signal
+  );
+
+  const parts = geminiResponse.candidates?.[0]?.content?.parts ?? [];
+  console.log("[generate-linework] Gemini parts:", JSON.stringify(parts).slice(0, 300));
+  const imagePart = parts.find((p) => p.inlineData ?? p.inline_data);
+  const imageData = imagePart?.inlineData?.data ?? imagePart?.inline_data?.data ?? "";
+
+  if (!imageData) {
+    console.log("[generate-linework] No image in Gemini response:", JSON.stringify(geminiResponse).slice(0, 500));
+    throw new Error("Gemini did not return an image output.");
+  }
+
+  return imageData;
+}
+
+async function generateLineworkImageWithProvider(
+  provider: ImageGenerationProvider,
+  prompt: string,
+  preparedImage: Awaited<ReturnType<typeof prepareImageForLineworkGeneration>>,
+  signal?: AbortSignal
+): Promise<{ imageBase64: string; provider: ImageGenerationProvider }> {
+  if (provider === "openai") {
+    return {
+      imageBase64: await callOpenAiImageEdit(prompt, preparedImage.base64, preparedImage.mimeType, signal),
+      provider,
+    };
+  }
+
+  return {
+    imageBase64: await generateLineworkImageWithGemini(prompt, preparedImage, signal),
+    provider,
+  };
+}
+
+async function generateLineworkImage(
+  prompt: string,
+  preparedImage: Awaited<ReturnType<typeof prepareImageForLineworkGeneration>>,
+  signal?: AbortSignal
+): Promise<{ imageBase64: string; provider: ImageGenerationProvider }> {
+  const preferredProvider = getPreferredImageGenerationProvider();
+  const fallbackProvider = getFallbackImageGenerationProvider(preferredProvider);
+
+  try {
+    return await generateLineworkImageWithProvider(preferredProvider, prompt, preparedImage, signal);
+  } catch (err) {
+    if (signal?.aborted || !fallbackProvider) {
+      throw err;
+    }
+
+    console.warn(
+      `[generate-linework] ${preferredProvider} failed, falling back to ${fallbackProvider}:`,
+      err
+    );
+    return await generateLineworkImageWithProvider(fallbackProvider, prompt, preparedImage, signal);
+  }
 }
 
 // ─── Prompt builder helpers ────────────────────────────────────────────────
@@ -564,7 +768,7 @@ aiRouter.post("/detect-subjects", async (c) => {
     const resizedBase64 = resizedBuffer.toString("base64");
     console.log(`[detect-subjects] Resized image base64 length: ${resizedBase64.length}`);
 
-    const apiKey = getApiKey();
+    const apiKey = getGeminiApiKey();
     if (!apiKey) {
       return c.json(
         { error: { message: "GEMINI_API_KEY is not configured", code: "MISSING_API_KEY" } },
@@ -694,10 +898,14 @@ aiRouter.post("/generate-linework", async (c) => {
       `[generate-linework] promptProfile=${getPromptProfileId(outputMode)}`
     );
 
-    const apiKey = getApiKey();
-    if (!apiKey) {
+    if (!getOpenAiApiKey() && !getGeminiApiKey()) {
       return c.json(
-        { error: { message: "GEMINI_API_KEY is not configured", code: "MISSING_API_KEY" } },
+        {
+          error: {
+            message: "No image generation API key is configured",
+            code: "MISSING_IMAGE_API_KEY",
+          },
+        },
         500
       );
     }
@@ -722,14 +930,9 @@ aiRouter.post("/generate-linework", async (c) => {
 
     const viewDescription = customViewDescription || viewAngle;
 
-    const model = getImageGenerationModel();
-    const apiVersion = "v1beta";
-    const generationConfig = {
-      responseModalities: ["IMAGE"],
-      temperature: 0,
-    };
-
-    logStep(`Using image model: ${model}`);
+    logStep(
+      `Using image provider: ${getPreferredImageGenerationProvider()} (OpenAI: ${getOpenAiImageGenerationModel()}, Gemini fallback: ${getGeminiImageGenerationModel()})`
+    );
 
     const results: LineworkResult[] = [];
 
@@ -764,49 +967,21 @@ aiRouter.post("/generate-linework", async (c) => {
 
       logStep("Sending keep_together request");
 
-      const geminiResponse = await callGemini(
-        model,
-        [
-          {
-            parts: [
-              { text: prompt },
-              {
-                inline_data: {
-                  mime_type: preparedImage.mimeType,
-                  data: preparedImage.base64,
-                },
-              },
-            ],
-          },
-        ],
-        generationConfig,
-        apiVersion,
-        signal
-      );
-      logStep("keep_together AI response received");
+      const generatedImage = await generateLineworkImage(prompt, preparedImage, signal);
+      logStep(`keep_together ${generatedImage.provider} response received`);
       throwIfAborted();
 
-      // Extract generated image from response (API returns camelCase inlineData)
-      const parts = geminiResponse.candidates?.[0]?.content?.parts ?? [];
-      console.log("[generate-linework] keep_together parts:", JSON.stringify(parts).slice(0, 300));
-      const imagePart = parts.find((p) => p.inlineData ?? p.inline_data);
-
-      if (imagePart) {
-        const imageData = imagePart.inlineData?.data ?? imagePart.inline_data?.data ?? "";
-        const finalizeStartedAt = Date.now();
-        const finalizedImageData = await finalizeGeneratedLinework(imageData);
-        logStep(
-          `Finalized keep_together image in ${Date.now() - finalizeStartedAt}ms (${finalizedImageData.length} base64 chars)`
-        );
-        throwIfAborted();
-        results.push({
-          subjectId: 0,
-          imageBase64: finalizedImageData,
-        });
-        console.log("[generate-linework] Got image result for keep_together");
-      } else {
-        console.log("[generate-linework] No image in response. Full response:", JSON.stringify(geminiResponse).slice(0, 500));
-      }
+      const finalizeStartedAt = Date.now();
+      const finalizedImageData = await finalizeGeneratedLinework(generatedImage.imageBase64);
+      logStep(
+        `Finalized keep_together image in ${Date.now() - finalizeStartedAt}ms (${finalizedImageData.length} base64 chars)`
+      );
+      throwIfAborted();
+      results.push({
+        subjectId: 0,
+        imageBase64: finalizedImageData,
+      });
+      console.log("[generate-linework] Got image result for keep_together");
     } else {
       // extract_all mode: one request per selected subject
       const subjectsToProcess: Subject[] = [];
@@ -836,52 +1011,23 @@ aiRouter.post("/generate-linework", async (c) => {
         logStep(`Sending request for subject ${subject.id}: ${subject.description}`);
 
         try {
-          const geminiResponse = await callGemini(
-            model,
-            [
-              {
-                parts: [
-                  { text: prompt },
-                  {
-                    inline_data: {
-                      mime_type: preparedImage.mimeType,
-                      data: preparedImage.base64,
-                    },
-                  },
-                ],
-              },
-            ],
-            generationConfig,
-            apiVersion,
-            signal
-          );
-          logStep(`AI response received for subject ${subject.id}`);
+          const generatedImage = await generateLineworkImage(prompt, preparedImage, signal);
+          logStep(`${generatedImage.provider} response received for subject ${subject.id}`);
           throwIfAborted();
 
-          const parts = geminiResponse.candidates?.[0]?.content?.parts ?? [];
-          const imagePart = parts.find((p) => p.inlineData ?? p.inline_data);
-
-          if (imagePart) {
-            const imageData = imagePart.inlineData?.data ?? imagePart.inline_data?.data ?? "";
-            const finalizeStartedAt = Date.now();
-            const finalizedImageData = await finalizeGeneratedLinework(imageData);
-            logStep(
-              `Finalized subject ${subject.id} image in ${Date.now() - finalizeStartedAt}ms (${finalizedImageData.length} base64 chars)`
-            );
-            throwIfAborted();
-            results.push({
-              subjectId: subject.id,
-              imageBase64: finalizedImageData,
-            });
-            console.log(
-              `[generate-linework] Got image result for subject ${subject.id}`
-            );
-          } else {
-            console.log(
-              `[generate-linework] No image for subject ${subject.id}. Response:`,
-              JSON.stringify(geminiResponse).slice(0, 300)
-            );
-          }
+          const finalizeStartedAt = Date.now();
+          const finalizedImageData = await finalizeGeneratedLinework(generatedImage.imageBase64);
+          logStep(
+            `Finalized subject ${subject.id} image in ${Date.now() - finalizeStartedAt}ms (${finalizedImageData.length} base64 chars)`
+          );
+          throwIfAborted();
+          results.push({
+            subjectId: subject.id,
+            imageBase64: finalizedImageData,
+          });
+          console.log(
+            `[generate-linework] Got image result for subject ${subject.id}`
+          );
         } catch (subjectErr) {
           if (signal.aborted) {
             throw subjectErr;

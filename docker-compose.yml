@@ -55,7 +55,14 @@ services:
       # With the nginx proxy both URLs are the same origin.
       BETTER_AUTH_URL: "${PUBLIC_URL}"
       ALLOWED_ORIGIN: "${PUBLIC_URL}"
-      # --- Optional: Gemini AI (required for the full AI pipeline) ----------
+      # --- Optional: AI image generation -----------------------------------
+      AI_IMAGE_PROVIDER: "${AI_IMAGE_PROVIDER:-auto}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_IMAGE_MODEL: "${OPENAI_IMAGE_MODEL:-gpt-image-2}"
+      OPENAI_IMAGE_QUALITY: "${OPENAI_IMAGE_QUALITY:-medium}"
+      OPENAI_IMAGE_SIZE: "${OPENAI_IMAGE_SIZE:-auto}"
+      OPENAI_IMAGE_INPUT_FIDELITY: "${OPENAI_IMAGE_INPUT_FIDELITY:-high}"
+      # Gemini remains the fallback provider and handles subject detection.
       GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
       # --- Optional: SMTP (required for email OTP delivery) -----------------
       SMTP_HOST: "${SMTP_HOST:-}"
