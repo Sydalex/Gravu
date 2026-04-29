@@ -15,8 +15,12 @@ class GraphStatsResponse(BaseModel):
     junction_count: int
     edge_run_count: int
     merged_path_count: int
+    entity_count: int = 0
     spline_count: int
     polyline_count: int
+    line_count: int = 0
+    arc_count: int = 0
+    ellipse_count: int = 0
 
 
 class VectorizeDebugResponse(BaseModel):

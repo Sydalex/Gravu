@@ -15,12 +15,23 @@ Pixel = tuple[int, int]
 Point = tuple[float, float]
 ExportMode = Literal["hybrid", "polyline", "spline"]
 WORK_SCALE = 2.0
+CENTERLINE_RGB = (0, 0, 0)
+CENTERLINE_SVG_STROKE = "#000000"
 
 
 @dataclass
 class CenterlineEntity:
-    kind: Literal["polyline", "spline"]
+    kind: Literal["line", "arc", "polyline", "spline", "ellipse"]
     points: list[Point]
+    center: Point | None = None
+    major_axis: Point | None = None
+    ratio: float | None = None
+    radius: float | None = None
+    start_angle_deg: float | None = None
+    end_angle_deg: float | None = None
+    start_param: float | None = None
+    end_param: float | None = None
+    rotation_deg: float = 0.0
 
 
 @dataclass
@@ -158,12 +169,13 @@ def preprocess_binarize(
     blended = aggressive.copy()
     blended[detail_protection_mask] = conservative[detail_protection_mask]
     blended = _fill_narrow_enclosed_stroke_cavities(blended)
-    blended = cv2.morphologyEx(
+    closed = cv2.morphologyEx(
         blended.astype(np.uint8) * 255,
         cv2.MORPH_CLOSE,
         np.ones((3, 3), np.uint8),
     ) > 0
-    return blended, detail_protection_mask, bridge_block_mask
+    closed[detail_protection_mask] = conservative[detail_protection_mask]
+    return closed, detail_protection_mask, bridge_block_mask
 
 
 def _normalize_stroke_width(foreground: np.ndarray, target_width: float = 5.0) -> np.ndarray:
@@ -389,20 +401,6 @@ def _smooth_path(points: list[Point], iterations: int = 1) -> list[Point]:
     return [(float(x), float(y)) for x, y in smoothed]
 
 
-def _smooth_closed_path(points: list[Point], iterations: int = 1) -> list[Point]:
-    if iterations <= 0 or len(points) < 4:
-        return points
-
-    smoothed = np.array(points, dtype=np.float32)
-    for _ in range(iterations):
-        updated = smoothed.copy()
-        updated = (
-            np.roll(smoothed, 1, axis=0) + 2.0 * smoothed + np.roll(smoothed, -1, axis=0)
-        ) / 4.0
-        smoothed = updated
-    return [(float(x), float(y)) for x, y in smoothed]
-
-
 def _simplify_path(points: list[Point], epsilon: float) -> list[Point]:
     if len(points) < 3 or epsilon <= 0:
         return points
@@ -415,6 +413,185 @@ def _simplify_path(points: list[Point], epsilon: float) -> list[Point]:
     if len(result) < 2:
         return points
     return result
+
+
+def _prune_nearly_collinear_vertices(
+    points: list[Point],
+    max_distance: float,
+    max_angle_deg: float = 12.0,
+    iterations: int = 2,
+) -> list[Point]:
+    if len(points) < 3:
+        return points
+
+    current = points
+    for _ in range(iterations):
+        if len(current) < 3:
+            break
+
+        locked = _corner_indices(current, angle_threshold_deg=26.0)
+        reduced: list[Point] = [current[0]]
+        changed = False
+
+        for index in range(1, len(current) - 1):
+            if index in locked:
+                reduced.append(current[index])
+                continue
+
+            prev = np.array(reduced[-1], dtype=np.float32)
+            curr = np.array(current[index], dtype=np.float32)
+            nxt = np.array(current[index + 1], dtype=np.float32)
+
+            baseline = nxt - prev
+            baseline_norm = float(np.linalg.norm(baseline))
+            if baseline_norm < 1e-6:
+                reduced.append(current[index])
+                continue
+
+            incoming = curr - prev
+            outgoing = nxt - curr
+            incoming_norm = float(np.linalg.norm(incoming))
+            outgoing_norm = float(np.linalg.norm(outgoing))
+            if incoming_norm < 1e-6 or outgoing_norm < 1e-6:
+                changed = True
+                continue
+
+            cross = abs(float(incoming[0] * baseline[1] - incoming[1] * baseline[0]))
+            distance = cross / baseline_norm
+            cosine = float(np.dot(incoming, outgoing) / (incoming_norm * outgoing_norm))
+            cosine = float(np.clip(cosine, -1.0, 1.0))
+            angle = math.degrees(math.acos(cosine))
+
+            span_scale = 1.35 if baseline_norm >= 12.0 else 1.0
+            effective_distance = max_distance * span_scale
+            effective_angle = max_angle_deg + (3.0 if baseline_norm >= 12.0 else 0.0)
+
+            if distance <= effective_distance and angle <= effective_angle:
+                changed = True
+                continue
+
+            reduced.append(current[index])
+
+        reduced.append(current[-1])
+        current = reduced
+        if not changed:
+            break
+
+    return current
+
+
+def _reduce_path_for_cad(points: list[Point], epsilon: float) -> list[Point]:
+    if len(points) < 3:
+        return points
+
+    effective_epsilon = epsilon
+    if len(points) >= 24:
+        effective_epsilon *= 1.5
+    elif len(points) >= 12:
+        effective_epsilon *= 1.3
+
+    reduced = _simplify_path(points, epsilon=effective_epsilon)
+    reduced = _prune_nearly_collinear_vertices(
+        reduced,
+        max_distance=max(0.7, effective_epsilon * 1.05),
+        max_angle_deg=12.0,
+        iterations=2,
+    )
+    reduced = _collapse_nearly_straight_path(reduced)
+    return reduced
+
+
+def _path_length(points: list[Point]) -> float:
+    if len(points) < 2:
+        return 0.0
+    return float(
+        sum(
+            math.hypot(end[0] - start[0], end[1] - start[1])
+            for start, end in zip(points, points[1:])
+        )
+    )
+
+
+def _path_span(points: list[Point]) -> float:
+    if not points:
+        return 0.0
+    xs = [point[0] for point in points]
+    ys = [point[1] for point in points]
+    return float(math.hypot(max(xs) - min(xs), max(ys) - min(ys)))
+
+
+def _cleanup_micro_feature_path(points: list[Point]) -> list[Point] | None:
+    if len(points) < 2:
+        return None
+
+    point_count = len(points)
+    length = _path_length(points)
+    span = _path_span(points)
+    straight_ratio = span / max(length, 1e-6)
+    turns = _turn_angles(points)
+    sharp_turns = sum(1 for turn in turns if turn >= 30.0)
+    strong_turns = sum(1 for turn in turns if turn >= 50.0)
+
+    if length <= 3.0 or span <= 2.5:
+        return None
+
+    if point_count == 2:
+        if length <= 14.0:
+            return None
+        return points
+
+    if point_count == 3 and length <= 18.0 and span <= 14.0:
+        if sharp_turns >= 1 or straight_ratio <= 0.82:
+            return None
+        return [points[0], points[-1]]
+
+    if point_count <= 3 and length <= 6.5:
+        return None
+
+    if length <= 10.0 and span <= 8.0 and (sharp_turns >= 1 or point_count >= 4):
+        return None
+
+    if length <= 18.0 and span <= 14.0:
+        if straight_ratio >= 0.72:
+            return [points[0], points[-1]]
+        if strong_turns >= 1 or sharp_turns >= 2 or point_count >= 5:
+            return None
+
+    if length <= 26.0 and span <= 18.0 and point_count >= 5:
+        if straight_ratio >= 0.78:
+            return [points[0], points[-1]]
+        if strong_turns >= 2 or sharp_turns >= 3:
+            return None
+
+    return points
+
+
+def _path_signature(points: list[Point]) -> tuple[tuple[float, float], ...]:
+    rounded = tuple((round(x, 1), round(y, 1)) for x, y in points)
+    reversed_rounded = tuple(reversed(rounded))
+    return min(rounded, reversed_rounded)
+
+
+def _dedupe_near_duplicate_paths(paths: list[list[Point]]) -> list[list[Point]]:
+    deduped: list[list[Point]] = []
+    seen: set[tuple[tuple[float, float], ...]] = set()
+    for path in paths:
+        key = _path_signature(path)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(path)
+    return deduped
+
+
+def _cleanup_micro_feature_paths(paths: list[list[Point]]) -> list[list[Point]]:
+    cleaned: list[list[Point]] = []
+    for path in paths:
+        updated = _cleanup_micro_feature_path(path)
+        if updated is None or len(updated) < 2:
+            continue
+        cleaned.append(updated)
+    return _dedupe_near_duplicate_paths(cleaned)
 
 
 def _collapse_nearly_straight_path(points: list[Point]) -> list[Point]:
@@ -454,6 +631,42 @@ def _simplify_closed_path(points: list[Point], epsilon: float) -> list[Point]:
     if len(result) < 3:
         return points
     return result
+
+
+def _normalize_closed_path(points: list[Point]) -> list[Point]:
+    if len(points) >= 2:
+        start = np.array(points[0], dtype=np.float32)
+        end = np.array(points[-1], dtype=np.float32)
+        if float(np.linalg.norm(end - start)) < 1e-6:
+            return points[:-1]
+    return points
+
+
+def _smooth_closed_path(points: list[Point], iterations: int = 1) -> list[Point]:
+    current = _normalize_closed_path(points)
+    if len(current) < 4 or iterations <= 0:
+        return current
+
+    for _ in range(iterations):
+        if len(current) < 4:
+            break
+        vectors = np.array(current, dtype=np.float32)
+        smoothed = (
+            np.roll(vectors, 1, axis=0)
+            + 2.0 * vectors
+            + np.roll(vectors, -1, axis=0)
+        ) / 4.0
+        current = [(float(x), float(y)) for x, y in smoothed]
+
+    return current
+
+
+def _prepare_fill_path(points: list[Point], epsilon: float) -> list[Point]:
+    prepared = _simplify_closed_path(points, epsilon=max(0.55, epsilon * 0.85))
+    prepared = _smooth_closed_path(prepared, iterations=1)
+    if len(prepared) < 3:
+        return points
+    return prepared
 
 
 def _points_attr(points: list[Point]) -> str:
@@ -505,19 +718,19 @@ def _centerline_kind(points: list[Point], export_mode: ExportMode) -> Literal["p
     if export_mode == "spline":
         return "spline"
 
-    if len(points) <= 4 or _is_nearly_straight(points):
+    if len(points) <= 3 or _is_nearly_straight(points):
         return "polyline"
 
     turns = _turn_angles(points)
     if not turns:
         return "polyline"
 
-    sharp_turns = sum(1 for turn in turns if turn >= 28.0)
-    strong_turns = sum(1 for turn in turns if turn >= 45.0)
-    if strong_turns >= max(2, math.ceil(len(turns) * 0.12)):
+    sharp_turns = sum(1 for turn in turns if turn >= 30.0)
+    strong_turns = sum(1 for turn in turns if turn >= 50.0)
+    if strong_turns >= max(3, math.ceil(len(turns) * 0.18)):
         return "polyline"
 
-    if sharp_turns >= max(3, math.ceil(len(turns) * 0.22)):
+    if sharp_turns >= max(5, math.ceil(len(turns) * 0.3)):
         return "polyline"
 
     return "spline"
@@ -559,15 +772,781 @@ def _spline_has_overshoot_risk(points: list[Point], tolerance: float = 0.35) -> 
     return False
 
 
+def _fit_straight_line(points: list[Point]) -> list[Point] | None:
+    if len(points) < 2:
+        return None
+
+    if len(points) == 2:
+        return points
+
+    span = _path_span(points)
+    length = _path_length(points)
+    straightness_threshold = 0.94 if span >= 55.0 else 0.965
+    if span < 10.0 or length <= 0.0 or span / length < straightness_threshold:
+        return None
+
+    samples = np.array(points, dtype=np.float32).reshape(-1, 1, 2)
+    fit = cv2.fitLine(samples, cv2.DIST_L2, 0, 0.01, 0.01)
+    vx, vy, x0, y0 = fit.flatten()
+    direction = np.array((float(vx), float(vy)), dtype=np.float32)
+    origin = np.array((float(x0), float(y0)), dtype=np.float32)
+    norm = float(np.linalg.norm(direction))
+    if norm < 1e-6:
+        return None
+    direction /= norm
+
+    vectors = np.array(points, dtype=np.float32)
+    offsets = vectors - origin
+    parameters = np.dot(offsets, direction)
+    projected = origin + np.outer(parameters, direction)
+    deviations = np.linalg.norm(vectors - projected, axis=1)
+    max_deviation = float(np.max(deviations))
+    mean_deviation = float(np.mean(deviations))
+    if span >= 55.0:
+        max_tolerance = max(1.8, span * 0.018)
+        mean_tolerance = max(0.75, span * 0.006)
+    else:
+        max_tolerance = max(1.25, span * 0.012)
+        mean_tolerance = max(0.55, span * 0.004)
+    if max_deviation > max_tolerance or mean_deviation > mean_tolerance:
+        return None
+
+    start = origin + direction * float(parameters[0])
+    end = origin + direction * float(parameters[-1])
+    endpoint_tolerance = max(2.25, span * 0.01) if span >= 55.0 else max(1.5, span * 0.006)
+    if (
+        float(np.linalg.norm(start - vectors[0])) > endpoint_tolerance
+        or float(np.linalg.norm(end - vectors[-1])) > endpoint_tolerance
+    ):
+        return None
+
+    source_direction = np.array(points[-1], dtype=np.float32) - np.array(points[0], dtype=np.float32)
+    if float(np.dot(source_direction, end - start)) < 0:
+        start, end = end, start
+
+    return [(float(start[0]), float(start[1])), (float(end[0]), float(end[1]))]
+
+
+def _ellipse_angle_coverage(
+    points: list[Point],
+    center: Point,
+    major_axis: Point,
+    ratio: float,
+) -> float:
+    angles = _ellipse_local_parameters(points, center=center, major_axis=major_axis, ratio=ratio)
+    if len(angles) < 2:
+        return 0.0
+
+    sorted_angles = sorted((value + math.tau) % math.tau for value in angles)
+    gaps = [
+        sorted_angles[index + 1] - sorted_angles[index]
+        for index in range(len(sorted_angles) - 1)
+    ]
+    gaps.append((sorted_angles[0] + math.tau) - sorted_angles[-1])
+    return float(math.tau - max(gaps))
+
+
+def _ellipse_local_parameters(
+    points: list[Point],
+    center: Point,
+    major_axis: Point,
+    ratio: float,
+) -> list[float]:
+    cx, cy = center
+    major_x, major_y = major_axis
+    major_radius = float(math.hypot(major_x, major_y))
+    minor_radius = major_radius * ratio
+    if major_radius <= 0.0 or minor_radius <= 0.0:
+        return []
+
+    angle = math.atan2(major_y, major_x)
+    cos_a = math.cos(-angle)
+    sin_a = math.sin(-angle)
+    angles: list[float] = []
+    for x, y in points:
+        dx = x - cx
+        dy = y - cy
+        local_x = dx * cos_a - dy * sin_a
+        local_y = dx * sin_a + dy * cos_a
+        angles.append(math.atan2(local_y / minor_radius, local_x / major_radius))
+    return angles
+
+
+def _ellipse_fit_error(points: list[Point], center: Point, major_axis: Point, ratio: float) -> tuple[float, float]:
+    cx, cy = center
+    major_x, major_y = major_axis
+    major_radius = float(math.hypot(major_x, major_y))
+    minor_radius = major_radius * ratio
+    if major_radius <= 0.0 or minor_radius <= 0.0:
+        return float("inf"), float("inf")
+
+    angle = math.atan2(major_y, major_x)
+    cos_a = math.cos(-angle)
+    sin_a = math.sin(-angle)
+    errors: list[float] = []
+    for x, y in points:
+        dx = x - cx
+        dy = y - cy
+        local_x = dx * cos_a - dy * sin_a
+        local_y = dx * sin_a + dy * cos_a
+        radius = math.hypot(local_x / major_radius, local_y / minor_radius)
+        errors.append(abs(radius - 1.0))
+    return float(np.mean(errors)), float(np.max(errors))
+
+
+def _ellipse_radius_value(point: Point, center: Point, major_axis: Point, ratio: float) -> float:
+    cx, cy = center
+    major_x, major_y = major_axis
+    major_radius = float(math.hypot(major_x, major_y))
+    minor_radius = major_radius * ratio
+    if major_radius <= 0.0 or minor_radius <= 0.0:
+        return float("inf")
+
+    angle = math.atan2(major_y, major_x)
+    cos_a = math.cos(-angle)
+    sin_a = math.sin(-angle)
+    dx = point[0] - cx
+    dy = point[1] - cy
+    local_x = dx * cos_a - dy * sin_a
+    local_y = dx * sin_a + dy * cos_a
+    return math.hypot(local_x / major_radius, local_y / minor_radius)
+
+
+def _fit_ellipse_entity(
+    points: list[Point],
+    *,
+    require_closed: bool,
+) -> CenterlineEntity | None:
+    fit_points = _normalize_closed_path(points)
+    if len(fit_points) < 8:
+        return None
+
+    xs = [point[0] for point in fit_points]
+    ys = [point[1] for point in fit_points]
+    width = max(xs) - min(xs)
+    height = max(ys) - min(ys)
+    if width < 12.0 or height < 12.0:
+        return None
+
+    closure_distance = float(np.linalg.norm(np.array(points[0], dtype=np.float32) - np.array(points[-1], dtype=np.float32)))
+    if require_closed and closure_distance > max(5.0, min(width, height) * 0.18):
+        return None
+    if not require_closed and closure_distance > max(18.0, min(width, height) * 0.55):
+        return None
+
+    contour = np.array(fit_points, dtype=np.float32).reshape(-1, 1, 2)
+    (cx, cy), (axis_a, axis_b), angle_deg = cv2.fitEllipse(contour)
+    if axis_a <= 0.0 or axis_b <= 0.0:
+        return None
+
+    if axis_a >= axis_b:
+        major_diameter = float(axis_a)
+        minor_diameter = float(axis_b)
+        major_angle_deg = float(angle_deg)
+    else:
+        major_diameter = float(axis_b)
+        minor_diameter = float(axis_a)
+        major_angle_deg = float(angle_deg) + 90.0
+
+    major_radius = major_diameter / 2.0
+    minor_radius = minor_diameter / 2.0
+    ratio = minor_radius / major_radius
+    if major_radius < 6.0 or minor_radius < 4.0 or ratio < 0.16:
+        return None
+
+    theta = math.radians(major_angle_deg)
+    major_axis = (math.cos(theta) * major_radius, math.sin(theta) * major_radius)
+    mean_error, max_error = _ellipse_fit_error(
+        fit_points,
+        center=(float(cx), float(cy)),
+        major_axis=major_axis,
+        ratio=ratio,
+    )
+    mean_limit = 0.08 if require_closed else 0.1
+    max_limit = 0.24 if require_closed else 0.3
+    if mean_error > mean_limit or max_error > max_limit:
+        return None
+
+    if require_closed:
+        contour_area = abs(float(cv2.contourArea(contour)))
+        ellipse_area = math.pi * major_radius * minor_radius
+        area_ratio = contour_area / max(ellipse_area, 1e-6)
+        if area_ratio < 0.9 or area_ratio > 1.12:
+            return None
+    else:
+        turns = _turn_angles(fit_points)
+        sharp_turns = sum(1 for turn in turns if turn >= 24.0)
+        strong_turns = sum(1 for turn in turns if turn >= 38.0)
+        if strong_turns >= 1 or sharp_turns >= max(3, math.ceil(len(turns) * 0.12)):
+            return None
+
+        coverage = _ellipse_angle_coverage(
+            fit_points,
+            center=(float(cx), float(cy)),
+            major_axis=major_axis,
+            ratio=ratio,
+        )
+        if coverage < math.radians(245.0):
+            return None
+
+    return CenterlineEntity(
+        kind="ellipse",
+        points=fit_points,
+        center=(float(cx), float(cy)),
+        major_axis=(float(major_axis[0]), float(major_axis[1])),
+        ratio=float(ratio),
+        rotation_deg=float(major_angle_deg),
+    )
+
+
+def _fit_closed_ellipse_entity(points: list[Point]) -> CenterlineEntity | None:
+    return _fit_ellipse_entity(points, require_closed=True)
+
+
+def _fit_near_closed_ellipse_entity(points: list[Point]) -> CenterlineEntity | None:
+    return _fit_ellipse_entity(points, require_closed=False)
+
+
+def _fit_open_ellipse_arc_entity(points: list[Point]) -> CenterlineEntity | None:
+    if len(points) < 7:
+        return None
+
+    span = _path_span(points)
+    length = _path_length(points)
+    chord = float(np.linalg.norm(np.array(points[-1], dtype=np.float32) - np.array(points[0], dtype=np.float32)))
+    if span < 20.0 or length < 32.0 or chord < 8.0:
+        return None
+
+    turns = _turn_angles(points)
+    if any(turn >= 55.0 for turn in turns):
+        return None
+
+    contour = np.array(points, dtype=np.float32).reshape(-1, 1, 2)
+    try:
+        (cx, cy), (axis_a, axis_b), angle_deg = cv2.fitEllipse(contour)
+    except cv2.error:
+        return None
+
+    if axis_a <= 0.0 or axis_b <= 0.0:
+        return None
+
+    if axis_a >= axis_b:
+        major_diameter = float(axis_a)
+        minor_diameter = float(axis_b)
+        major_angle_deg = float(angle_deg)
+    else:
+        major_diameter = float(axis_b)
+        minor_diameter = float(axis_a)
+        major_angle_deg = float(angle_deg) + 90.0
+
+    major_radius = major_diameter / 2.0
+    minor_radius = minor_diameter / 2.0
+    ratio = minor_radius / major_radius
+    if major_radius < 12.0 or minor_radius < 5.0 or ratio < 0.16:
+        return None
+    if major_radius > span * 1.25:
+        return None
+
+    theta = math.radians(major_angle_deg)
+    major_axis = (math.cos(theta) * major_radius, math.sin(theta) * major_radius)
+    mean_error, max_error = _ellipse_fit_error(
+        points,
+        center=(float(cx), float(cy)),
+        major_axis=major_axis,
+        ratio=ratio,
+    )
+    if mean_error > 0.08 or max_error > 0.22:
+        return None
+
+    parameters = np.unwrap(
+        np.array(
+            _ellipse_local_parameters(
+                points,
+                center=(float(cx), float(cy)),
+                major_axis=major_axis,
+                ratio=ratio,
+            ),
+            dtype=np.float64,
+        )
+    )
+    if len(parameters) < 2:
+        return None
+
+    delta = float(parameters[-1] - parameters[0])
+    total_angle = abs(delta)
+    if total_angle < math.radians(22.0) or total_angle > math.radians(155.0):
+        return None
+
+    direction = 1.0 if delta >= 0.0 else -1.0
+    steps = np.diff(parameters)
+    backwards = float(np.sum(np.abs(steps[steps * direction < -1e-3])))
+    if backwards > total_angle * 0.2:
+        return None
+
+    return CenterlineEntity(
+        kind="ellipse",
+        points=[points[0], points[-1]],
+        center=(float(cx), float(cy)),
+        major_axis=(float(major_axis[0]), float(major_axis[1])),
+        ratio=float(ratio),
+        start_param=float(parameters[0]),
+        end_param=float(parameters[-1]),
+        rotation_deg=float(major_angle_deg),
+    )
+
+
+def _split_path_at_corners(
+    points: list[Point],
+    angle_threshold_deg: float = 24.0,
+    min_segment_length: float = 12.0,
+) -> list[list[Point]]:
+    if len(points) < 5:
+        return [points]
+
+    split_indices = [0]
+    for index in range(1, len(points) - 1):
+        incoming = np.array(points[index], dtype=np.float32) - np.array(points[index - 1], dtype=np.float32)
+        outgoing = np.array(points[index + 1], dtype=np.float32) - np.array(points[index], dtype=np.float32)
+        incoming_norm = float(np.linalg.norm(incoming))
+        outgoing_norm = float(np.linalg.norm(outgoing))
+        if incoming_norm < 1e-6 or outgoing_norm < 1e-6:
+            continue
+
+        cosine = float(np.dot(incoming, outgoing) / (incoming_norm * outgoing_norm))
+        angle = math.degrees(math.acos(float(np.clip(cosine, -1.0, 1.0))))
+        if angle < angle_threshold_deg:
+            continue
+
+        before_length = _path_length(points[split_indices[-1] : index + 1])
+        after_length = _path_length(points[index:])
+        if before_length >= min_segment_length and after_length >= min_segment_length:
+            split_indices.append(index)
+
+    split_indices.append(len(points) - 1)
+    segments: list[list[Point]] = []
+    for start, end in zip(split_indices, split_indices[1:]):
+        segment = points[start : end + 1]
+        if len(segment) >= 2:
+            segments.append(segment)
+
+    return segments or [points]
+
+
+def _fit_circular_arc_entity(points: list[Point]) -> CenterlineEntity | None:
+    if len(points) < 4:
+        return None
+
+    vectors = np.array(points, dtype=np.float64)
+    span = _path_span(points)
+    length = _path_length(points)
+    chord = float(np.linalg.norm(vectors[-1] - vectors[0]))
+    if span < 10.0 or length < 14.0 or chord < 6.0:
+        return None
+
+    chord_ratio = chord / max(length, 1e-6)
+    if chord_ratio > 0.985 or chord_ratio < 0.25:
+        return None
+
+    x = vectors[:, 0]
+    y = vectors[:, 1]
+    design = np.column_stack((2.0 * x, 2.0 * y, np.ones(len(vectors))))
+    target = x * x + y * y
+    try:
+        center_x, center_y, constant = np.linalg.lstsq(design, target, rcond=None)[0]
+    except np.linalg.LinAlgError:
+        return None
+
+    radius_sq = float(center_x * center_x + center_y * center_y + constant)
+    if radius_sq <= 0.0:
+        return None
+    radius = math.sqrt(radius_sq)
+    if radius < max(6.0, span * 0.35) or radius > span * 8.0:
+        return None
+
+    distances = np.hypot(x - center_x, y - center_y)
+    radial_errors = np.abs(distances - radius)
+    mean_error = float(np.mean(radial_errors))
+    max_error = float(np.max(radial_errors))
+    if mean_error > max(0.8, radius * 0.018) or max_error > max(2.2, radius * 0.06):
+        return None
+
+    angles = np.unwrap(np.arctan2(y - center_y, x - center_x))
+    delta = float(angles[-1] - angles[0])
+    total_angle = abs(delta)
+    if total_angle < math.radians(16.0) or total_angle > math.radians(210.0):
+        return None
+
+    angle_steps = np.diff(angles)
+    direction = 1.0 if delta >= 0.0 else -1.0
+    backwards = float(np.sum(np.abs(angle_steps[angle_steps * direction < -1e-3])))
+    if backwards > total_angle * 0.18:
+        return None
+
+    arc_length = radius * total_angle
+    if abs(arc_length - length) / max(length, 1e-6) > 0.28:
+        return None
+
+    return CenterlineEntity(
+        kind="arc",
+        points=[points[0], points[-1]],
+        center=(float(center_x), float(center_y)),
+        radius=float(radius),
+        start_angle_deg=float(math.degrees(angles[0])),
+        end_angle_deg=float(math.degrees(angles[-1])),
+    )
+
+
+def _sample_entity_points(entity: CenterlineEntity, sample_count: int = 18) -> list[Point]:
+    if entity.kind == "arc":
+        if entity.center is None or entity.radius is None or entity.start_angle_deg is None or entity.end_angle_deg is None:
+            return entity.points
+        start = math.radians(entity.start_angle_deg)
+        end = math.radians(entity.end_angle_deg)
+        angles = np.linspace(start, end, max(2, sample_count))
+        return [
+            (
+                float(entity.center[0] + math.cos(angle) * entity.radius),
+                float(entity.center[1] + math.sin(angle) * entity.radius),
+            )
+            for angle in angles
+        ]
+
+    if entity.kind == "ellipse":
+        if entity.center is None or entity.major_axis is None or entity.ratio is None:
+            return entity.points
+        major_radius = float(math.hypot(entity.major_axis[0], entity.major_axis[1]))
+        minor_radius = major_radius * entity.ratio
+        if major_radius <= 0.0 or minor_radius <= 0.0:
+            return entity.points
+        rotation = math.atan2(entity.major_axis[1], entity.major_axis[0])
+        start = entity.start_param if entity.start_param is not None else 0.0
+        end = entity.end_param if entity.end_param is not None else math.tau
+        parameters = np.linspace(start, end, max(8, sample_count))
+        cos_r = math.cos(rotation)
+        sin_r = math.sin(rotation)
+        samples: list[Point] = []
+        for parameter in parameters:
+            local_x = math.cos(parameter) * major_radius
+            local_y = math.sin(parameter) * minor_radius
+            samples.append(
+                (
+                    float(entity.center[0] + local_x * cos_r - local_y * sin_r),
+                    float(entity.center[1] + local_x * sin_r + local_y * cos_r),
+                )
+            )
+        return samples
+
+    return entity.points
+
+
+def _fit_wheel_ring_ellipse(seed: CenterlineEntity, points: list[Point]) -> CenterlineEntity | None:
+    if seed.center is None or seed.major_axis is None or seed.ratio is None or len(points) < 10:
+        return None
+
+    seed_major = float(math.hypot(seed.major_axis[0], seed.major_axis[1]))
+    seed_minor = seed_major * seed.ratio
+    if seed_major < 28.0 or seed_minor < 8.0 or seed.ratio < 0.18 or seed.ratio > 0.75:
+        return None
+
+    unique: list[Point] = []
+    seen: set[tuple[float, float]] = set()
+    for point in points:
+        key = (round(point[0], 1), round(point[1], 1))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(point)
+    if len(unique) < 10:
+        return None
+
+    contour = np.array(unique, dtype=np.float32).reshape(-1, 1, 2)
+    try:
+        (cx, cy), (axis_a, axis_b), angle_deg = cv2.fitEllipse(contour)
+    except cv2.error:
+        return None
+
+    if axis_a <= 0.0 or axis_b <= 0.0:
+        return None
+
+    if axis_a >= axis_b:
+        major_diameter = float(axis_a)
+        minor_diameter = float(axis_b)
+        major_angle_deg = float(angle_deg)
+    else:
+        major_diameter = float(axis_b)
+        minor_diameter = float(axis_a)
+        major_angle_deg = float(angle_deg) + 90.0
+
+    major_radius = major_diameter / 2.0
+    minor_radius = minor_diameter / 2.0
+    ratio = minor_radius / major_radius
+    if ratio < 0.16 or ratio > 0.82:
+        return None
+    if major_radius < seed_major * 1.18 or major_radius > seed_major * 2.8:
+        return None
+    if minor_radius < seed_minor * 1.12 or minor_radius > seed_minor * 3.2:
+        return None
+
+    center_distance = math.hypot(float(cx) - seed.center[0], float(cy) - seed.center[1])
+    if center_distance > max(18.0, seed_major * 0.38):
+        return None
+
+    theta = math.radians(major_angle_deg)
+    major_axis = (math.cos(theta) * major_radius, math.sin(theta) * major_radius)
+    mean_error, max_error = _ellipse_fit_error(
+        unique,
+        center=(float(cx), float(cy)),
+        major_axis=major_axis,
+        ratio=ratio,
+    )
+    if mean_error > 0.12 or max_error > 0.38:
+        return None
+
+    coverage = _ellipse_angle_coverage(
+        unique,
+        center=(float(cx), float(cy)),
+        major_axis=major_axis,
+        ratio=ratio,
+    )
+    if coverage < math.radians(175.0):
+        return None
+
+    return CenterlineEntity(
+        kind="ellipse",
+        points=unique,
+        center=(float(cx), float(cy)),
+        major_axis=(float(major_axis[0]), float(major_axis[1])),
+        ratio=float(ratio),
+        rotation_deg=float(major_angle_deg),
+    )
+
+
+def _ellipse_arc_from_samples(samples: list[Point], ellipse: CenterlineEntity) -> CenterlineEntity | None:
+    if (
+        len(samples) < 2
+        or ellipse.center is None
+        or ellipse.major_axis is None
+        or ellipse.ratio is None
+    ):
+        return None
+
+    parameters = np.unwrap(
+        np.array(
+            _ellipse_local_parameters(
+                samples,
+                center=ellipse.center,
+                major_axis=ellipse.major_axis,
+                ratio=ellipse.ratio,
+            ),
+            dtype=np.float64,
+        )
+    )
+    if len(parameters) < 2:
+        return None
+
+    delta = float(parameters[-1] - parameters[0])
+    total_angle = abs(delta)
+    if total_angle < math.radians(7.0) or total_angle > math.radians(230.0):
+        return None
+
+    return CenterlineEntity(
+        kind="ellipse",
+        points=[samples[0], samples[-1]],
+        center=ellipse.center,
+        major_axis=ellipse.major_axis,
+        ratio=ellipse.ratio,
+        start_param=float(parameters[0]),
+        end_param=float(parameters[-1]),
+        rotation_deg=ellipse.rotation_deg,
+    )
+
+
+def _entity_matches_seed_annulus(entity: CenterlineEntity, seed: CenterlineEntity) -> tuple[bool, list[Point]]:
+    if entity.kind in {"line", "ellipse"}:
+        return False, []
+    if seed.center is None or seed.major_axis is None or seed.ratio is None:
+        return False, []
+
+    samples = _sample_entity_points(entity)
+    if len(samples) < 2:
+        return False, []
+
+    radii = [
+        _ellipse_radius_value(point, seed.center, seed.major_axis, seed.ratio)
+        for point in samples
+    ]
+    valid = [radius for radius in radii if 1.35 <= radius <= 2.35]
+    if len(valid) / len(radii) < 0.68:
+        return False, []
+
+    median_radius = float(np.median(valid))
+    if median_radius < 1.45 or median_radius > 2.2:
+        return False, []
+
+    return True, samples
+
+
+def _promote_wheel_ring_ellipses(entities: list[CenterlineEntity]) -> list[CenterlineEntity]:
+    if len(entities) < 3:
+        return entities
+
+    replacements: dict[int, CenterlineEntity] = {}
+    seeds = [
+        (index, entity)
+        for index, entity in enumerate(entities)
+        if entity.kind == "ellipse"
+        and entity.center is not None
+        and entity.major_axis is not None
+        and entity.ratio is not None
+        and entity.start_param is None
+        and math.hypot(entity.major_axis[0], entity.major_axis[1]) >= 28.0
+        and 0.18 <= entity.ratio <= 0.75
+    ]
+
+    for seed_index, seed in seeds:
+        if seed.center is None or seed.major_axis is None or seed.ratio is None:
+            continue
+
+        candidate_points: list[Point] = []
+        candidate_samples: list[tuple[int, list[Point]]] = []
+        for index, entity in enumerate(entities):
+            if index == seed_index or index in replacements:
+                continue
+
+            matches, samples = _entity_matches_seed_annulus(entity, seed)
+            if not matches:
+                continue
+
+            candidate_points.extend(samples)
+            candidate_samples.append((index, samples))
+
+        if len(candidate_points) < 10 or not candidate_samples:
+            continue
+
+        wheel_ring = _fit_wheel_ring_ellipse(seed, candidate_points)
+        if wheel_ring is None:
+            continue
+
+        for index, samples in candidate_samples:
+            replacement = _ellipse_arc_from_samples(samples, wheel_ring)
+            if replacement is not None:
+                replacements[index] = replacement
+
+    if not replacements:
+        return entities
+
+    promoted: list[CenterlineEntity] = []
+    for index, entity in enumerate(entities):
+        promoted.append(replacements.get(index, entity))
+
+    return promoted
+
+
+def _fallback_centerline_entity(segment: list[Point], export_mode: ExportMode) -> CenterlineEntity:
+    kind = _centerline_kind(segment, export_mode)
+    if export_mode == "hybrid" and kind == "spline" and _spline_has_overshoot_risk(segment):
+        kind = "polyline"
+    return CenterlineEntity(kind=kind, points=segment)
+
+
+def _hybrid_segment_entities(path: list[Point]) -> list[CenterlineEntity]:
+    ellipse_entity = _fit_closed_ellipse_entity(path)
+    if ellipse_entity is not None:
+        return [ellipse_entity]
+
+    near_closed_ellipse_entity = _fit_near_closed_ellipse_entity(path)
+    if near_closed_ellipse_entity is not None:
+        return [near_closed_ellipse_entity]
+
+    entities: list[CenterlineEntity] = []
+    for segment in _split_path_at_corners(path):
+        if len(segment) < 2:
+            continue
+
+        fitted_line = _fit_straight_line(segment)
+        if fitted_line is not None:
+            entities.append(CenterlineEntity(kind="line", points=fitted_line))
+            continue
+
+        arc_entity = _fit_circular_arc_entity(segment)
+        if arc_entity is not None:
+            entities.append(arc_entity)
+            continue
+
+        # Open ellipse arcs created loop artifacts in CAD; only closed loops are promoted to ellipses.
+        entities.append(_fallback_centerline_entity(segment, export_mode="hybrid"))
+
+    return _merge_adjacent_line_entities(entities)
+
+
+def _line_entity_direction(entity: CenterlineEntity) -> np.ndarray | None:
+    if entity.kind != "line" or len(entity.points) < 2:
+        return None
+
+    start = np.array(entity.points[0], dtype=np.float32)
+    end = np.array(entity.points[-1], dtype=np.float32)
+    vector = end - start
+    norm = float(np.linalg.norm(vector))
+    if norm < 1e-6:
+        return None
+    return vector / norm
+
+
+def _merge_adjacent_line_entities(entities: list[CenterlineEntity]) -> list[CenterlineEntity]:
+    if len(entities) < 2:
+        return entities
+
+    merged: list[CenterlineEntity] = []
+    for entity in entities:
+        if not merged or entity.kind != "line" or merged[-1].kind != "line":
+            merged.append(entity)
+            continue
+
+        previous = merged[-1]
+        previous_direction = _line_entity_direction(previous)
+        current_direction = _line_entity_direction(entity)
+        if previous_direction is None or current_direction is None:
+            merged.append(entity)
+            continue
+
+        connection_gap = math.hypot(
+            entity.points[0][0] - previous.points[-1][0],
+            entity.points[0][1] - previous.points[-1][1],
+        )
+        if connection_gap > 1.75:
+            merged.append(entity)
+            continue
+
+        alignment = abs(float(np.dot(previous_direction, current_direction)))
+        if alignment < math.cos(math.radians(4.0)):
+            merged.append(entity)
+            continue
+
+        candidate_points = [previous.points[0], previous.points[-1], entity.points[-1]]
+        fitted_line = _fit_straight_line(candidate_points)
+        if fitted_line is None:
+            merged.append(entity)
+            continue
+
+        merged[-1] = CenterlineEntity(kind="line", points=fitted_line)
+
+    return merged
+
+
+
 def _centerline_entities(paths: list[list[Point]], export_mode: ExportMode) -> list[CenterlineEntity]:
     entities: list[CenterlineEntity] = []
     for path in paths:
         if len(path) < 2:
             continue
-        kind = _centerline_kind(path, export_mode)
-        if export_mode == "hybrid" and kind == "spline" and _spline_has_overshoot_risk(path):
-            kind = "polyline"
-        entities.append(CenterlineEntity(kind=kind, points=path))
+
+        if export_mode == "hybrid":
+            entities.extend(_hybrid_segment_entities(path))
+            continue
+
+        entities.append(_fallback_centerline_entity(path, export_mode=export_mode))
+    if export_mode == "hybrid":
+        return _promote_wheel_ring_ellipses(entities)
     return entities
 
 
@@ -617,7 +1596,7 @@ def _extract_fill_paths_from_centerlines(
         if cv2.contourArea(contour) < min_fill_area:
             continue
         points = [(float(x), float(y)) for [[x, y]] in contour]
-        points = _simplify_closed_path(points, epsilon=max(0.35, epsilon * 0.5))
+        points = _prepare_fill_path(points, epsilon=epsilon)
         if len(points) >= 3:
             fill_paths.append(points)
 
@@ -654,7 +1633,7 @@ def _extract_fill_paths_from_foreground(
     component_count, labels, stats, _ = cv2.connectedComponentsWithStats(white_regions, connectivity=8)
     fill_mask = np.zeros_like(white_regions)
     height, width = white_regions.shape
-    min_fill_area = 64
+    min_fill_area = int(64 * WORK_SCALE * WORK_SCALE)
 
     for label in range(1, component_count):
         x = int(stats[label, cv2.CC_STAT_LEFT])
@@ -683,7 +1662,76 @@ def _extract_fill_paths_from_foreground(
         if cv2.contourArea(contour) < min_fill_area:
             continue
         points = [(float(x), float(y)) for [[x, y]] in contour]
-        points = _simplify_closed_path(points, epsilon=max(0.35, epsilon * 0.5))
+        points = _prepare_fill_path(points, epsilon=epsilon)
+        if len(points) >= 3:
+            fill_paths.append(points)
+
+    fill_paths.sort(key=lambda path: cv2.contourArea(np.array(path, dtype=np.float32)), reverse=True)
+    return fill_paths
+
+
+def _fill_holes(mask: np.ndarray) -> np.ndarray:
+    if not np.any(mask):
+        return mask
+
+    mask_u8 = mask.astype(np.uint8) * 255
+    height, width = mask_u8.shape
+    flood_filled = mask_u8.copy()
+    flood_mask = np.zeros((height + 2, width + 2), dtype=np.uint8)
+    cv2.floodFill(flood_filled, flood_mask, (0, 0), 255)
+    holes = cv2.bitwise_not(flood_filled)
+    return (mask_u8 | holes) > 0
+
+
+def _contour_area_sum(paths: list[list[Point]]) -> float:
+    total = 0.0
+    for path in paths:
+        if len(path) < 3:
+            continue
+        total += abs(float(cv2.contourArea(np.array(path, dtype=np.float32))))
+    return total
+
+
+def _filter_fill_paths_by_area(paths: list[list[Point]], min_area: float = 64.0) -> list[list[Point]]:
+    return [
+        path
+        for path in paths
+        if len(path) >= 3 and abs(float(cv2.contourArea(np.array(path, dtype=np.float32)))) >= min_area
+    ]
+
+
+def _extract_silhouette_fill_paths_from_foreground(
+    foreground: np.ndarray,
+    epsilon: float,
+    close_radius: int,
+) -> list[list[Point]]:
+    if not np.any(foreground):
+        return []
+
+    foreground_u8 = foreground.astype(np.uint8) * 255
+    component_count, labels, stats, _ = cv2.connectedComponentsWithStats(foreground_u8, connectivity=8)
+    filtered = np.zeros_like(foreground_u8)
+    min_component_area = 48
+    for label in range(1, component_count):
+        if int(stats[label, cv2.CC_STAT_AREA]) >= min_component_area:
+            filtered[labels == label] = 255
+
+    if not np.any(filtered):
+        return []
+
+    kernel_size = max(3, close_radius * 2 + 1)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
+    closed = cv2.morphologyEx(filtered, cv2.MORPH_CLOSE, kernel, iterations=1) > 0
+    silhouette = _fill_holes(closed).astype(np.uint8) * 255
+
+    contours, _ = cv2.findContours(silhouette, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    min_fill_area = 64
+    fill_paths: list[list[Point]] = []
+    for contour in contours:
+        if cv2.contourArea(contour) < min_fill_area:
+            continue
+        points = [(float(x), float(y)) for [[x, y]] in contour]
+        points = _prepare_fill_path(points, epsilon=max(0.35, epsilon * 0.8))
         if len(points) >= 3:
             fill_paths.append(points)
 
@@ -798,8 +1846,9 @@ def _prune_short_spurs(skeleton: np.ndarray, max_spur_length: int = 3) -> np.nda
     pruned = skeleton.copy()
     for _ in range(2):
         degree = _degree_map(pruned)
-        endpoints = [tuple(pixel) for pixel in np.argwhere(pruned & (degree == 1))]
-        junction_mask = pruned & (degree >= 3)
+        endpoint_mask = np.logical_and(pruned, degree == 1)
+        endpoints = [(int(row), int(col)) for row, col in np.argwhere(endpoint_mask)]
+        junction_mask = np.logical_and(pruned, degree >= 3)
         to_remove: set[Pixel] = set()
 
         for endpoint in endpoints:
@@ -826,6 +1875,12 @@ def _prune_short_spurs(skeleton: np.ndarray, max_spur_length: int = 3) -> np.nda
 
         if not to_remove:
             break
+
+        active_pixels = int(pruned.sum())
+        max_safe_removal = max(32, int(active_pixels * 0.2))
+        if len(to_remove) > max_safe_removal:
+            break
+
         for row, col in to_remove:
             pruned[row, col] = False
     return pruned
@@ -833,12 +1888,11 @@ def _prune_short_spurs(skeleton: np.ndarray, max_spur_length: int = 3) -> np.nda
 
 def _trace_graph_runs(skeleton: np.ndarray) -> tuple[list[list[Pixel]], set[Pixel], set[Pixel]]:
     degree = _degree_map(skeleton)
-    endpoint_mask = skeleton & (degree == 1)
-    junction_mask = skeleton & (degree >= 3)
-    node_mask = endpoint_mask | junction_mask
+    endpoint_mask = np.logical_and(skeleton, degree == 1)
+    junction_mask = np.logical_and(skeleton, degree >= 3)
 
-    endpoints: set[Pixel] = {tuple(pixel) for pixel in np.argwhere(endpoint_mask)}
-    junctions: set[Pixel] = {tuple(pixel) for pixel in np.argwhere(junction_mask)}
+    endpoints: set[Pixel] = {(int(row), int(col)) for row, col in np.argwhere(endpoint_mask)}
+    junctions: set[Pixel] = {(int(row), int(col)) for row, col in np.argwhere(junction_mask)}
     nodes: set[Pixel] = endpoints | junctions
 
     visited_edges: set[tuple[Pixel, Pixel]] = set()
@@ -870,7 +1924,8 @@ def _trace_graph_runs(skeleton: np.ndarray) -> tuple[list[list[Pixel]], set[Pixe
             if len(run) >= 2:
                 runs.append(run)
 
-    for pixel in [tuple(p) for p in np.argwhere(skeleton)]:
+    for row, col in np.argwhere(skeleton):
+        pixel = (int(row), int(col))
         for next_pixel in _neighbors(pixel, skeleton):
             edge = _edge_key(pixel, next_pixel)
             if edge in visited_edges:
@@ -1166,23 +2221,78 @@ def _build_svg(
         for path in fill_paths:
             if len(path) < 3:
                 continue
+            svg_path = _build_closed_svg_path_data(_reduce_fill_path_for_export(path))
             path_tags.append(
-                f'<polygon points="{_points_attr(path)}" fill="#ffffff" stroke="none" '
+                f'<path d="{svg_path}" fill="#ffffff" stroke="none" '
                 'stroke-linecap="round" stroke-linejoin="round" />'
             )
 
     for entity in centerline_entities:
         if len(entity.points) < 2:
             continue
-        if entity.kind == "polyline":
+        if entity.kind == "line":
+            start_x, start_y = entity.points[0]
+            end_x, end_y = entity.points[-1]
             path_tags.append(
-                f'<polyline points="{_points_attr(entity.points)}" fill="none" stroke="#d10000" stroke-width="1" '
+                f'<line x1="{start_x:.2f}" y1="{start_y:.2f}" x2="{end_x:.2f}" y2="{end_y:.2f}" '
+                f'stroke="{CENTERLINE_SVG_STROKE}" stroke-width="1" '
+                'stroke-linecap="round" stroke-linejoin="round" />'
+            )
+        elif entity.kind == "arc":
+            if entity.radius is None or entity.start_angle_deg is None or entity.end_angle_deg is None:
+                continue
+            start_x, start_y = entity.points[0]
+            end_x, end_y = entity.points[-1]
+            delta = math.radians(entity.end_angle_deg - entity.start_angle_deg)
+            large_arc_flag = 1 if abs(delta) > math.pi else 0
+            sweep_flag = 1 if delta >= 0.0 else 0
+            svg_path = (
+                f"M {start_x:.2f} {start_y:.2f} "
+                f"A {entity.radius:.2f} {entity.radius:.2f} 0 {large_arc_flag} {sweep_flag} "
+                f"{end_x:.2f} {end_y:.2f}"
+            )
+            path_tags.append(
+                f'<path d="{svg_path}" fill="none" stroke="{CENTERLINE_SVG_STROKE}" stroke-width="1" '
+                'stroke-linecap="round" stroke-linejoin="round" />'
+            )
+        elif entity.kind == "ellipse":
+            if entity.center is None or entity.major_axis is None or entity.ratio is None:
+                continue
+            cx, cy = entity.center
+            major_x, major_y = entity.major_axis
+            rx = math.hypot(major_x, major_y)
+            ry = rx * entity.ratio
+            if entity.start_param is not None and entity.end_param is not None:
+                start_x, start_y = entity.points[0]
+                end_x, end_y = entity.points[-1]
+                delta = entity.end_param - entity.start_param
+                large_arc_flag = 1 if abs(delta) > math.pi else 0
+                sweep_flag = 1 if delta >= 0.0 else 0
+                svg_path = (
+                    f"M {start_x:.2f} {start_y:.2f} "
+                    f"A {rx:.2f} {ry:.2f} {entity.rotation_deg:.2f} {large_arc_flag} {sweep_flag} "
+                    f"{end_x:.2f} {end_y:.2f}"
+                )
+                path_tags.append(
+                    f'<path d="{svg_path}" fill="none" stroke="{CENTERLINE_SVG_STROKE}" stroke-width="1" '
+                    'stroke-linecap="round" stroke-linejoin="round" />'
+                )
+                continue
+            path_tags.append(
+                f'<ellipse cx="{cx:.2f}" cy="{cy:.2f}" rx="{rx:.2f}" ry="{ry:.2f}" '
+                f'transform="rotate({entity.rotation_deg:.2f} {cx:.2f} {cy:.2f})" '
+                f'fill="none" stroke="{CENTERLINE_SVG_STROKE}" stroke-width="1" '
+                'stroke-linecap="round" stroke-linejoin="round" />'
+            )
+        elif entity.kind == "polyline":
+            path_tags.append(
+                f'<polyline points="{_points_attr(entity.points)}" fill="none" stroke="{CENTERLINE_SVG_STROKE}" stroke-width="1" '
                 'stroke-linecap="round" stroke-linejoin="round" />'
             )
         else:
             svg_path = _build_open_svg_path_data(entity.points)
             path_tags.append(
-                f'<path d="{svg_path}" fill="none" stroke="#d10000" stroke-width="1" '
+                f'<path d="{svg_path}" fill="none" stroke="{CENTERLINE_SVG_STROKE}" stroke-width="1" '
                 'stroke-linecap="round" stroke-linejoin="round" />'
             )
 
@@ -1219,6 +2329,45 @@ def _build_open_svg_path_data(points: list[Point]) -> str:
 
     return " ".join(segments)
 
+
+def _build_closed_svg_path_data(points: list[Point]) -> str:
+    closed_points = _normalize_closed_path(points)
+    if len(closed_points) < 3:
+        raise ValueError("Need at least three points to build a closed fill path")
+
+    if len(closed_points) == 3:
+        start_x, start_y = closed_points[0]
+        middle_x, middle_y = closed_points[1]
+        end_x, end_y = closed_points[2]
+        return (
+            f"M {start_x:.2f} {start_y:.2f} "
+            f"L {middle_x:.2f} {middle_y:.2f} "
+            f"L {end_x:.2f} {end_y:.2f} Z"
+        )
+
+    vectors = [np.array(point, dtype=np.float32) for point in closed_points]
+    total = len(vectors)
+    segments = [f"M {vectors[0][0]:.2f} {vectors[0][1]:.2f}"]
+
+    for index in range(total):
+        p0 = vectors[(index - 1) % total]
+        p1 = vectors[index]
+        p2 = vectors[(index + 1) % total]
+        p3 = vectors[(index + 2) % total]
+        control1 = p1 + (p2 - p0) / 6.0
+        control2 = p2 - (p3 - p1) / 6.0
+        control1 = _clamp_control_point(control1, (p0, p1, p2))
+        control2 = _clamp_control_point(control2, (p1, p2, p3))
+        segments.append(
+            "C "
+            f"{control1[0]:.2f} {control1[1]:.2f}, "
+            f"{control2[0]:.2f} {control2[1]:.2f}, "
+            f"{p2[0]:.2f} {p2[1]:.2f}"
+        )
+
+    segments.append("Z")
+    return " ".join(segments)
+
 def _build_dxf(
     centerline_entities: Iterable[CenterlineEntity],
     fill_paths: Iterable[list[Point]],
@@ -1233,36 +2382,254 @@ def _build_dxf(
         for path in fill_paths:
             if len(path) < 3:
                 continue
-            transformed_2d = [(x, float(height) - y) for x, y in path]
 
             hatch = modelspace.add_hatch(color=7, dxfattribs={"layer": "FILL"})
             hatch.set_solid_fill(color=7)
             hatch.rgb = (255, 255, 255)
-            hatch.paths.add_polyline_path(transformed_2d, is_closed=True)
+            _add_hatch_fill_path(hatch, path, height=height)
 
     for entity in centerline_entities:
         if len(entity.points) < 2:
             continue
         transformed = [(x, float(height) - y) for x, y in entity.points]
-        if entity.kind == "polyline":
-            modelspace.add_lwpolyline(transformed, format="xy", dxfattribs={"layer": "CENTERLINES", "color": 1})
+        if entity.kind == "line":
+            exported = modelspace.add_line(
+                transformed[0],
+                transformed[-1],
+                dxfattribs={"layer": "CENTERLINES"},
+            )
+        elif entity.kind == "arc":
+            if entity.center is None or entity.radius is None or entity.start_angle_deg is None or entity.end_angle_deg is None:
+                continue
+            delta = entity.end_angle_deg - entity.start_angle_deg
+            exported = modelspace.add_arc(
+                center=(entity.center[0], float(height) - entity.center[1]),
+                radius=entity.radius,
+                start_angle=-entity.start_angle_deg,
+                end_angle=-entity.end_angle_deg,
+                is_counter_clockwise=delta < 0.0,
+                dxfattribs={"layer": "CENTERLINES"},
+            )
+        elif entity.kind == "ellipse":
+            if entity.center is None or entity.major_axis is None or entity.ratio is None:
+                continue
+            center = (entity.center[0], float(height) - entity.center[1])
+            major_axis = (entity.major_axis[0], -entity.major_axis[1])
+            exported = modelspace.add_ellipse(
+                center=center,
+                major_axis=major_axis,
+                ratio=entity.ratio,
+                start_param=-entity.start_param if entity.start_param is not None and entity.end_param is not None else 0,
+                end_param=-entity.end_param if entity.start_param is not None and entity.end_param is not None else math.tau,
+                dxfattribs={"layer": "CENTERLINES"},
+            )
+        elif entity.kind == "polyline":
+            exported = modelspace.add_lwpolyline(
+                transformed,
+                format="xy",
+                dxfattribs={"layer": "CENTERLINES"},
+            )
         else:
             degree = max(1, min(3, len(transformed) - 1))
-            modelspace.add_spline(transformed, degree=degree, dxfattribs={"layer": "CENTERLINES", "color": 1})
+            exported = modelspace.add_spline(
+                transformed,
+                degree=degree,
+                dxfattribs={"layer": "CENTERLINES"},
+            )
+        exported.rgb = CENTERLINE_RGB
 
     output = io.StringIO()
     doc.write(output)
     return output.getvalue()
 
 
+def _closed_path_perimeter(points: list[Point]) -> float:
+    closed_points = _normalize_closed_path(points)
+    if len(closed_points) < 2:
+        return 0.0
+    return _path_length(closed_points + [closed_points[0]])
+
+
+def _reduce_fill_path_for_export(points: list[Point]) -> list[Point]:
+    closed_points = _normalize_closed_path(points)
+    if len(closed_points) <= 12:
+        return closed_points
+
+    perimeter = _closed_path_perimeter(closed_points)
+    target_points = int(np.clip(round(perimeter / 34.0), 10, 34))
+    epsilon = max(1.6, perimeter * 0.003)
+    reduced = closed_points
+    for _ in range(8):
+        candidate = _simplify_closed_path(closed_points, epsilon=epsilon)
+        if len(candidate) >= 4:
+            reduced = candidate
+        if len(reduced) <= target_points:
+            break
+        epsilon *= 1.35
+
+    return _smooth_closed_path(reduced, iterations=1)
+
+
+def _split_closed_path_at_corners(
+    points: list[Point],
+    angle_threshold_deg: float = 24.0,
+    min_segment_length: float = 10.0,
+) -> list[list[Point]]:
+    closed_points = _normalize_closed_path(points)
+    if len(closed_points) < 4:
+        return [closed_points + closed_points[:1]]
+
+    candidates: list[int] = []
+    total = len(closed_points)
+    vectors = [np.array(point, dtype=np.float32) for point in closed_points]
+    for index in range(total):
+        incoming = vectors[index] - vectors[(index - 1) % total]
+        outgoing = vectors[(index + 1) % total] - vectors[index]
+        incoming_norm = float(np.linalg.norm(incoming))
+        outgoing_norm = float(np.linalg.norm(outgoing))
+        if incoming_norm < 1e-6 or outgoing_norm < 1e-6:
+            continue
+        cosine = float(np.dot(incoming, outgoing) / (incoming_norm * outgoing_norm))
+        angle = math.degrees(math.acos(float(np.clip(cosine, -1.0, 1.0))))
+        if angle >= angle_threshold_deg:
+            candidates.append(index)
+
+    if len(candidates) < 2:
+        return [closed_points + closed_points[:1]]
+
+    def circular_segment(start: int, end: int) -> list[Point]:
+        if start <= end:
+            return closed_points[start : end + 1]
+        return closed_points[start:] + closed_points[: end + 1]
+
+    filtered: list[int] = []
+    for candidate in candidates:
+        if not filtered:
+            filtered.append(candidate)
+            continue
+        if _path_length(circular_segment(filtered[-1], candidate)) >= min_segment_length:
+            filtered.append(candidate)
+
+    if len(filtered) >= 2:
+        wrap_length = _path_length(circular_segment(filtered[-1], filtered[0]))
+        if wrap_length < min_segment_length:
+            filtered.pop()
+
+    if len(filtered) < 2:
+        return [closed_points + closed_points[:1]]
+
+    segments: list[list[Point]] = []
+    for start, end in zip(filtered, filtered[1:] + filtered[:1]):
+        segment = circular_segment(start, end)
+        if len(segment) >= 2:
+            segments.append(segment)
+
+    return segments or [closed_points + closed_points[:1]]
+
+
+def _transform_dxf_point(point: Point, height: int) -> Point:
+    return (point[0], float(height) - point[1])
+
+
+def _add_hatch_line_edge(edge_path: ezdxf.entities.boundary_paths.EdgePath, points: list[Point], height: int) -> None:
+    edge_path.add_line(_transform_dxf_point(points[0], height), _transform_dxf_point(points[-1], height))
+
+
+def _add_hatch_arc_edge(edge_path: ezdxf.entities.boundary_paths.EdgePath, entity: CenterlineEntity, height: int) -> bool:
+    if entity.center is None or entity.radius is None or entity.start_angle_deg is None or entity.end_angle_deg is None:
+        return False
+
+    delta = entity.end_angle_deg - entity.start_angle_deg
+    edge_path.add_arc(
+        center=_transform_dxf_point(entity.center, height),
+        radius=entity.radius,
+        start_angle=-entity.start_angle_deg,
+        end_angle=-entity.end_angle_deg,
+        ccw=delta < 0.0,
+    )
+    return True
+
+
+def _add_hatch_ellipse_edge(edge_path: ezdxf.entities.boundary_paths.EdgePath, entity: CenterlineEntity, height: int) -> bool:
+    if entity.center is None or entity.major_axis is None or entity.ratio is None:
+        return False
+
+    edge_path.add_ellipse(
+        center=_transform_dxf_point(entity.center, height),
+        major_axis=(entity.major_axis[0], -entity.major_axis[1]),
+        ratio=entity.ratio,
+        start_angle=-entity.start_param if entity.start_param is not None and entity.end_param is not None else 0.0,
+        end_angle=-entity.end_param if entity.start_param is not None and entity.end_param is not None else math.tau,
+        ccw=True,
+    )
+    return True
+
+
+def _add_hatch_spline_edge(edge_path: ezdxf.entities.boundary_paths.EdgePath, points: list[Point], height: int, periodic: int = 0) -> None:
+    transformed = [_transform_dxf_point(point, height) for point in points]
+    edge_path.add_spline(
+        fit_points=transformed,
+        degree=max(1, min(3, len(transformed) - 1)),
+        periodic=periodic,
+    )
+
+
+def _add_hatch_fill_path(hatch: ezdxf.entities.Hatch, points: list[Point], height: int) -> None:
+    ellipse_entity = _fit_closed_ellipse_entity(points)
+    if ellipse_entity is not None and ellipse_entity.center is not None and ellipse_entity.major_axis is not None and ellipse_entity.ratio is not None:
+        edge_path = hatch.paths.add_edge_path()
+        _add_hatch_ellipse_edge(edge_path, ellipse_entity, height)
+        return
+
+    reduced = _reduce_fill_path_for_export(points)
+    if len(reduced) < 3:
+        return
+
+    ellipse_entity = _fit_closed_ellipse_entity(reduced)
+    if ellipse_entity is not None and ellipse_entity.center is not None and ellipse_entity.major_axis is not None and ellipse_entity.ratio is not None:
+        edge_path = hatch.paths.add_edge_path()
+        _add_hatch_ellipse_edge(edge_path, ellipse_entity, height)
+        return
+
+    edge_path = hatch.paths.add_edge_path()
+    edge_count = 0
+    for segment in _split_closed_path_at_corners(reduced):
+        if len(segment) < 2:
+            continue
+
+        fitted_line = _fit_straight_line(segment)
+        if fitted_line is not None:
+            _add_hatch_line_edge(edge_path, fitted_line, height)
+            edge_count += 1
+            continue
+
+        arc_entity = _fit_circular_arc_entity(segment)
+        if arc_entity is not None and _add_hatch_arc_edge(edge_path, arc_entity, height):
+            edge_count += 1
+            continue
+
+        if len(segment) == 2:
+            _add_hatch_line_edge(edge_path, segment, height)
+        else:
+            _add_hatch_spline_edge(edge_path, segment, height)
+        edge_count += 1
+
+    if edge_count > 0:
+        return
+
+    transformed = [_transform_dxf_point(point, height) for point in reduced]
+    hatch.paths.add_polyline_path(transformed, is_closed=True)
+
+
 def _ensure_dxf_layers(doc: ezdxf.EzDxf) -> None:
     layer_specs = [
         ("FILL", {"color": 7}),
-        ("CENTERLINES", {"color": 1}),
+        ("CENTERLINES", {"color": 7}),
     ]
     for name, attrs in layer_specs:
         if name not in doc.layers:
             doc.layers.add(name, dxfattribs=attrs)
+    doc.layers.get("CENTERLINES").rgb = CENTERLINE_RGB
 
 
 def vectorize_from_array(
@@ -1277,6 +2644,11 @@ def vectorize_from_array(
         raise ValueError("Input must be grayscale")
 
     height, width = gray.shape
+    is_small_asset = max(height, width) <= 700
+    line_simplify_epsilon = simplify_epsilon * (0.35 if is_small_asset else 1.0)
+    fill_simplify_epsilon = simplify_epsilon * (0.75 if is_small_asset else 1.0)
+    line_smooth_iterations = min(smooth_iterations, 1) if is_small_asset else smooth_iterations
+
     if WORK_SCALE != 1.0:
         working_gray = cv2.resize(gray, dsize=None, fx=WORK_SCALE, fy=WORK_SCALE, interpolation=cv2.INTER_CUBIC)
     else:
@@ -1316,32 +2688,56 @@ def vectorize_from_array(
     for pixel_path in pixel_paths:
         points = _pixel_path_to_points(pixel_path)
         points = _resample_path(points, spacing=1.0)
-        if smooth_iterations > 0:
-            points = _smooth_path(points, iterations=max(1, smooth_iterations))
+        if line_smooth_iterations > 0:
+            points = _smooth_path(points, iterations=max(1, line_smooth_iterations))
         if not preserve_detail:
-            points = _simplify_path(points, epsilon=simplify_epsilon)
-            points = _collapse_nearly_straight_path(points)
+            points = _reduce_path_for_cad(points, epsilon=line_simplify_epsilon)
         elif simplify_epsilon > 0:
-            points = _simplify_path(points, epsilon=min(simplify_epsilon, 0.05))
+            points = _simplify_path(points, epsilon=min(line_simplify_epsilon, 0.05))
         if len(points) >= 2:
             vector_paths.append(points)
 
     vector_paths = _rescale_paths(vector_paths, scale=WORK_SCALE)
+    if not preserve_detail and not is_small_asset:
+        vector_paths = _cleanup_micro_feature_paths(vector_paths)
 
     fill_paths = _extract_fill_paths_from_centerlines(
         vector_paths,
         width=width,
         height=height,
-        epsilon=simplify_epsilon,
+        epsilon=fill_simplify_epsilon,
     )
     if not fill_paths:
         fill_paths = _extract_fill_paths_from_foreground(
             foreground,
-            epsilon=simplify_epsilon,
+            epsilon=fill_simplify_epsilon,
             expansion_radius=max(1, int(round(estimated_stroke_radius))),
         )
         fill_paths = _rescale_paths(fill_paths, scale=WORK_SCALE)
+    silhouette_fill_paths = _extract_silhouette_fill_paths_from_foreground(
+        foreground,
+        epsilon=fill_simplify_epsilon,
+        close_radius=int(np.clip(round(estimated_stroke_radius * 3.0), 4, 18)),
+    )
+    silhouette_fill_paths = _rescale_paths(silhouette_fill_paths, scale=WORK_SCALE)
+    silhouette_fill_paths = _filter_fill_paths_by_area(silhouette_fill_paths)
+    if silhouette_fill_paths:
+        fill_area = _contour_area_sum(fill_paths)
+        silhouette_area = _contour_area_sum(silhouette_fill_paths)
+        image_area = float(width * height)
+        foreground_density = float(np.mean(foreground))
+        if (
+            foreground_density <= 0.04
+            and silhouette_area >= image_area * 0.03
+            and fill_area < silhouette_area * 0.6
+        ):
+            fill_paths = silhouette_fill_paths
+    fill_paths = _filter_fill_paths_by_area(fill_paths)
+
     centerline_entities = _centerline_entities(vector_paths, export_mode=export_mode)
+    line_count = sum(1 for entity in centerline_entities if entity.kind == "line")
+    arc_count = sum(1 for entity in centerline_entities if entity.kind == "arc")
+    ellipse_count = sum(1 for entity in centerline_entities if entity.kind == "ellipse")
     spline_count = sum(1 for entity in centerline_entities if entity.kind == "spline")
     polyline_count = sum(1 for entity in centerline_entities if entity.kind == "polyline")
 
@@ -1372,8 +2768,12 @@ def vectorize_from_array(
             "junction_count": junction_count,
             "edge_run_count": edge_run_count,
             "merged_path_count": len(vector_paths),
+            "entity_count": len(centerline_entities),
             "spline_count": spline_count,
             "polyline_count": polyline_count,
+            "line_count": line_count,
+            "arc_count": arc_count,
+            "ellipse_count": ellipse_count,
         },
     )
 

@@ -69,7 +69,17 @@ conversionsRouter.post(
             })),
           },
         },
-        include: { assets: true },
+        include: {
+          assets: {
+            select: {
+              id: true,
+              conversionId: true,
+              subjectId: true,
+              marketplaceTitle: true,
+              createdAt: true,
+            },
+          },
+        },
       });
       return created;
     });
@@ -85,13 +95,6 @@ conversionsRouter.post(
           conversionId: a.conversionId,
           subjectId: a.subjectId,
           title: a.marketplaceTitle,
-          imageBase64: a.imageBase64,
-          svgContent: a.svgContent,
-          dxfContent: a.dxfContent,
-          marketplaceStatus: a.marketplaceStatus,
-          marketplaceTitle: a.marketplaceTitle,
-          marketplaceCategory: a.marketplaceCategory,
-          marketplaceDownloadCount: a.marketplaceDownloadCount,
           createdAt: a.createdAt.toISOString(),
         })),
       },

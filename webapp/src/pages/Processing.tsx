@@ -199,6 +199,10 @@ const Processing = () => {
         }
       } catch (err) {
         setQuotaExceeded(err instanceof ApiError && err.status === 402);
+        if (flowType === 'full' && err instanceof ApiError && err.status === 504) {
+          setError('Generation took longer than expected. Please try again with a smaller image, or try again in a moment.');
+          return;
+        }
         setError(getUserFacingErrorMessage(err));
       }
     };

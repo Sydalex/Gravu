@@ -232,7 +232,7 @@ export const CreateConversionResponseSchema = z.object({
   flowType: z.string(),
   name: z.string().nullable(),
   createdAt: z.string(),
-  assets: z.array(ConversionAssetSchema),
+  assets: z.array(ConversionAssetSummarySchema),
 });
 export type CreateConversionResponse = z.infer<typeof CreateConversionResponseSchema>;
 
