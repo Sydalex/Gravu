@@ -395,8 +395,8 @@ async function generateLineworkImage(
 // Prompt profile IDs make prompt iterations traceable in logs and easy to
 // compare against Desktop snapshots or revert by commit if output quality drops.
 const PROMPT_PROFILE_IDS = {
-  illustration: "illustration-source-locked-bw-v8",
-  vectorworksCenterline: "vectorworks-centerline-source-locked-bw-v9",
+  illustration: "illustration-faceless-source-locked-bw-v9",
+  vectorworksCenterline: "vectorworks-faceless-source-locked-bw-v10",
 } as const;
 
 const PEOPLE_SCENE_TERMS = [
@@ -438,6 +438,20 @@ function isLikelyPeopleGroup(descriptions: string[]): boolean {
   );
 }
 
+function buildFacelessPeopleBlock(enabled = true): string {
+  if (!enabled) return "";
+
+  return `
+
+FACELESS ARCHITECTURAL ENTOURAGE MODE (mandatory for every visible person):
+- Human faces must be blank contour areas, not portraits.
+- Draw the outer head shape, hair mass, headwear boundary, jaw line, and large beard/mustache boundary only when they define the silhouette.
+- Do not draw eyes, eyelids, pupils, eyebrows, nose bridges, nostrils, mouths, lips, teeth, cheeks, wrinkles, expression lines, eyelashes, inner-ear folds, or small facial marks.
+- Do not make anyone look expressive, smiling, frowning, speaking, or looking at the camera.
+- If a face is frontal, profile, or three-quarter view, keep only the external contour and leave the face interior white.
+- If glasses are large and visually necessary, draw one simplified glasses outline only; do not add eyes behind the glasses.`;
+}
+
 function buildSourceLockedPeopleGroupBlock(enabled: boolean): string {
   if (!enabled) return "";
 
@@ -451,7 +465,7 @@ SOURCE-LOCKED PEOPLE/GROUP TRACE MODE (mandatory):
 - Do not substitute different people, different clothing silhouettes, different body proportions, different head shapes, different ages, or different poses.
 - Do not move people closer together, spread them out, rotate them, mirror them, turn profiles into front views, or turn seated figures into standing figures.
 - If clothing, limbs, hands, feet, or overlapping bodies are complex, simplify by deleting interior detail only. Never simplify by changing the outer silhouette, pose, placement, or overlap.
-- For faces, remove small interior face marks if needed, but keep the observed head outline, face direction, hair/headwear boundary, and profile/back-view contour.
+- For faces, remove all interior face marks. Keep only the observed head outline, face direction, hair/headwear boundary, beard/mustache outer boundary, and profile/back-view contour.
 - For fabrics and patterned clothing, remove printed patterns and texture, but keep the garment boundary and major wrap/fold silhouette that defines the pose.
 - Output remains only black lines on pure white. No colored fills, no grey fills, no colored accessories, no clothing color regions.`;
 }
@@ -495,7 +509,7 @@ function getSubjectHints(description: string): string[] {
 
   if (hasAny(["person", "people", "human", "rider", "riders", "man", "woman", "child", "cyclist", "skier"])) {
     hints.push(
-      "People/riders: preserve the observed silhouette, limb contours, hand and shoe positions, and only the main clothing or gear boundaries needed to read the pose; keep only prominent identity-defining face accessories or outlines such as glasses, beard outline, mustache outline, or strong headwear boundaries; omit eyes, pupils, nostrils, lips, teeth, eyebrows, wrinkles, and other interior facial detail unless they are unusually large and structurally obvious in the source; remove shoelaces, stitching, zipper teeth, drawstrings, pocket creases, quilt lines, seam texture, and secondary backpack strap fragments; if a strap, lace, or cord is essential for readability, reduce it to one clean long contour or one simple stroke only; keep the same apparent line thickness for silhouette, hair, face accessories, garment overlaps, straps, and shoe lines."
+      "People/riders: preserve the observed silhouette, limb contours, hand and shoe positions, and only the main clothing or gear boundaries needed to read the pose; make all faces blank contour areas; keep only external headwear, hair mass, jaw, beard outline, mustache outline, or one simplified glasses outline when structurally obvious; omit eyes, pupils, eyelids, eyebrows, noses, nostrils, mouths, lips, teeth, cheeks, wrinkles, expression marks, inner-ear folds, and all other interior facial detail; remove shoelaces, stitching, zipper teeth, drawstrings, pocket creases, quilt lines, seam texture, and secondary backpack strap fragments; if a strap, lace, or cord is essential for readability, reduce it to one clean long contour or one simple stroke only; keep the same apparent line thickness for silhouette, hair, face accessories, garment overlaps, straps, and shoe lines."
     );
     hints.push(
       "Groups of people: preserve the exact number of visible people, their left-to-right order, relative spacing, overlaps, seated or standing poses, facing directions, limb angles, head positions, clothing silhouettes, and relative scale; do not remove, duplicate, merge, replace, turn, restage, or reposition any person; simplify each observed person in place instead of inventing a cleaner generic group."
@@ -504,7 +518,7 @@ function getSubjectHints(description: string): string[] {
 
   if (hasAny(["walk", "walking", "pedestrian", "standing", "strolling", "profile", "side view", "entourage"])) {
     hints.push(
-      "Entourage / walking figures: treat hair as one outer mass with at most one interior separation line; for side-view, rear-view, or distant walking figures use zero interior face lines unless glasses are large and dominant; simplify coats, jackets, trousers, and sleeves to the silhouette plus at most two major opening or overlap lines total; simplify shoes to the outer contour plus at most one sole line; remove cuff lines, hem lines, seam lines, layered shoe construction, and minor garment folds; keep every remaining contour at the same apparent line thickness with no heavier outer outline and no thinner interior detail; all stroke ends must be blunt and uniform, never tapered, pointed, brush-like, or calligraphic."
+      "Entourage / walking figures: treat hair as one outer mass with at most one interior separation line; use zero interior face lines in all views, except one simplified glasses outline if glasses are large and dominant; simplify coats, jackets, trousers, and sleeves to the silhouette plus at most two major opening or overlap lines total; simplify shoes to the outer contour plus at most one sole line; remove cuff lines, hem lines, seam lines, layered shoe construction, and minor garment folds; keep every remaining contour at the same apparent line thickness with no heavier outer outline and no thinner interior detail; all stroke ends must be blunt and uniform, never tapered, pointed, brush-like, or calligraphic."
     );
   }
 
@@ -575,12 +589,13 @@ CRITICAL CONSTRAINTS — you must obey every one:
 6. Draw only the essential outlines and major structural edges. Omit fine surface detail, texture marks, and decorative complexity.
 7. Prefer long, continuous, unbroken strokes. Avoid clusters of tiny lines.
 8. Leave large interior areas completely white — do not fill them with texture or pattern.
-9. For human faces, keep only prominent identity-defining external features such as glasses, beard outline, mustache outline, or major headwear boundaries. Omit eyes, pupils, nostrils, lips, teeth, eyebrows, wrinkles, and other small interior facial marks.
+9. For human faces, leave the face interior blank white. Keep only external head contour, hair, headwear, jaw, beard/mustache boundary, or one simplified glasses outline. Omit eyes, eyelids, pupils, eyebrows, noses, nostrils, mouths, lips, teeth, cheeks, wrinkles, expression lines, inner-ear folds, and all small facial marks.
 10. For clothing and wearable gear, keep only the main outer contour and a few major openings or overlaps. Omit shoelaces, seams, stitching, zipper teeth, drawstrings, pocket creases, quilt lines, small wrinkles, and secondary backpack straps. If one of those elements is necessary, represent it with one clean long contour only.
-11. For standing or walking people used as entourage, treat hair as one outer mass with a maximum of one interior hair line, use zero interior face lines in side or rear views, keep garments to the silhouette plus a maximum of two interior overlap lines total, and keep shoes to outer contour plus a maximum of one sole line.
+11. For standing, seated, crouching, or walking people used as entourage, treat hair as one outer mass with a maximum of one interior hair line, use zero interior face lines, keep garments to the silhouette plus a maximum of two interior overlap lines total, and keep shoes to outer contour plus a maximum of one sole line.
 12. Every stroke must keep blunt, uniform ends. Do not taper lines to points and do not use brush-like or calligraphic terminals. If uncertain, omit the detail instead of drawing a thin pointed ending.
 13. If multiple people or objects appear, preserve the exact count, left-to-right order, relative positions, overlaps, scale, pose, and facing direction from the source. Do not restage the scene into a cleaner or more generic composition.
 
+${buildFacelessPeopleBlock()}
 ${buildDetailPromptBlock(detailLevel)}
 ${buildSourceLockedPeopleGroupBlock(!!sourceLockedPeopleGroup)}
 
@@ -664,7 +679,9 @@ ABSOLUTE VECTORIZATION CONSTRAINTS (mandatory):
 11. Prefer sparse pre-CAD contour drawing over illustrative richness. If a detail would create several short strokes, remove it or replace it with one cleaner contour.
 12. All stroke terminals must stay blunt and uniform. Never taper a line into a pointed tip.
 13. Every stroke must correspond to a visible physical boundary, panel edge, contour, opening, attachment, or structural seam in the source. Do not add construction strokes, connector strokes, guide lines, imagined diagonals, or lines that merely link separate parts.
+14. For every visible person, faces must be blank contour areas. Do not draw portrait features.
 
+${buildFacelessPeopleBlock()}
 ${buildDetailPromptBlock(detailLevel)}
 
 TRACING FIDELITY RULES (strict):
@@ -714,14 +731,14 @@ HUMAN FIGURE RULES (strict):
 - Do not reduce a person to a gesture-only drawing when a clear outer contour is visible in the source.
 - Closed outer contours are allowed and preferred when needed to preserve the observed silhouette faithfully.
 - Keep interior human detail minimal and only when essential for recognition, but do not lose the real body proportions or pose.
-- For faces, default to contour-only treatment with no eyes, pupils, nostrils, lips, teeth, eyebrows, wrinkles, or other interior facial drawing.
-- Only keep prominent identity-defining face features or accessories when they are large and obvious in the source, such as glasses, beard outline, mustache outline, or major headwear boundaries.
-- Do not invent portrait detail, expression lines, makeup detail, eyelashes, or stylized face rendering.
+- For faces, use blank contour-only treatment with no eyes, eyelids, pupils, eyebrows, nose bridges, nostrils, mouths, lips, teeth, cheeks, wrinkles, expression marks, inner-ear folds, or other interior facial drawing.
+- Only keep external silhouette-defining head details when they are large and obvious in the source, such as hair mass, headwear boundary, jaw line, beard outline, mustache outline, or one simplified glasses outline.
+- Do not invent portrait detail, expression lines, makeup detail, eyelashes, eye contact, smiles, frowns, speaking mouths, or stylized face rendering.
 - Simplify clothing to the outer garment silhouette plus only a few major openings, overlaps, and attachment points.
 - Remove shoelaces, zipper teeth, seam texture, quilting, stitching, drawstrings, tiny pocket folds, cuff wrinkles, and other short garment marks that do not change silhouette or pose.
 - Remove secondary backpack straps and fragmented strap details unless they materially clarify attachment; if a strap or cord must remain, render it as one clean long contour or one simple stroke, never as a cluster of short marks.
 - For walking, standing, or entourage-style figures, treat hair as one outer mass with a maximum of one interior separation line.
-- For side-view, rear-view, or distant entourage figures, use zero interior face lines unless glasses or another accessory is unusually large and essential.
+- For side-view, rear-view, frontal, three-quarter, seated, crouching, standing, or distant entourage figures, use zero interior face lines except one simplified glasses outline when glasses are large and essential.
 - Simplify coats, jackets, trousers, and sleeves to the silhouette plus a maximum of two major opening or overlap lines total.
 - Simplify shoes to the outer contour plus a maximum of one sole line; remove layered sole construction and lace detail entirely.
 - Keep the same apparent line thickness across outer contour, hair, overlap lines, and shoe lines; never use a heavier silhouette or a finer interior line.
