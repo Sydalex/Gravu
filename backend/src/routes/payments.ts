@@ -20,6 +20,7 @@ import {
   syncMarketplaceDownloadWindow,
 } from "../services/planEntitlements";
 import { getUnifiedCredits, normalizeLegacyCredits } from "../services/credits";
+import { requireAppRedirectUrl } from "../services/requestSecurity";
 import {
   CreateCheckoutSessionRequestSchema,
   BuyCreditsRequestSchema,
@@ -180,6 +181,17 @@ paymentsRouter.post(
   async (c) => {
     const user = c.get("user")!;
     const { priceId, successUrl, cancelUrl } = c.req.valid("json");
+    let safeSuccessUrl: string;
+    let safeCancelUrl: string;
+    try {
+      safeSuccessUrl = requireAppRedirectUrl(successUrl);
+      safeCancelUrl = requireAppRedirectUrl(cancelUrl);
+    } catch {
+      return c.json(
+        { error: { message: "Invalid redirect URL", code: "INVALID_REDIRECT_URL" } },
+        400
+      );
+    }
 
     // Get or create Stripe customer
     const dbUser = await prisma.user.findUnique({
@@ -210,8 +222,8 @@ paymentsRouter.post(
       customer: customerId,
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: successUrl,
-      cancel_url: cancelUrl,
+      success_url: safeSuccessUrl,
+      cancel_url: safeCancelUrl,
       allow_promotion_codes: true,
       subscription_data: {
         metadata: { userId: user.id },
@@ -233,6 +245,17 @@ paymentsRouter.post(
   async (c) => {
     const user = c.get("user")!;
     const { credits, priceId, successUrl, cancelUrl } = c.req.valid("json");
+    let safeSuccessUrl: string;
+    let safeCancelUrl: string;
+    try {
+      safeSuccessUrl = requireAppRedirectUrl(successUrl);
+      safeCancelUrl = requireAppRedirectUrl(cancelUrl);
+    } catch {
+      return c.json(
+        { error: { message: "Invalid redirect URL", code: "INVALID_REDIRECT_URL" } },
+        400
+      );
+    }
 
     // Get or create Stripe customer
     const dbUser = await prisma.user.findUnique({
@@ -259,8 +282,8 @@ paymentsRouter.post(
       customer: customerId,
       mode: "payment",
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: successUrl,
-      cancel_url: cancelUrl,
+      success_url: safeSuccessUrl,
+      cancel_url: safeCancelUrl,
       metadata: {
         userId: user.id,
         creditAmount: String(credits),
@@ -289,10 +312,21 @@ paymentsRouter.post("/portal", async (c) => {
   }
 
   const body = await c.req.json().catch(() => ({})) as { returnUrl?: string };
+  let safeReturnUrl: string | undefined;
+  if (body.returnUrl) {
+    try {
+      safeReturnUrl = requireAppRedirectUrl(body.returnUrl);
+    } catch {
+      return c.json(
+        { error: { message: "Invalid redirect URL", code: "INVALID_REDIRECT_URL" } },
+        400
+      );
+    }
+  }
 
   const portalSession = await stripe!.billingPortal.sessions.create({
     customer: dbUser.stripeCustomerId,
-    return_url: body.returnUrl ?? `${c.req.url.split("/api")[0]}/account`,
+    return_url: safeReturnUrl ?? `${c.req.url.split("/api")[0]}/account`,
   });
 
   return c.json({ data: { url: portalSession.url } });
@@ -300,12 +334,22 @@ paymentsRouter.post("/portal", async (c) => {
 
 // POST /api/payments/webhook — handle Stripe webhooks
 paymentsRouter.post("/webhook", async (c) => {
+  if (env.NODE_ENV === "production" && !env.STRIPE_WEBHOOK_SECRET) {
+    return c.json(
+      { error: { message: "Stripe webhook secret is required in production" } },
+      500
+    );
+  }
+
   const body = await c.req.text();
   const sig = c.req.header("stripe-signature");
 
   let event: import("stripe").Stripe.Event;
 
-  if (env.STRIPE_WEBHOOK_SECRET && sig) {
+  if (env.STRIPE_WEBHOOK_SECRET) {
+    if (!sig) {
+      return c.json({ error: { message: "Missing Stripe signature" } }, 400);
+    }
     try {
       event = stripe!.webhooks.constructEvent(body, sig, env.STRIPE_WEBHOOK_SECRET);
     } catch {

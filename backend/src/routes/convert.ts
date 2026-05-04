@@ -30,6 +30,11 @@ import {
   getOrCreateTrialDeviceToken,
   hashTrialDeviceToken,
 } from "../services/trialDevice";
+import {
+  MAX_IMAGE_PIXELS,
+  assertSafeImageBuffer,
+  assertSupportedImageFile,
+} from "../services/uploadSecurity";
 
 type Variables = {
   user: typeof auth.$Infer.Session.user | null;
@@ -133,7 +138,7 @@ async function callGeminiImageTransform(
 }
 
 async function prepareBinaryLinework(inputBuffer: Buffer) {
-  return sharp(inputBuffer)
+  return sharp(inputBuffer, { failOn: "none", limitInputPixels: MAX_IMAGE_PIXELS })
     .flatten({ background: "#ffffff" })
     .resize(CENTERLINE_PREPROCESS_MAX_DIMENSION, CENTERLINE_PREPROCESS_MAX_DIMENSION, {
       fit: "inside",
@@ -148,7 +153,7 @@ async function prepareBinaryLinework(inputBuffer: Buffer) {
 }
 
 async function prepareConservativeCenterlineInput(inputBuffer: Buffer) {
-  return sharp(inputBuffer)
+  return sharp(inputBuffer, { failOn: "none", limitInputPixels: MAX_IMAGE_PIXELS })
     .flatten({ background: "#ffffff" })
     .resize(CENTERLINE_PREPROCESS_MAX_DIMENSION, CENTERLINE_PREPROCESS_MAX_DIMENSION, {
       fit: "inside",
@@ -160,7 +165,7 @@ async function prepareConservativeCenterlineInput(inputBuffer: Buffer) {
 }
 
 async function thinBinaryLinework(inputBuffer: Buffer) {
-  return sharp(inputBuffer)
+  return sharp(inputBuffer, { failOn: "none", limitInputPixels: MAX_IMAGE_PIXELS })
     .flatten({ background: "#ffffff" })
     .resize(CENTERLINE_PREPROCESS_MAX_DIMENSION, CENTERLINE_PREPROCESS_MAX_DIMENSION, {
       fit: "inside",
@@ -207,7 +212,7 @@ async function mergeBinaryLinework(primaryBuffer: Buffer, secondaryBuffer: Buffe
 }
 
 async function analyzeLineworkCharacteristics(inputBuffer: Buffer) {
-  const { data } = await sharp(inputBuffer)
+  const { data } = await sharp(inputBuffer, { failOn: "none", limitInputPixels: MAX_IMAGE_PIXELS })
     .flatten({ background: "#ffffff" })
     .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
     .grayscale()
@@ -964,12 +969,14 @@ convertRouter.post("/vectorise-potrace", async (c) => {
     if (!imageFile || !(imageFile instanceof File)) {
       return c.json({ error: { message: "No image file provided. Send an 'image' field.", code: "MISSING_FILE" } }, 400);
     }
+    assertSupportedImageFile(imageFile);
 
     console.log(`[potrace] Tracing image: ${imageFile.name}, size: ${imageFile.size}`);
 
     // Convert incoming image to B&W PNG via sharp then trace with potrace
     const inputBuffer = Buffer.from(await imageFile.arrayBuffer());
-    const pngBuffer = await sharp(inputBuffer)
+    await assertSafeImageBuffer(inputBuffer);
+    const pngBuffer = await sharp(inputBuffer, { failOn: "none", limitInputPixels: MAX_IMAGE_PIXELS })
       .flatten({ background: "#ffffff" })
       .greyscale()
       .png()
@@ -1011,6 +1018,7 @@ convertRouter.post("/vectorise-vtracer", async (c) => {
     if (!imageFile || !(imageFile instanceof File)) {
       return c.json({ error: { message: "No image file provided. Send an 'image' field.", code: "MISSING_FILE" } }, 400);
     }
+    assertSupportedImageFile(imageFile);
 
     console.log(`[vtracer] Tracing image: ${imageFile.name}, size: ${imageFile.size}`);
 
@@ -1020,8 +1028,9 @@ convertRouter.post("/vectorise-vtracer", async (c) => {
     tmpOut = path.join(tmpDir, `vtracer-out-${Date.now()}.svg`);
 
     const inputBuffer = Buffer.from(await imageFile.arrayBuffer());
+    await assertSafeImageBuffer(inputBuffer);
     // Normalize to B&W PNG first
-    const pngBuffer = await sharp(inputBuffer)
+    const pngBuffer = await sharp(inputBuffer, { failOn: "none", limitInputPixels: MAX_IMAGE_PIXELS })
       .flatten({ background: "#ffffff" })
       .greyscale()
       .png()
@@ -1491,12 +1500,14 @@ convertRouter.post("/vectorise", async (c) => {
         400
       );
     }
+    assertSupportedImageFile(imageFile);
 
     console.log(`[vectorise] Image: ${imageFile.name}, size: ${imageFile.size}`);
 
     // Pre-process to clean B&W
     const rawBuffer = Buffer.from(await imageFile.arrayBuffer());
-    const bwBuffer = await sharp(rawBuffer)
+    await assertSafeImageBuffer(rawBuffer);
+    const bwBuffer = await sharp(rawBuffer, { failOn: "none", limitInputPixels: MAX_IMAGE_PIXELS })
       .flatten({ background: "#ffffff" })
       .greyscale()
       .threshold(200)
@@ -1585,12 +1596,14 @@ convertRouter.post("/vectorise-all", async (c) => {
     if (!imageFile || !(imageFile instanceof File)) {
       return c.json({ error: { message: "No image file provided.", code: "MISSING_FILE" } }, 400);
     }
+    assertSupportedImageFile(imageFile);
 
     console.log(`[vectorise-all] Processing ${imageFile.name}, size: ${imageFile.size}`);
 
     // Pre-process to thinned B&W PNG — erode strokes to ~1px to avoid double-line tracing
     const inputBuffer = Buffer.from(await imageFile.arrayBuffer());
-    const thresholdedBuffer = await sharp(inputBuffer)
+    await assertSafeImageBuffer(inputBuffer);
+    const thresholdedBuffer = await sharp(inputBuffer, { failOn: "none", limitInputPixels: MAX_IMAGE_PIXELS })
       .flatten({ background: "#ffffff" })
       .greyscale()
       .threshold(200)
@@ -1726,6 +1739,7 @@ convertRouter.post("/vectorise-outline", async (c) => {
     if (!imageFile || !(imageFile instanceof File)) {
       return c.json({ error: { message: "No image file provided.", code: "MISSING_FILE" } }, 400);
     }
+    assertSupportedImageFile(imageFile);
 
     const deviceToken = getOrCreateTrialDeviceToken(c);
     const deviceHash = hashTrialDeviceToken(deviceToken);
@@ -1742,6 +1756,7 @@ convertRouter.post("/vectorise-outline", async (c) => {
     console.log(`[vectorise-outline] Processing ${imageFile.name}, size: ${imageFile.size}`);
 
     const inputBuffer = Buffer.from(await imageFile.arrayBuffer());
+    await assertSafeImageBuffer(inputBuffer);
     const outlined = await traceOutlineSvgFromBuffer(inputBuffer, DEFAULT_OUTLINE_SETTINGS);
     const dxf = convertSvgToDxfString(outlined.svg);
 
@@ -1796,6 +1811,7 @@ convertRouter.post("/vectorise-ai", async (c) => {
     if (!imageFile || !(imageFile instanceof File)) {
       return c.json({ error: { message: "No image file provided.", code: "MISSING_FILE" } }, 400);
     }
+    assertSupportedImageFile(imageFile);
 
     const deviceToken = getOrCreateTrialDeviceToken(c);
     const deviceHash = hashTrialDeviceToken(deviceToken);
@@ -1814,6 +1830,7 @@ convertRouter.post("/vectorise-ai", async (c) => {
     );
 
     const inputBuffer = Buffer.from(await imageFile.arrayBuffer());
+    await assertSafeImageBuffer(inputBuffer);
     const result = await vectorizeLineworkWithCenterline(inputBuffer, {
       simplification,
       logPrefix: "vectorise-ai",

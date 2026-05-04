@@ -5,6 +5,7 @@ import { auth } from "../auth";
 import { CreateConversionRequestSchema, UpdateAssetRequestSchema } from "../types";
 import { getBillingConfig } from "../billingConfig";
 import { getMarketplaceDefaultStatus, resolveAppPlan } from "../services/planEntitlements";
+import { sanitizeSvgContent } from "../services/svgSecurity";
 
 const conversionsRouter = new Hono<{
   Variables: {
@@ -12,6 +13,15 @@ const conversionsRouter = new Hono<{
     session: typeof auth.$Infer.Session.session | null;
   };
 }>();
+
+function sanitizeStoredSvg(svg: string | null): string | null {
+  if (!svg) return null;
+  try {
+    return sanitizeSvgContent(svg);
+  } catch {
+    return null;
+  }
+}
 
 // POST /api/conversions — create a new conversion with its assets
 conversionsRouter.post(
@@ -61,7 +71,7 @@ conversionsRouter.post(
             create: assets.map((a) => ({
               subjectId: a.subjectId,
               imageBase64: a.imageBase64 ?? null,
-              svgContent: a.svgContent ?? null,
+              svgContent: a.svgContent ? sanitizeSvgContent(a.svgContent) : null,
               dxfContent: a.dxfContent ?? null,
               marketplaceStatus,
               marketplaceTitle: a.title?.trim() || name?.trim() || `Asset ${a.subjectId}`,
@@ -183,7 +193,7 @@ conversionsRouter.get("/:id", async (c) => {
         subjectId: a.subjectId,
         title: a.marketplaceTitle,
         imageBase64: a.imageBase64,
-        svgContent: a.svgContent,
+        svgContent: sanitizeStoredSvg(a.svgContent),
         dxfContent: a.dxfContent,
         marketplaceStatus: a.marketplaceStatus,
         marketplaceTitle: a.marketplaceTitle,
@@ -219,7 +229,7 @@ conversionsRouter.patch(
 
     // Build update payload — only include fields that were provided
     const updateData: { svgContent?: string; dxfContent?: string } = {};
-    if (svgContent !== undefined) updateData.svgContent = svgContent;
+    if (svgContent !== undefined) updateData.svgContent = sanitizeSvgContent(svgContent);
     if (dxfContent !== undefined) updateData.dxfContent = dxfContent;
 
     const asset = await prisma.conversionAsset.update({
@@ -231,7 +241,7 @@ conversionsRouter.patch(
     return c.json({
       data: {
         id: asset.id,
-        svgContent: asset.svgContent,
+        svgContent: sanitizeStoredSvg(asset.svgContent),
         dxfContent: asset.dxfContent,
       },
     });

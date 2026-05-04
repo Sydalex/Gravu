@@ -10,6 +10,7 @@ import { buildDownloadFilename } from '@/lib/asset-naming';
 import { triggerBlobDownload, downloadTextFile, renderSvgToPngBlob } from '@/lib/download';
 import { base64ToPngFile, vectorizeRaster } from '@/lib/vectorize';
 import { toast } from '@/components/ui/sonner';
+import { sanitizeSvgMarkup } from '@/lib/svg-sanitize';
 
 interface UpdateAssetPayload {
   svgContent?: string;
@@ -164,7 +165,7 @@ const Result = () => {
       return (
         <div
           className="mx-auto flex max-h-[400px] items-center justify-center overflow-auto [&_svg]:max-w-full [&_svg]:h-auto"
-          dangerouslySetInnerHTML={{ __html: cachedSvg[current.subjectId] }}
+          dangerouslySetInnerHTML={{ __html: sanitizeSvgMarkup(cachedSvg[current.subjectId]) }}
         />
       );
 
@@ -181,7 +182,7 @@ const Result = () => {
       return (
         <div
           className="mx-auto flex max-h-[400px] items-center justify-center overflow-auto [&_svg]:max-w-full [&_svg]:h-auto"
-          dangerouslySetInnerHTML={{ __html: cachedSvg[current.subjectId] }}
+          dangerouslySetInnerHTML={{ __html: sanitizeSvgMarkup(cachedSvg[current.subjectId]) }}
         />
       );
 

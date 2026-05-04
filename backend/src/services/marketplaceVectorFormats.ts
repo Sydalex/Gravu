@@ -6,6 +6,7 @@ import {
   convertSvgToDxfString,
   traceOutlineSvgFromBuffer,
 } from "./outlineVectorizer";
+import { sanitizeSvgContent } from "./svgSecurity";
 
 export type MarketplaceVectorAsset = {
   id: string;
@@ -35,14 +36,14 @@ async function generateFromImage(asset: MarketplaceVectorAsset) {
     });
 
     return {
-      svgContent: convertDxfToSvgString(centerline.dxf),
+      svgContent: sanitizeSvgContent(convertDxfToSvgString(centerline.dxf)),
       dxfContent: centerline.dxf,
     };
   }
 
   const outlined = await traceOutlineSvgFromBuffer(imageBuffer, DEFAULT_OUTLINE_SETTINGS);
   return {
-    svgContent: outlined.svg,
+    svgContent: sanitizeSvgContent(outlined.svg),
     dxfContent: convertSvgToDxfString(outlined.svg),
   };
 }
@@ -50,12 +51,12 @@ async function generateFromImage(asset: MarketplaceVectorAsset) {
 export async function ensureMarketplaceVectorFormats(asset: MarketplaceVectorAsset) {
   if (asset.svgContent && asset.dxfContent) {
     return {
-      svgContent: asset.svgContent,
+      svgContent: sanitizeSvgContent(asset.svgContent),
       dxfContent: asset.dxfContent,
     };
   }
 
-  let svgContent = asset.svgContent;
+  let svgContent = asset.svgContent ? sanitizeSvgContent(asset.svgContent) : null;
   let dxfContent = asset.dxfContent;
 
   if (!svgContent && dxfContent) {

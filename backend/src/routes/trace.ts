@@ -7,12 +7,31 @@ import {
   type UploadResponse,
   type VectorizeResponse,
 } from "../types";
+import type { auth } from "../auth";
 import {
   convertSvgToDxfString,
   traceOutlineSvgFromBuffer,
 } from "../services/outlineVectorizer";
+import {
+  MAX_IMAGE_PIXELS,
+  assertSafeImageBuffer,
+  assertSupportedImageFile,
+} from "../services/uploadSecurity";
 
-const traceRouter = new Hono();
+type Variables = {
+  user: typeof auth.$Infer.Session.user | null;
+  session: typeof auth.$Infer.Session.session | null;
+};
+
+const traceRouter = new Hono<{ Variables: Variables }>();
+
+traceRouter.use("*", async (c, next) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+  }
+  await next();
+});
 
 // ─── POST /upload ───────────────────────────────────────────────────────────
 // Accepts multipart form data with an image file.
@@ -28,15 +47,16 @@ traceRouter.post("/upload", async (c) => {
         400
       );
     }
+    assertSupportedImageFile(file);
 
     console.log(`[upload] Received file: ${file.name}, size: ${file.size}, type: ${file.type}`);
 
     const arrayBuffer = await file.arrayBuffer();
     const inputBuffer = Buffer.from(arrayBuffer);
+    const metadata = await assertSafeImageBuffer(inputBuffer);
 
     // Process with Sharp: resize to max 2048px on longest side, convert to PNG
-    const image = sharp(inputBuffer);
-    const metadata = await image.metadata();
+    const image = sharp(inputBuffer, { failOn: "none", limitInputPixels: MAX_IMAGE_PIXELS });
 
     const maxDim = 2048;
     let resizeOpts: sharp.ResizeOptions | undefined;
@@ -89,6 +109,7 @@ traceRouter.post(
 
       // Decode base64 to buffer
       const imageBuffer = Buffer.from(imageBase64, "base64");
+      await assertSafeImageBuffer(imageBuffer);
       const { svg, width, height } = await traceOutlineSvgFromBuffer(imageBuffer, settings);
 
       const responseData: VectorizeResponse = {

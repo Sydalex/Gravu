@@ -16,6 +16,7 @@ import {
   canGenerateMarketplaceVectors,
   ensureMarketplaceVectorFormats,
 } from "../services/marketplaceVectorFormats";
+import { sanitizeSvgContent } from "../services/svgSecurity";
 
 const marketplaceRouter = new Hono<{
   Variables: {
@@ -211,7 +212,7 @@ marketplaceRouter.post(
       );
     }
 
-    let svgContent = asset.svgContent;
+    let svgContent = asset.svgContent ? sanitizeSvgContent(asset.svgContent) : null;
     let dxfContent = asset.dxfContent;
 
     if ((format === "svg" && !svgContent) || (format === "dxf" && !dxfContent)) {
@@ -280,7 +281,7 @@ marketplaceRouter.post(
         : format === "svg"
           ? {
               mimeType: "image/svg+xml",
-              content: svgContent!,
+              content: sanitizeSvgContent(svgContent!),
             }
           : {
               mimeType: "application/dxf",

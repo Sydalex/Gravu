@@ -359,6 +359,28 @@ def test_hybrid_mode_splits_cornered_paths_before_fitting() -> None:
     assert all(entity.kind == "line" for entity in entities)
 
 
+def test_small_isolated_micro_marks_are_removed_unless_preserving_detail() -> None:
+    canvas = np.full((160, 220), 255, dtype=np.uint8)
+    cv2.line(canvas, (30, 120), (190, 120), color=0, thickness=5)
+    cv2.line(canvas, (90, 60), (96, 60), color=0, thickness=2)
+
+    simplified = vectorize_from_array(
+        canvas,
+        simplify_epsilon=0.8,
+        smooth_iterations=1,
+        preserve_detail=False,
+    )
+    preserved = vectorize_from_array(
+        canvas,
+        simplify_epsilon=0.8,
+        smooth_iterations=1,
+        preserve_detail=True,
+    )
+
+    assert simplified.graph_stats["entity_count"] == 1
+    assert preserved.graph_stats["entity_count"] > simplified.graph_stats["entity_count"]
+
+
 def test_hybrid_mode_exports_round_open_geometry_as_arc() -> None:
     points = [
         (100.0 + 45.0 * math.cos(theta), 80.0 + 45.0 * math.sin(theta))

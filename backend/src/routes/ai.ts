@@ -395,8 +395,8 @@ async function generateLineworkImage(
 // Prompt profile IDs make prompt iterations traceable in logs and easy to
 // compare against Desktop snapshots or revert by commit if output quality drops.
 const PROMPT_PROFILE_IDS = {
-  illustration: "illustration-faceless-source-locked-bw-v9",
-  vectorworksCenterline: "vectorworks-faceless-source-locked-bw-v10",
+  illustration: "illustration-faceless-source-locked-bw-v10",
+  vectorworksCenterline: "vectorworks-faceless-source-locked-bw-v11",
 } as const;
 
 const PEOPLE_SCENE_TERMS = [
@@ -413,8 +413,11 @@ const PEOPLE_SCENE_TERMS = [
   "riders",
   "pedestrian",
   "pedestrians",
+  "entourage",
   "figure",
   "figures",
+  "silhouette",
+  "silhouettes",
   "group",
   "crowd",
 ];
@@ -434,7 +437,7 @@ function isLikelyPeopleGroup(descriptions: string[]): boolean {
   const peopleDescriptions = descriptions.filter(isPeopleSceneDescription);
   return (
     peopleDescriptions.length >= 2 ||
-    descriptions.some((description) => /\b(group|crowd|people|men|women|children|figures)\b/i.test(description))
+    descriptions.some((description) => /\b(entourage|group|crowd|people|men|women|children|pedestrians|figures|silhouettes)\b/i.test(description))
   );
 }
 
@@ -447,9 +450,11 @@ FACELESS ARCHITECTURAL ENTOURAGE MODE (mandatory for every visible person):
 - Human faces must be blank contour areas, not portraits.
 - Draw the outer head shape, hair mass, headwear boundary, jaw line, and large beard/mustache boundary only when they define the silhouette.
 - Do not draw eyes, eyelids, pupils, eyebrows, nose bridges, nostrils, mouths, lips, teeth, cheeks, wrinkles, expression lines, eyelashes, inner-ear folds, or small facial marks.
+- Do not replace facial features with symbolic dots, short dashes, hooks, V shapes, T shapes, cross marks, smile curves, eyebrow ticks, or nose triangles.
 - Do not make anyone look expressive, smiling, frowning, speaking, or looking at the camera.
 - If a face is frontal, profile, or three-quarter view, keep only the external contour and leave the face interior white.
-- If glasses are large and visually necessary, draw one simplified glasses outline only; do not add eyes behind the glasses.`;
+- If glasses are large and visually necessary, draw one simplified glasses outline only; do not add eyes behind the glasses.
+- When the source shows many people, process each head as a blank architectural entourage silhouette, not as a portrait thumbnail.`;
 }
 
 function buildSourceLockedPeopleGroupBlock(enabled: boolean): string {
@@ -466,6 +471,7 @@ SOURCE-LOCKED PEOPLE/GROUP TRACE MODE (mandatory):
 - Do not move people closer together, spread them out, rotate them, mirror them, turn profiles into front views, or turn seated figures into standing figures.
 - If clothing, limbs, hands, feet, or overlapping bodies are complex, simplify by deleting interior detail only. Never simplify by changing the outer silhouette, pose, placement, or overlap.
 - For faces, remove all interior face marks. Keep only the observed head outline, face direction, hair/headwear boundary, beard/mustache outer boundary, and profile/back-view contour.
+- Never use generic face placeholders such as two dots, a dash mouth, a V nose, eyebrow ticks, smile marks, or expression strokes.
 - For fabrics and patterned clothing, remove printed patterns and texture, but keep the garment boundary and major wrap/fold silhouette that defines the pose.
 - Output remains only black lines on pure white. No colored fills, no grey fills, no colored accessories, no clothing color regions.`;
 }
@@ -590,6 +596,7 @@ CRITICAL CONSTRAINTS — you must obey every one:
 7. Prefer long, continuous, unbroken strokes. Avoid clusters of tiny lines.
 8. Leave large interior areas completely white — do not fill them with texture or pattern.
 9. For human faces, leave the face interior blank white. Keep only external head contour, hair, headwear, jaw, beard/mustache boundary, or one simplified glasses outline. Omit eyes, eyelids, pupils, eyebrows, noses, nostrils, mouths, lips, teeth, cheeks, wrinkles, expression lines, inner-ear folds, and all small facial marks.
+9a. Never substitute facial placeholders such as dots, dash mouths, V noses, T marks, eyebrow ticks, smile curves, or expression strokes.
 10. For clothing and wearable gear, keep only the main outer contour and a few major openings or overlaps. Omit shoelaces, seams, stitching, zipper teeth, drawstrings, pocket creases, quilt lines, small wrinkles, and secondary backpack straps. If one of those elements is necessary, represent it with one clean long contour only.
 11. For standing, seated, crouching, or walking people used as entourage, treat hair as one outer mass with a maximum of one interior hair line, use zero interior face lines, keep garments to the silhouette plus a maximum of two interior overlap lines total, and keep shoes to outer contour plus a maximum of one sole line.
 12. Every stroke must keep blunt, uniform ends. Do not taper lines to points and do not use brush-like or calligraphic terminals. If uncertain, omit the detail instead of drawing a thin pointed ending.
@@ -732,6 +739,7 @@ HUMAN FIGURE RULES (strict):
 - Closed outer contours are allowed and preferred when needed to preserve the observed silhouette faithfully.
 - Keep interior human detail minimal and only when essential for recognition, but do not lose the real body proportions or pose.
 - For faces, use blank contour-only treatment with no eyes, eyelids, pupils, eyebrows, nose bridges, nostrils, mouths, lips, teeth, cheeks, wrinkles, expression marks, inner-ear folds, or other interior facial drawing.
+- Never substitute symbolic face shorthand such as two dots, dash mouths, V noses, T marks, eyebrow ticks, smile curves, or expression strokes.
 - Only keep external silhouette-defining head details when they are large and obvious in the source, such as hair mass, headwear boundary, jaw line, beard outline, mustache outline, or one simplified glasses outline.
 - Do not invent portrait detail, expression lines, makeup detail, eyelashes, eye contact, smiles, frowns, speaking mouths, or stylized face rendering.
 - Simplify clothing to the outer garment silhouette plus only a few major openings, overlaps, and attachment points.

@@ -2698,7 +2698,7 @@ def vectorize_from_array(
             vector_paths.append(points)
 
     vector_paths = _rescale_paths(vector_paths, scale=WORK_SCALE)
-    if not preserve_detail and not is_small_asset:
+    if not preserve_detail:
         vector_paths = _cleanup_micro_feature_paths(vector_paths)
 
     fill_paths = _extract_fill_paths_from_centerlines(

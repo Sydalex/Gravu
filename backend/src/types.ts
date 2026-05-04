@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+const MAX_BASE64_IMAGE_CHARS = 18_000_000;
+const MAX_VECTOR_TEXT_CHARS = 2_000_000;
+
 // ─── Trace API Schemas ─────────────────────────────────────────────────────
 
 /** Turn policy options supported by potrace */
@@ -26,7 +29,7 @@ export type VectorizeSettings = z.infer<typeof VectorizeSettingsSchema>;
 
 /** Request body for POST /api/trace/vectorize */
 export const VectorizeRequestSchema = z.object({
-  imageBase64: z.string().min(1, "imageBase64 is required"),
+  imageBase64: z.string().min(1, "imageBase64 is required").max(MAX_BASE64_IMAGE_CHARS),
   settings: VectorizeSettingsSchema,
 });
 export type VectorizeRequest = z.infer<typeof VectorizeRequestSchema>;
@@ -50,7 +53,7 @@ export type VectorizeResponse = z.infer<typeof VectorizeResponseSchema>;
 
 /** Request body for POST /api/trace/export-dxf */
 export const ExportDxfRequestSchema = z.object({
-  svg: z.string().min(1, "svg is required"),
+  svg: z.string().min(1, "svg is required").max(MAX_VECTOR_TEXT_CHARS),
 });
 export type ExportDxfRequest = z.infer<typeof ExportDxfRequestSchema>;
 
@@ -65,7 +68,7 @@ export type Subject = z.infer<typeof SubjectSchema>;
 
 /** Request body for POST /api/ai/detect-subjects */
 export const DetectSubjectsRequestSchema = z.object({
-  imageBase64: z.string().min(1, "imageBase64 is required"),
+  imageBase64: z.string().min(1, "imageBase64 is required").max(MAX_BASE64_IMAGE_CHARS),
   description: z.string().optional(),
 });
 export type DetectSubjectsRequest = z.infer<typeof DetectSubjectsRequestSchema>;
@@ -90,7 +93,7 @@ export type DetailLevel = z.infer<typeof DetailLevelEnum>;
 
 /** Request body for POST /api/ai/generate-linework */
 export const GenerateLineworkRequestSchema = z.object({
-  imageBase64: z.string().min(1, "imageBase64 is required"),
+  imageBase64: z.string().min(1, "imageBase64 is required").max(MAX_BASE64_IMAGE_CHARS),
   subjects: z.array(SubjectSchema).optional(),
   selectedSubjects: z.array(z.number()).optional(),
   viewAngle: z.string(),
@@ -119,7 +122,7 @@ export type GenerateLineworkResponse = z.infer<typeof GenerateLineworkResponseSc
 
 /** Request body for POST /api/convert/svg-to-dxf */
 export const SvgToDxfRequestSchema = z.object({
-  svg: z.string().min(1),
+  svg: z.string().min(1).max(MAX_VECTOR_TEXT_CHARS),
 });
 export type SvgToDxfRequest = z.infer<typeof SvgToDxfRequestSchema>;
 
@@ -127,7 +130,7 @@ export type SvgToDxfRequest = z.infer<typeof SvgToDxfRequestSchema>;
 
 /** Request body for POST /api/convert/dxf-to-svg */
 export const DxfToSvgRequestSchema = z.object({
-  dxf: z.string().min(1, "dxf content is required"),
+  dxf: z.string().min(1, "dxf content is required").max(MAX_VECTOR_TEXT_CHARS),
 });
 export type DxfToSvgRequest = z.infer<typeof DxfToSvgRequestSchema>;
 
@@ -139,7 +142,7 @@ export type DxfToSvgResponse = z.infer<typeof DxfToSvgResponseSchema>;
 
 /** Request body for POST /api/convert/compose (parsed from form data) */
 export const ComposeRequestSchema = z.object({
-  images: z.array(z.string().min(1)),
+  images: z.array(z.string().min(1).max(MAX_BASE64_IMAGE_CHARS)).max(12),
   spacing: z.number().min(0).default(0),
   padding: z.number().min(0).default(0),
 });
@@ -159,9 +162,9 @@ export type ComposeResponse = z.infer<typeof ComposeResponseSchema>;
 export const ConversionAssetInputSchema = z.object({
   subjectId: z.number(),
   title: z.string().min(1).optional(),
-  imageBase64: z.string().optional(),
-  svgContent: z.string().optional(),
-  dxfContent: z.string().optional(),
+  imageBase64: z.string().max(MAX_BASE64_IMAGE_CHARS).optional(),
+  svgContent: z.string().max(MAX_VECTOR_TEXT_CHARS).optional(),
+  dxfContent: z.string().max(MAX_VECTOR_TEXT_CHARS).optional(),
 });
 export type ConversionAssetInput = z.infer<typeof ConversionAssetInputSchema>;
 
@@ -169,7 +172,7 @@ export type ConversionAssetInput = z.infer<typeof ConversionAssetInputSchema>;
 export const CreateConversionRequestSchema = z.object({
   flowType: z.string().min(1, "flowType is required"),
   name: z.string().optional(),
-  originalImageBase64: z.string().optional(),
+  originalImageBase64: z.string().max(MAX_BASE64_IMAGE_CHARS).optional(),
   assets: z.array(ConversionAssetInputSchema),
 });
 export type CreateConversionRequest = z.infer<typeof CreateConversionRequestSchema>;
@@ -238,8 +241,8 @@ export type CreateConversionResponse = z.infer<typeof CreateConversionResponseSc
 
 /** Request body for PATCH /api/conversions/:id/assets/:assetId */
 export const UpdateAssetRequestSchema = z.object({
-  svgContent: z.string().optional(),
-  dxfContent: z.string().optional(),
+  svgContent: z.string().max(MAX_VECTOR_TEXT_CHARS).optional(),
+  dxfContent: z.string().max(MAX_VECTOR_TEXT_CHARS).optional(),
 });
 export type UpdateAssetRequest = z.infer<typeof UpdateAssetRequestSchema>;
 

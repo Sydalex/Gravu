@@ -1,3 +1,5 @@
+import { sanitizeSvgMarkup } from './svg-sanitize';
+
 export function triggerBlobDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -43,7 +45,7 @@ function serializeSvgForPngExport(
   } = {},
 ) {
   const parser = new DOMParser();
-  const svgDocument = parser.parseFromString(svgMarkup, 'image/svg+xml');
+  const svgDocument = parser.parseFromString(sanitizeSvgMarkup(svgMarkup), 'image/svg+xml');
   const svgElement = svgDocument.documentElement as SVGSVGElement;
 
   if (svgElement.nodeName.toLowerCase() !== 'svg') {

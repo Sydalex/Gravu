@@ -20,6 +20,7 @@ import {
   canGenerateMarketplaceVectors,
   ensureMarketplaceVectorFormats,
 } from "../services/marketplaceVectorFormats";
+import { sanitizeSvgContent } from "../services/svgSecurity";
 import type { auth } from "../auth";
 import {
   CreateSupportTicketMessageRequestSchema,
@@ -1072,7 +1073,7 @@ adminRouter.post(
       );
     }
 
-    let svgContent = asset.svgContent;
+    let svgContent = asset.svgContent ? sanitizeSvgContent(asset.svgContent) : null;
     let dxfContent = asset.dxfContent;
 
     if ((format === "svg" && !svgContent) || (format === "dxf" && !dxfContent)) {
@@ -1127,7 +1128,7 @@ adminRouter.post(
         : format === "svg"
           ? {
               mimeType: "image/svg+xml",
-              content: svgContent!,
+              content: sanitizeSvgContent(svgContent!),
             }
           : {
               mimeType: "application/dxf",

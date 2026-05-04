@@ -16,6 +16,7 @@ import { accountRouter } from "./routes/account";
 import { supportRouter } from "./routes/support";
 import { logger } from "hono/logger";
 import { prisma } from "./prisma";
+import { sameOriginWriteGuard } from "./services/requestSecurity";
 
 const app = new Hono<{
   Variables: {
@@ -47,6 +48,8 @@ app.use(
 
 // Logging
 app.use("*", logger());
+
+app.use("/api/*", sameOriginWriteGuard);
 
 // Auth middleware - populates user/session for all routes
 app.use("*", async (c, next) => {

@@ -24,6 +24,7 @@ import { api } from '@/lib/api';
 import { buildDownloadFilename } from '@/lib/asset-naming';
 import { downloadBase64File, downloadTextFile, triggerBlobDownload } from '@/lib/download';
 import { base64ToPngFile, vectorizeRaster } from '@/lib/vectorize';
+import { sanitizeSvgMarkup } from '@/lib/svg-sanitize';
 import { toast } from '@/components/ui/sonner';
 import type { ConversionDetail, ConversionAsset } from '../../../backend/src/types';
 
@@ -537,7 +538,7 @@ const LibraryDetail = () => {
                     <div className="bg-white min-h-[200px] flex items-center justify-center p-4 overflow-hidden">
                       <div
                         className="max-h-[240px] w-full flex items-center justify-center [&>svg]:max-h-[240px] [&>svg]:w-full [&>svg]:object-contain"
-                        dangerouslySetInnerHTML={{ __html: asset.svgContent }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeSvgMarkup(asset.svgContent) }}
                       />
                     </div>
                   ) : (

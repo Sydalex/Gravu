@@ -85,8 +85,6 @@ export const auth = betterAuth({
     // When running behind a reverse proxy, derive the baseURL from forwarded
     // headers so auth redirects and cookie domains resolve correctly.
     trustedProxyHeaders: true,
-    // Cross-origin CSRF protection is handled by the CORS allowlist above.
-    disableCSRFCheck: true,
     defaultCookieAttributes: {
       // In development (HTTP) use "lax" so cookies are sent without HTTPS.
       // In production (HTTPS), "none" allows cross-origin cookie delivery
